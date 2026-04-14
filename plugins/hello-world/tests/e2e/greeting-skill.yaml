@@ -1,0 +1,38 @@
+# Example L3 end-to-end case for the hello-world plugin's `greeting` skill.
+#
+# This case proves that:
+#   1. `claude --bare --plugin-dir <plugin-root>` successfully loads the plugin
+#   2. A natural-language request that matches the `greeting` SKILL.md
+#      description activates the skill (skills are model-routed, not
+#      deterministically dispatched like slash commands)
+#   3. The model's response surfaces the plugin's signature phrase, which
+#      SKILL.md explicitly instructs it to mention (`hello-world`)
+#   4. The CLI reaches a successful `result` in --output-format=json
+#
+# Unlike the slash-command case (hello-command.yaml) this test cannot rely
+# on a deterministic routing key like `/hello-world:hello`. We pick a prompt
+# that closely mirrors the activation phrase in SKILL.md ("plugin-sourced
+# greeting" / "test the hello-world plugin") to keep activation reliable.
+#
+# As with the sibling case, we do NOT assert on the model's exact words —
+# the regex allows common variations like `hello-world`, `Hello World`, or
+# `hello world`.
+
+name: "hello-world:greeting skill activates on a plugin-sourced greeting request"
+prompt: "I want to test the hello-world plugin — please give me a plugin-sourced greeting."
+model: claude-haiku-4-5-20251001
+maxBudgetUsd: 0.05
+timeoutMs: 120000
+
+expect:
+  exitCode: 0
+  parsedJson:
+    type: "result"
+    subtype: "success"
+    is_error: false
+    result:
+      matches: "[Hh]ello[- ]?[Ww]orld"
+  stdout:
+    notContains:
+      - "not found"
+      - "unknown command"

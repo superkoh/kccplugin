@@ -1,0 +1,12 @@
+{
+  "slashCommands": {
+    "requires": [
+      "hello-world:hello",
+      "hello-world:greeting"
+    ],
+    "forbids": []
+  },
+  "mcpServers": {
+    "requires": []
+  }
+}

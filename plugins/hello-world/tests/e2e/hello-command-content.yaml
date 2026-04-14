@@ -1,0 +1,57 @@
+# Second L3 case for the hello-world plugin's `hello` slash command.
+#
+# hello-command.yaml already covers the smoke path (exit code + JSON
+# envelope shape). This case complements it by asserting on the
+# *content* of the model's reply and by locking the command down to
+# zero tool use.
+#
+# Why this matters:
+#   1. hello.md explicitly tells the model to "confirm that the
+#      `hello-world` plugin from the `kccplugin` marketplace is
+#      installed and working correctly". Both signature tokens
+#      (`hello-world`, `kccplugin`) should therefore appear in the
+#      reply — if a future edit drops one of them, the command's
+#      self-identification is broken and we want to notice.
+#
+#   2. The hello command is a pure conversational reply. It should
+#      never need to read the filesystem, shell out, or edit files.
+#      We pass `disallowedTools` covering every file/exec tool so
+#      that if someone later rewrites hello.md in a way that
+#      accidentally invites tool use, the runner surfaces it here
+#      instead of letting the regression slip through.
+#
+# As with the sibling cases we deliberately avoid asserting on exact
+# prose — the `[Hh]ello[- ]?[Ww]orld` regex mirrors greeting-skill.yaml
+# so model-side capitalization drift doesn't flap the test.
+
+name: "hello-world:hello command surfaces plugin and marketplace signatures"
+prompt: "/hello-world:hello"
+model: claude-haiku-4-5-20251001
+maxBudgetUsd: 0.05
+timeoutMs: 120000
+
+# Hello is a pure-response command — lock out everything filesystem /
+# execution related. If the command ever needs these, that's a red flag
+# worth surfacing as a test failure.
+disallowedTools:
+  - Write
+  - Edit
+  - Bash
+  - Read
+  - Glob
+  - Grep
+
+expect:
+  exitCode: 0
+  parsedJson:
+    type: "result"
+    subtype: "success"
+    is_error: false
+    result:
+      matches: "[Hh]ello[- ]?[Ww]orld"
+  stdout:
+    contains:
+      - "kccplugin"
+    notContains:
+      - "not found"
+      - "unknown command"

@@ -1,0 +1,27 @@
+# Example L3 end-to-end case for the hello-world plugin.
+#
+# This case proves that:
+#   1. `claude --bare --plugin-dir <plugin-root>` successfully loads the plugin
+#   2. The `/hello-world:hello` slash command is recognized and invoked
+#   3. The CLI reaches a successful `result` in --output-format=json
+#
+# We intentionally do NOT assert on the model's exact words — those are
+# non-deterministic. Instead we assert on structural fields from the JSON
+# result envelope, which are stable.
+
+name: "hello-world:hello command runs to completion"
+prompt: "/hello-world:hello"
+model: claude-haiku-4-5-20251001
+maxBudgetUsd: 0.05
+timeoutMs: 120000
+
+expect:
+  exitCode: 0
+  parsedJson:
+    type: "result"
+    subtype: "success"
+    is_error: false
+  stdout:
+    notContains:
+      - "not found"
+      - "unknown command"
