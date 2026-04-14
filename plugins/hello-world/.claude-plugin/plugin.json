@@ -1,0 +1,5 @@
+{
+  "name": "hello-world",
+  "version": "0.1.0",
+  "description": "Minimal starter plugin from the kccplugin marketplace. Provides /hello-world:hello and a greeting skill."
+}

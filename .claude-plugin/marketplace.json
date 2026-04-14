@@ -1,0 +1,20 @@
+{
+  "name": "kccplugin",
+  "owner": {
+    "name": "koh"
+  },
+  "metadata": {
+    "description": "A Claude Code plugin marketplace",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "hello-world",
+      "source": "./plugins/hello-world",
+      "description": "Minimal starter plugin demonstrating a slash command and a skill",
+      "version": "0.1.0",
+      "category": "example",
+      "tags": ["example", "starter"]
+    }
+  ]
+}
