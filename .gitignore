@@ -1,5 +1,7 @@
-# Claude Code local settings
-.claude/
+# Claude Code local settings — ignore the contents of .claude/ EXCEPT
+# shared project skills, which we want version-controlled.
+.claude/*
+!.claude/skills/
 
 # macOS
 .DS_Store
@@ -8,3 +10,11 @@
 .vscode/
 .idea/
 *.swp
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Test framework artifacts
+test/.artifacts/
+coverage/

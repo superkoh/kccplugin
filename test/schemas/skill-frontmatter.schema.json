@@ -1,0 +1,31 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "kccplugin/skill-frontmatter.schema.json",
+  "title": "Skill YAML frontmatter",
+  "description": "Strict schema for the YAML frontmatter at the top of a plugin's skills/<skill-name>/SKILL.md file.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["description"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "description": "Optional; if omitted the containing directory name is used."
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Required. Used by the model to decide when to invoke the skill."
+    },
+    "disable-model-invocation": {
+      "type": "boolean",
+      "description": "If true, the skill can only be invoked via /namespace:name and not auto-chosen by the model."
+    },
+    "allowed-tools": {
+      "oneOf": [
+        { "type": "string" },
+        { "type": "array", "items": { "type": "string" } }
+      ]
+    }
+  }
+}

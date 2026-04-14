@@ -1,0 +1,78 @@
+name: plugin tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # Nightly full run (incl. L3/L4) — adjust as needed.
+    - cron: "0 8 * * *"
+  workflow_dispatch:
+    inputs:
+      run_e2e:
+        description: "Run L3/L4 layers (needs ANTHROPIC_API_KEY secret)"
+        type: boolean
+        default: false
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  offline:
+    name: L1 + L2 (offline)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install npm deps
+        run: npm ci || npm install
+
+      - name: Install bats-core
+        run: sudo apt-get update && sudo apt-get install -y bats
+
+      - name: Install Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code
+        continue-on-error: true
+
+      - name: Run L1 (schema + official validate)
+        run: npm run test:l1
+
+      - name: Run L2 (unit)
+        run: npm run test:l2
+
+  online:
+    name: L3 + L4 (API-gated)
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'schedule' ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.run_e2e == 'true')
+    needs: offline
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install npm deps
+        run: npm ci || npm install
+
+      - name: Install Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Run L4 (load-time assertions)
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: npm run test:l4
+
+      - name: Run L3 (e2e YAML cases)
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: npm run test:l3

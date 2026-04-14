@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "kccplugin/command-frontmatter.schema.json",
+  "title": "Slash Command YAML frontmatter",
+  "description": "Strict schema for YAML frontmatter in commands/<name>.md files.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["description"],
+  "properties": {
+    "description": { "type": "string", "minLength": 1 },
+    "argument-hint": { "type": "string" },
+    "allowed-tools": {
+      "oneOf": [
+        { "type": "string" },
+        { "type": "array", "items": { "type": "string" } }
+      ]
+    },
+    "model": { "type": "string" },
+    "disable-model-invocation": { "type": "boolean" }
+  }
+}

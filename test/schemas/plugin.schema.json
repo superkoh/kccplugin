@@ -1,0 +1,54 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "kccplugin/plugin.schema.json",
+  "title": "Claude Code Plugin Manifest",
+  "description": "Strict schema for <plugin>/.claude-plugin/plugin.json.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["name"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "minLength": 1,
+      "maxLength": 64,
+      "description": "Kebab-case identifier; becomes the slash-command namespace, e.g. /<name>:<skill>."
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$",
+      "description": "SemVer MAJOR.MINOR.PATCH."
+    },
+    "description": { "type": "string", "minLength": 1 },
+    "author": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "url": { "type": "string", "format": "uri" }
+      }
+    },
+    "homepage": { "type": "string", "format": "uri" },
+    "repository": {
+      "oneOf": [
+        { "type": "string" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "url"],
+          "properties": {
+            "type": { "type": "string" },
+            "url": { "type": "string" }
+          }
+        }
+      ]
+    },
+    "license": { "type": "string" },
+    "keywords": {
+      "type": "array",
+      "items": { "type": "string" },
+      "uniqueItems": true
+    }
+  }
+}

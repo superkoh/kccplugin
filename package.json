@@ -1,0 +1,24 @@
+{
+  "name": "kccplugin",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Claude Code plugin marketplace with a layered automated test framework",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node test/validate.mjs && node test/run-unit.mjs && node test/run-sdk.mjs && node test/run-e2e.mjs",
+    "test:l1": "node test/validate.mjs",
+    "test:l2": "node test/run-unit.mjs",
+    "test:l3": "node test/run-e2e.mjs",
+    "test:l4": "node test/run-sdk.mjs",
+    "test:fast": "node test/validate.mjs && node test/run-unit.mjs",
+    "test:offline": "node test/validate.mjs && node test/run-unit.mjs"
+  },
+  "devDependencies": {
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
+    "js-yaml": "^4.1.0"
+  }
+}
