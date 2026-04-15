@@ -1,0 +1,55 @@
+# L3 end-to-end case for kcc-dev-core's SessionStart hook.
+#
+# Proves the full chain works when the session is inside a software
+# project:
+#   1. `claude --bare --plugin-dir <kcc-dev-core>` fires the
+#      SessionStart hook.
+#   2. The hook script detects the kccplugin repo as a "dev scene"
+#      (cwd inherits from the Node test runner, which runs from the
+#      repo root where .git/, CLAUDE.md, and package.json all live).
+#   3. The hook emits valid JSON with a non-empty `additionalContext`
+#      containing dev-principles.md.
+#   4. The injected text actually lands in Claude's context before
+#      the first turn, i.e. the model can read from it.
+#
+# The key trick: dev-principles.md ends with an HTML comment containing
+# the sentinel `kcc-dev-core-principles-v1`. That literal string is not
+# in any model's training data — it exists only in this repo. We ask
+# the model to quote it back. If the injection worked the model has it
+# in context and can produce it; if the hook didn't fire, or the "dev
+# scene" detection was wrong, or the text was stripped, the model
+# cannot invent it.
+#
+# We lock out every filesystem / execution tool so the model can't
+# "cheat" by reading dev-principles.md directly. The only path from
+# prompt to sentinel is through the injected SessionStart context.
+
+name: "kcc-dev-core SessionStart hook conditionally injects dev principles"
+prompt: "Inside your current session context there is a document titled 'Development Discipline & Craft Principles' that ends with an HTML comment containing a sentinel identifier starting with 'kcc-dev-core-principles'. Quote that exact identifier string and nothing else. If you cannot see such a document, reply with the literal text NO_DEV_SENTINEL_IN_CONTEXT."
+model: claude-haiku-4-5-20251001
+maxBudgetUsd: 0.05
+timeoutMs: 120000
+
+# Block every out-of-band path to the sentinel. The model must find it
+# via the SessionStart context or not at all.
+disallowedTools:
+  - Read
+  - Glob
+  - Grep
+  - Bash
+  - Write
+  - Edit
+  - WebFetch
+  - WebSearch
+
+expect:
+  exitCode: 0
+  parsedJson:
+    type: "result"
+    subtype: "success"
+    is_error: false
+  stdout:
+    contains:
+      - "kcc-dev-core-principles-v1"
+    notContains:
+      - "NO_DEV_SENTINEL_IN_CONTEXT"
