@@ -1,0 +1,49 @@
+# L3 end-to-end case for kcc-core's SessionStart hook.
+#
+# Proves the full chain works:
+#   1. `claude --bare --plugin-dir <kcc-core>` fires the SessionStart hook.
+#   2. The hook script emits valid JSON with `additionalContext`.
+#   3. The injected text actually lands in Claude's context before the
+#      first turn, i.e. the model can read from it.
+#
+# The key trick: `thinking-principles.md` ends with an HTML comment
+# containing the sentinel `kcc-core-thinking-principles-v1`. That literal
+# string is not in any model's training data — it exists only in this
+# repo. We ask the model to quote it back. If the injection worked the
+# model has it in context and can produce it; if the hook didn't fire or
+# the text was stripped the model cannot invent it.
+#
+# We also lock out every filesystem / execution tool so the model can't
+# "cheat" by reading the markdown file directly. The only path from
+# prompt to sentinel is through the injected SessionStart context.
+
+name: "kcc-core SessionStart hook injects thinking principles into context"
+prompt: "Inside your current session context there is a document titled 'Top-Level Thinking & Communication Principles' that ends with an HTML comment containing a sentinel identifier starting with 'kcc-core-thinking-principles'. Quote that exact identifier string and nothing else. If you cannot see such a document, reply with the literal text NO_SENTINEL_IN_CONTEXT."
+model: claude-haiku-4-5-20251001
+maxBudgetUsd: 0.05
+timeoutMs: 120000
+
+# Lock out everything that could give the model an out-of-band path to
+# the sentinel. The only way it can answer correctly is if the
+# SessionStart hook actually injected the file contents into context.
+disallowedTools:
+  - Read
+  - Glob
+  - Grep
+  - Bash
+  - Write
+  - Edit
+  - WebFetch
+  - WebSearch
+
+expect:
+  exitCode: 0
+  parsedJson:
+    type: "result"
+    subtype: "success"
+    is_error: false
+  stdout:
+    contains:
+      - "kcc-core-thinking-principles-v1"
+    notContains:
+      - "NO_SENTINEL_IN_CONTEXT"
