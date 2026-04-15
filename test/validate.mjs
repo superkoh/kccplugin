@@ -52,6 +52,21 @@ function makeAjv() {
   return ajv;
 }
 
+// Our schemas carry a `$id`, and ajv refuses to register the same `$id`
+// twice. The per-plugin loop used to call `ajv.compile(schema)` fresh for
+// every plugin, which crashed the moment a second plugin existed. Compile
+// each schema at most once per run and reuse the validator.
+const validatorCache = new Map();
+async function getValidator(ajv, name) {
+  let v = validatorCache.get(name);
+  if (!v) {
+    const schema = await loadSchema(name);
+    v = ajv.compile(schema);
+    validatorCache.set(name, v);
+  }
+  return v;
+}
+
 /** Format an ajv error array as a human-readable string. */
 function formatAjvErrors(errors) {
   if (!errors || errors.length === 0) return "unknown validation error";
@@ -115,8 +130,7 @@ async function validateMarketplace(ajv) {
     record("marketplace.json present", false, "file not found at .claude-plugin/marketplace.json");
     return null;
   }
-  const schema = await loadSchema("marketplace.schema.json");
-  const validate = ajv.compile(schema);
+  const validate = await getValidator(ajv, "marketplace.schema.json");
   const ok = validate(marketplace.json);
   record(
     "marketplace.json (schema)",
@@ -147,8 +161,7 @@ async function validatePluginManifest(ajv, plugin) {
     );
     return null;
   }
-  const schema = await loadSchema("plugin.schema.json");
-  const validate = ajv.compile(schema);
+  const validate = await getValidator(ajv, "plugin.schema.json");
   const ok = validate(manifest);
   record(
     `plugins/${plugin.name}/plugin.json (schema)`,
@@ -179,8 +192,7 @@ async function validateFrontmatter(ajv, filePath, schemaName, label) {
     record(label, false, "file has no YAML frontmatter (expected `---` block at top)");
     return;
   }
-  const schema = await loadSchema(schemaName);
-  const validate = ajv.compile(schema);
+  const validate = await getValidator(ajv, schemaName);
   const ok = validate(parsed.frontmatter);
   record(label, ok, ok ? undefined : formatAjvErrors(validate.errors));
 }
@@ -194,8 +206,7 @@ async function validateHooksJson(ajv, hooksPath, label) {
     record(label, false, `invalid JSON: ${err.message}`);
     return;
   }
-  const schema = await loadSchema("hooks.schema.json");
-  const validate = ajv.compile(schema);
+  const validate = await getValidator(ajv, "hooks.schema.json");
   const ok = validate(data);
   record(label, ok, ok ? undefined : formatAjvErrors(validate.errors));
 }
