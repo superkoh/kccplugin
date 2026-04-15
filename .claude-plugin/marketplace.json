@@ -15,6 +15,12 @@
       "version": "0.1.0",
       "category": "example",
       "tags": ["example", "starter"]
+    },
+    {
+      "name": "kcc-core",
+      "source": "./plugins/kcc-core",
+      "description": "Core plugin: top-level context injections and shared commands / skills.",
+      "version": "0.1.0"
     }
   ]
 }
