@@ -21,6 +21,12 @@
       "source": "./plugins/kcc-core",
       "description": "Core plugin: top-level context injections and shared commands / skills.",
       "version": "0.1.0"
+    },
+    {
+      "name": "kcc-dev-core",
+      "source": "./plugins/kcc-dev-core",
+      "description": "Development-focused plugin: conditionally injects code-discipline principles when the session is inside a software project, and hosts shared dev skills / hooks.",
+      "version": "0.1.0"
     }
   ]
 }
