@@ -13,6 +13,10 @@ const state = {
   selectedId: null,
 };
 
+// Token used to drop stale select() responses when the user clicks
+// (or an SSE 'updated' event fires) before the in-flight fetch resolves.
+let selectSeq = 0;
+
 const $sidebar = document.getElementById("index-list");
 const $title = document.getElementById("current-title");
 const $meta = document.getElementById("current-meta");
@@ -51,14 +55,17 @@ function renderSidebar() {
 }
 
 async function select(id) {
+  const mySeq = ++selectSeq;
   state.selectedId = id;
   renderSidebar();
   const res = await fetch(`/api/items/${id}`);
+  if (mySeq !== selectSeq) return;
   if (!res.ok) {
     $host.innerHTML = `<div class="muted">Failed to load item.</div>`;
     return;
   }
   const item = await res.json();
+  if (mySeq !== selectSeq) return;
   $title.textContent = item.title || "(untitled)";
   $meta.textContent = metaLine(item);
   renderContent(item);
@@ -105,6 +112,11 @@ async function renderContent(item) {
 }
 
 async function renderMarkdown(src) {
+  // Trust model: markdown bodies arrive from content/ entries Claude wrote
+  // (kind=inline) or files Claude referenced by absolute path (kind=file,
+  // text/markdown). Both are author-trusted at the same level as the user's
+  // own filesystem. marked v13 does NOT sanitize HTML — if untrusted markdown
+  // ever flows in, add DOMPurify before innerHTML insertion below.
   const html = marked.parse(src, { gfm: true, breaks: false });
   const host = document.createElement("div");
   host.innerHTML = html;
