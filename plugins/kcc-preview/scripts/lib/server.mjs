@@ -150,7 +150,17 @@ export async function createServer({ store, sessionId, port = 0, vcEventsPath })
     res.writeHead(404); res.end("not found");
   });
 
-  server.on("close", unsubscribe);
+  function closeAllSseClients() {
+    for (const c of [...sseClients]) {
+      try { c.end(); } catch { /* ignore */ }
+    }
+    sseClients.clear();
+  }
+
+  server.on("close", () => {
+    closeAllSseClients();
+    unsubscribe();
+  });
 
   await new Promise((resolve, reject) => {
     server.once("error", reject);
@@ -160,7 +170,19 @@ export async function createServer({ store, sessionId, port = 0, vcEventsPath })
     });
   });
 
-  return { server, port: server.address().port };
+  function stop() {
+    return new Promise((resolve) => {
+      closeAllSseClients();
+      server.close(() => resolve());
+      // Belt-and-suspenders for Node ≥18.2: forcibly drop any remaining
+      // sockets that did not honor the SSE end() (rare but seen on macOS).
+      if (typeof server.closeAllConnections === "function") {
+        server.closeAllConnections();
+      }
+    });
+  }
+
+  return { server, port: server.address().port, stop };
 }
 
 function publicItem(item) {

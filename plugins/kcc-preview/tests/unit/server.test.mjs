@@ -120,3 +120,26 @@ test("GET /api/events is SSE and pushes store updates", async (t) => {
   assert.match(buffer, /event: added/);
   assert.match(buffer, /LiveOne/);
 });
+
+test("server.stop() resolves promptly even with an open SSE client", async (t) => {
+  const store = createItemStore();
+  const { server, port, stop } = await createServer({ store, sessionId: "stop-test" });
+  t.after(() => server.close());
+
+  // Open an SSE stream and HOLD it.
+  const res = await fetch(`http://127.0.0.1:${port}/api/events`);
+  const reader = res.body.getReader();
+  // Read the preamble so the connection is fully established.
+  await reader.read();
+
+  const start = Date.now();
+  await stop();
+  const elapsed = Date.now() - start;
+
+  // Without the fix, server.close() would hang indefinitely on the open SSE.
+  // With the fix, stop() should resolve in well under 500 ms.
+  assert.ok(elapsed < 500, `stop() took ${elapsed}ms; expected < 500ms`);
+
+  // Subsequent reads from the cancelled stream should not throw.
+  reader.cancel().catch(() => {});
+});
