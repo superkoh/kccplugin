@@ -9,7 +9,11 @@ export function createItemStore({ cap = 200 } = {}) {
   const subscribers = new Set();
 
   function emit(ev) {
-    for (const fn of subscribers) fn(ev);
+    // Snapshot subscribers before iteration so subscribing-during-emit is safe,
+    // and isolate failures so one throwing subscriber does not break fan-out.
+    for (const fn of [...subscribers]) {
+      try { fn(ev); } catch { /* intentionally swallowed */ }
+    }
   }
 
   function evict() {

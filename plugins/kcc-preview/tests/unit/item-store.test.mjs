@@ -79,3 +79,25 @@ test("unsubscribe stops events", () => {
   s.add({ kind: "inline", title: "A", body: "a" });
   assert.equal(seen.length, 0);
 });
+
+test("subscriber throw does not break fan-out to other subscribers", () => {
+  const s = createItemStore();
+  const seen = [];
+  s.subscribe(() => { throw new Error("boom"); });
+  s.subscribe((ev) => seen.push(ev.item.title));
+  s.add({ kind: "inline", title: "A", body: "" });
+  assert.equal(seen.length, 1);
+  assert.equal(seen[0], "A");
+});
+
+test("subscribing during emit does not throw or corrupt iteration", () => {
+  const s = createItemStore();
+  const seen = [];
+  s.subscribe(() => {
+    s.subscribe((ev) => seen.push(ev.item.title));
+  });
+  s.add({ kind: "inline", title: "A", body: "" });
+  s.add({ kind: "inline", title: "B", body: "" });
+  // At least the second add's event reached the subscribe-during-emit-added listener.
+  assert.ok(seen.includes("B"));
+});
