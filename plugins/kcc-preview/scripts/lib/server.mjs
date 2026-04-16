@@ -8,7 +8,7 @@
 //   GET /health               — liveness
 
 import http from "node:http";
-import { readFile } from "node:fs/promises";
+import { readFile, appendFile } from "node:fs/promises";
 import { createReadStream } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -40,7 +40,7 @@ async function serveStatic(res, file) {
   }
 }
 
-export async function createServer({ store, sessionId, port = 0 }) {
+export async function createServer({ store, sessionId, port = 0, vcEventsPath }) {
   const startedAt = Date.now();
   const sseClients = new Set();
 
@@ -115,6 +115,32 @@ export async function createServer({ store, sessionId, port = 0 }) {
       return;
     }
 
+    const mFrame = /^\/item\/([A-Za-z0-9-]+)\/frame$/.exec(url.pathname);
+    if (mFrame) {
+      const it = store.get(mFrame[1]);
+      if (!it) { res.writeHead(404); return res.end("not found"); }
+      const tpl = await readFile(path.join(FRONTEND_DIR, "vc-frame.html"), "utf-8");
+      const css = await readFile(path.join(FRONTEND_DIR, "vc-frame.css"), "utf-8");
+      const html = tpl
+        .replace(/\{\{title\}\}/g, escapeHtml(it.title || ""))
+        .replace(/\{\{css\}\}/g, css)
+        .replace(/\{\{content\}\}/g, it.body || "");
+      res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+      return res.end(html);
+    }
+
+    if (url.pathname === "/api/vc-event" && req.method === "POST") {
+      let body = "";
+      req.on("data", (chunk) => body += chunk);
+      req.on("end", async () => {
+        if (vcEventsPath) {
+          try { await appendFile(vcEventsPath, body + "\n"); } catch { /* ignore */ }
+        }
+        json(res, 200, { ok: true });
+      });
+      return;
+    }
+
     res.writeHead(404); res.end("not found");
   });
 
@@ -140,4 +166,12 @@ function publicItem(item) {
     createdAt: item.createdAt,
     updatedAt: item.updatedAt,
   };
+}
+
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
