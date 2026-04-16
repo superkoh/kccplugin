@@ -1,10 +1,13 @@
 // Node stdlib HTTP server for kcc-preview. Binds 127.0.0.1 on a random
 // free port (or PORT env). Serves:
 //   GET /                     — the SPA shell
+//   GET /assets/*             — bundled frontend assets (CSS, JS)
 //   GET /api/items            — list {id,title,kind,path,createdAt}
 //   GET /api/items/:id        — renderItem(item)
 //   GET /api/file?path=...    — raw file bytes (for images, etc.)
 //   GET /api/events           — SSE of store changes
+//   GET /item/:id/frame       — VC-compatible framed HTML for a stored item
+//   POST /api/vc-event        — JSONL-append a click event for VC compat
 //   GET /health               — liveness
 
 import http from "node:http";
@@ -29,7 +32,10 @@ function json(res, status, data) {
 async function serveStatic(res, file) {
   try {
     const buf = await readFile(file);
-    const mime = mimeFor(file).replace(/^text\//, "text/") + "; charset=utf-8";
+    const raw = mimeFor(file);
+    const mime = raw.startsWith("text/") || raw === "application/json"
+      ? `${raw}; charset=utf-8`
+      : raw;
     res.writeHead(200, {
       "Content-Type": mime,
       "Content-Length": buf.length,
@@ -66,7 +72,7 @@ export async function createServer({ store, sessionId, port = 0, vcEventsPath })
     if (url.pathname.startsWith("/assets/")) {
       const sub = url.pathname.replace(/^\/assets\//, "");
       const file = path.join(FRONTEND_DIR, sub);
-      if (!file.startsWith(FRONTEND_DIR)) {
+      if (file !== FRONTEND_DIR && !file.startsWith(FRONTEND_DIR + path.sep)) {
         res.writeHead(403); return res.end("forbidden");
       }
       return serveStatic(res, file);
