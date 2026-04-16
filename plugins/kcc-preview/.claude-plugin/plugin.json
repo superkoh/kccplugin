@@ -1,0 +1,6 @@
+{
+  "name": "kcc-preview",
+  "version": "0.1.0",
+  "description": "Mirror preview-worthy content from a Claude Code session to a local browser UI with a session-scoped index. Runs silent by default — only surfaces when Claude actively pushes rich content.",
+  "license": "MIT"
+}
