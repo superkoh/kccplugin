@@ -1010,7 +1010,10 @@ export async function createServer({ store, sessionId, port = 0 }) {
         "Connection": "keep-alive",
         "X-Accel-Buffering": "no",
       });
-      res.write(`retry: 2000\n\n`);
+      // Open the stream with an SSE comment line (no frame terminator) so
+      // proxies flush headers without the client observing a complete event
+      // boundary before the first real message.
+      res.write(`: open\n`);
       sseClients.add(res);
       req.on("close", () => sseClients.delete(res));
       return;
