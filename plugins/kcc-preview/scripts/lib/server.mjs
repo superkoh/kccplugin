@@ -55,7 +55,11 @@ export async function createServer({ store, sessionId, port = 0, vcEventsPath })
       ? { type: ev.type, id: ev.id }
       : { type: ev.type, item: publicItem(ev.item) };
     const msg = `event: ${ev.type}\ndata: ${JSON.stringify(payload)}\n\n`;
-    for (const c of sseClients) c.write(msg);
+    // Snapshot + try/catch so a dead-but-not-yet-cleaned-up SSE socket
+    // does not break fan-out to other live clients.
+    for (const c of [...sseClients]) {
+      try { c.write(msg); } catch { /* req.on('close') will clean up */ }
+    }
   });
 
   const server = http.createServer(async (req, res) => {

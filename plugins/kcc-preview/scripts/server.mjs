@@ -48,3 +48,15 @@ async function shutdown() {
 
 process.on("SIGTERM", shutdown);
 process.on("SIGINT", shutdown);
+
+// Detached-process error discipline: an unhandled rejection here would
+// otherwise produce confusing "port file never appeared" symptoms in the
+// SessionStart hook polling for it. Exit 2 matches the bad-env exit above.
+process.on("unhandledRejection", (err) => {
+  console.error("[kcc-preview server] fatal:", err?.stack || err);
+  process.exit(2);
+});
+process.on("uncaughtException", (err) => {
+  console.error("[kcc-preview server] fatal:", err?.stack || err);
+  process.exit(2);
+});
