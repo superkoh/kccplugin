@@ -64,30 +64,56 @@ body { font: 14px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, san
 .content-host .mermaid { text-align: center; background: var(--panel); padding: 20px; border-radius: 8px; }
 
 /* Bundled "dark" theme leaves a few SVG element categories with white fills
- * or invisible text. Force-color them via post-render selectors so every
- * diagram type stays readable on our dark palette. */
+ * or invisible text. Force-color them via post-render selectors. CRITICAL:
+ * many Mermaid classes (.actor, .note) apply to BOTH <text> and <rect>;
+ * use tag.class form so text fills (light) and rect fills (dark) don't
+ * collide on the bare class selector. */
 .content-host .mermaid svg { background: transparent; }
+
+/* Text — every <text>/<tspan>/foreignObject label, regardless of class */
 .content-host .mermaid svg text,
-.content-host .mermaid svg .messageText,
-.content-host .mermaid svg .labelText,
-.content-host .mermaid svg .loopText,
-.content-host .mermaid svg .noteText,
-.content-host .mermaid svg .actor > tspan,
+.content-host .mermaid svg tspan,
+.content-host .mermaid svg text.actor,
+.content-host .mermaid svg text.actor-box,
+.content-host .mermaid svg text.messageText,
+.content-host .mermaid svg text.labelText,
+.content-host .mermaid svg text.loopText,
+.content-host .mermaid svg text.noteText,
+.content-host .mermaid svg text.sequenceNumber,
 .content-host .mermaid svg .nodeLabel,
-.content-host .mermaid svg .titleText { fill: #f3f4f6 !important; color: #f3f4f6 !important; }
-.content-host .mermaid svg .actor { fill: #1a1d25 !important; stroke: #6366f1 !important; }
-.content-host .mermaid svg line.actor-line { stroke: #6366f1 !important; }
-.content-host .mermaid svg .note { fill: #374151 !important; stroke: #9ca3af !important; }
-.content-host .mermaid svg .activation0,
-.content-host .mermaid svg .activation1,
-.content-host .mermaid svg .activation2 { fill: #1f2937 !important; stroke: #9ca3af !important; }
-.content-host .mermaid svg .labelBox { fill: #1a1d25 !important; stroke: #6366f1 !important; }
-.content-host .mermaid svg .messageLine0,
-.content-host .mermaid svg .messageLine1 { stroke: #c7d2fe !important; }
+.content-host .mermaid svg .titleText,
+.content-host .mermaid svg foreignObject div { fill: #f3f4f6 !important; color: #f3f4f6 !important; }
+
+/* Rect / path / polygon backgrounds */
+.content-host .mermaid svg rect.actor,
+.content-host .mermaid svg rect.actor-top,
+.content-host .mermaid svg rect.actor-bottom,
+.content-host .mermaid svg rect.actor-box,
+.content-host .mermaid svg rect.labelBox,
 .content-host .mermaid svg .node rect,
 .content-host .mermaid svg .node circle,
 .content-host .mermaid svg .node ellipse,
 .content-host .mermaid svg .node polygon,
 .content-host .mermaid svg .node path { fill: #1a1d25 !important; stroke: #6366f1 !important; }
+
+/* Note rectangle (Mermaid sometimes emits class="rect" with aliceblue fill,
+ * sometimes class="note") */
+.content-host .mermaid svg rect.note,
+.content-host .mermaid svg rect.rect { fill: #374151 !important; stroke: #9ca3af !important; }
+
+/* Activation bars (sequence) */
+.content-host .mermaid svg rect.activation0,
+.content-host .mermaid svg rect.activation1,
+.content-host .mermaid svg rect.activation2 { fill: #1f2937 !important; stroke: #9ca3af !important; }
+
+/* Lines */
+.content-host .mermaid svg line.actor-line { stroke: #6366f1 !important; }
+.content-host .mermaid svg line.loopLine { stroke: #9ca3af !important; }
+.content-host .mermaid svg line.messageLine0,
+.content-host .mermaid svg line.messageLine1,
+.content-host .mermaid svg path.messageLine0,
+.content-host .mermaid svg path.messageLine1 { stroke: #c7d2fe !important; }
+
+/* Edge labels (flowcharts) */
 .content-host .mermaid svg .edgeLabel { background-color: #1a1d25 !important; color: #f3f4f6 !important; }
 .content-host .mermaid svg .edgeLabel rect { fill: #1a1d25 !important; }
