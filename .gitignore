@@ -24,3 +24,7 @@ coverage/
 
 # Playwright MCP browser automation cache
 .playwright-mcp/
+
+# Agent collaboration artifacts (brainstorm transcripts, plans, specs)
+# produced by superpowers skills — local-only, not public repo material.
+docs/superpowers/
