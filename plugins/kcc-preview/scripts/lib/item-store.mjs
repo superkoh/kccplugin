@@ -1,5 +1,9 @@
-// In-memory item store with FIFO cap, path-based dedup for kind:file, and
-// a simple pub-sub for change notifications. Server SSE subscribes here.
+// In-memory item store with FIFO cap, dedup by path (kind=file) or by
+// watched filename (any kind), and a simple pub-sub for change notifications.
+// Server SSE subscribes here. Same-filename re-add updates in place — when
+// Claude rewrites the same content/foo.md (or fs.watch fires twice on a
+// single Write outside the watcher's debounce window), the sidebar shows
+// one row whose body and updatedAt change, not two rows.
 
 import { randomUUID } from "node:crypto";
 
@@ -32,15 +36,26 @@ export function createItemStore({ cap = 200 } = {}) {
     return null;
   }
 
+  function findBySource(source) {
+    for (const id of order) {
+      const it = items.get(id);
+      if (it.source && it.source === source) return it;
+    }
+    return null;
+  }
+
   return {
     add(entry) {
+      let existing = null;
       if (entry.kind === "file" && entry.path) {
-        const existing = findByPath(entry.path);
-        if (existing) {
-          Object.assign(existing, entry, { updatedAt: Date.now() });
-          emit({ type: "updated", item: existing });
-          return existing;
-        }
+        existing = findByPath(entry.path);
+      } else if (entry.source) {
+        existing = findBySource(entry.source);
+      }
+      if (existing) {
+        Object.assign(existing, entry, { updatedAt: Date.now() });
+        emit({ type: "updated", item: existing });
+        return existing;
       }
       const id = randomUUID();
       const item = { id, createdAt: Date.now(), ...entry };

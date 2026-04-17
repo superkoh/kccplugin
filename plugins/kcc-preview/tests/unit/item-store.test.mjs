@@ -34,10 +34,30 @@ test("file kind dedupes by path", () => {
   assert.equal(items[0].title, "New");
 });
 
-test("inline kinds do not dedupe", () => {
+test("inline kinds without source do not dedupe", () => {
   const s = createItemStore();
   s.add({ kind: "inline", title: "A", body: "v1" });
   s.add({ kind: "inline", title: "A", body: "v2" });
+  assert.equal(s.list().length, 2);
+});
+
+test("inline kinds dedupe by source filename when present", () => {
+  const s = createItemStore();
+  const a = s.add({ kind: "inline", title: "A", body: "v1", source: "arch.md" });
+  const events = [];
+  s.subscribe((ev) => events.push(ev));
+  const b = s.add({ kind: "inline", title: "A revised", body: "v2", source: "arch.md" });
+  assert.equal(s.list().length, 1);
+  assert.equal(b.id, a.id);
+  assert.equal(s.get(a.id).body, "v2");
+  assert.equal(s.get(a.id).title, "A revised");
+  assert.equal(events[0].type, "updated");
+});
+
+test("different sources stay as separate entries", () => {
+  const s = createItemStore();
+  s.add({ kind: "inline", title: "A", body: "", source: "arch.md" });
+  s.add({ kind: "inline", title: "B", body: "", source: "diff.md" });
   assert.equal(s.list().length, 2);
 });
 
