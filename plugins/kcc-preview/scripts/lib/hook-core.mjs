@@ -13,7 +13,11 @@ export function sessionDirFor(root, sessionId) {
 }
 
 function isPidAlive(pid) {
-  try { process.kill(pid, 0); return true; } catch { return false; }
+  // POSIX kill(pid, 0) throws ESRCH when the process is truly gone, and
+  // EPERM when it exists but is owned by a different uid. Treating EPERM
+  // as "dead" would let sweepStale wipe a sibling-uid live session dir.
+  try { process.kill(pid, 0); return true; }
+  catch (e) { return e.code === "EPERM"; }
 }
 
 export async function sweepStale(root, activeIds = new Set()) {
