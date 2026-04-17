@@ -121,6 +121,15 @@ test("GET /api/events is SSE and pushes store updates", async (t) => {
   assert.match(buffer, /LiveOne/);
 });
 
+test("GET /assets/styles.css returns text/css with utf-8 charset", async (t) => {
+  const store = createItemStore();
+  const { server, port } = await createServer({ store, sessionId: "css-test" });
+  t.after(() => new Promise(r => server.close(r)));
+  const res = await fetch(`http://127.0.0.1:${port}/assets/styles.css`);
+  assert.equal(res.status, 200);
+  assert.equal(res.headers.get("content-type"), "text/css; charset=utf-8");
+});
+
 test("server.stop() resolves promptly even with an open SSE client", async (t) => {
   const store = createItemStore();
   const { server, port, stop } = await createServer({ store, sessionId: "stop-test" });

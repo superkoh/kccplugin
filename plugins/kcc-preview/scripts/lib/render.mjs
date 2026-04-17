@@ -9,6 +9,7 @@ const MIME = {
   ".markdown": "text/markdown",
   ".html": "text/html",
   ".htm": "text/html",
+  ".css": "text/css",
   ".png": "image/png",
   ".jpg": "image/jpeg",
   ".jpeg": "image/jpeg",
