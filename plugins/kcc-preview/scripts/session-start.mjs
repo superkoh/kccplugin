@@ -13,7 +13,7 @@ import path from "node:path";
 import os from "node:os";
 import { fileURLToPath } from "node:url";
 import {
-  sessionDirFor, sweepStale, buildSessionStartContext, emitHookJson,
+  sessionDirFor, sweepStale, buildSessionStartContext, emitSessionStart,
 } from "./lib/hook-core.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -46,7 +46,7 @@ function waitForFile(file, timeoutMs = 2500) {
 }
 
 function emitAndExit(ctx) {
-  process.stdout.write(emitHookJson("SessionStart", ctx));
+  process.stdout.write(emitSessionStart(ctx));
   process.exit(0);
 }
 
@@ -87,6 +87,6 @@ async function main() {
 
 main().catch((err) => {
   process.stderr.write(String(err?.stack || err) + "\n");
-  process.stdout.write(emitHookJson("SessionStart", `<!-- kcc-preview: unavailable (${err?.message || "error"}) -->`));
+  process.stdout.write(emitSessionStart(`<!-- kcc-preview: unavailable (${err?.message || "error"}) -->`));
   process.exit(0);
 });

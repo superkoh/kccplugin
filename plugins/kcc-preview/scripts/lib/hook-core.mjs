@@ -33,9 +33,11 @@ export async function sweepStale(root, activeIds = new Set()) {
       pid = Number(await readFile(path.join(dir, "server.pid"), "utf-8").catch(() => ""));
     } catch { /* fall through */ }
 
-    if (pid && isPidAlive(pid)) {
-      try { process.kill(pid, "SIGTERM"); } catch {}
-    }
+    // A sibling Claude Code session's server — leave it alone. The owning
+    // session's own SessionEnd hook will clean it up. Wiping it here would
+    // kill the peer's preview mid-session.
+    if (pid && isPidAlive(pid)) continue;
+
     try { await rm(dir, { recursive: true, force: true }); } catch {}
   }
 }
@@ -57,9 +59,24 @@ export async function buildReminderContext({ url }) {
   return tpl.replace(/\{\{URL\}\}/g, url);
 }
 
-export function emitHookJson(hookEventName, additionalContext) {
+// Per-event emitters. Claude Code's hook-output schema differs by event:
+// SessionStart / UserPromptSubmit accept hookSpecificOutput.additionalContext,
+// but SessionEnd does not — emitting hookSpecificOutput there fails schema
+// validation at runtime.
+export function emitSessionStart(additionalContext) {
   return JSON.stringify({
-    hookSpecificOutput: { hookEventName, additionalContext },
+    hookSpecificOutput: { hookEventName: "SessionStart", additionalContext },
     suppressOutput: false,
   });
+}
+
+export function emitUserPromptSubmit(additionalContext) {
+  return JSON.stringify({
+    hookSpecificOutput: { hookEventName: "UserPromptSubmit", additionalContext },
+    suppressOutput: false,
+  });
+}
+
+export function emitSessionEnd() {
+  return JSON.stringify({ continue: true, suppressOutput: true });
 }

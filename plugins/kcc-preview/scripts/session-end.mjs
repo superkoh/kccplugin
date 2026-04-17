@@ -5,7 +5,7 @@ import { readFile, rm } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import { emitHookJson, sessionDirFor } from "./lib/hook-core.mjs";
+import { emitSessionEnd, sessionDirFor } from "./lib/hook-core.mjs";
 
 const ROOT = process.env.KCC_PREVIEW_ROOT || path.join(os.tmpdir(), "kcc-preview");
 
@@ -18,7 +18,7 @@ async function readStdin() {
 }
 
 function emit() {
-  process.stdout.write(emitHookJson("SessionEnd", ""));
+  process.stdout.write(emitSessionEnd());
   process.exit(0);
 }
 

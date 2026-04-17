@@ -14,7 +14,7 @@ import path from "node:path";
 import os from "node:os";
 import http from "node:http";
 import { fileURLToPath } from "node:url";
-import { buildReminderContext, emitHookJson, sessionDirFor } from "./lib/hook-core.mjs";
+import { buildReminderContext, emitUserPromptSubmit, sessionDirFor } from "./lib/hook-core.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SERVER_ENTRY = path.join(__dirname, "server.mjs");
@@ -40,7 +40,7 @@ function pingHealth(port, timeoutMs = 300) {
 }
 
 function emit(ctx) {
-  process.stdout.write(emitHookJson("UserPromptSubmit", ctx));
+  process.stdout.write(emitUserPromptSubmit(ctx));
   process.exit(0);
 }
 

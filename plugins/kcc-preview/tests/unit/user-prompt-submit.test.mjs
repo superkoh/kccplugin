@@ -6,6 +6,7 @@ import os from "node:os";
 import http from "node:http";
 import { mkdtemp, mkdir, writeFile, rm } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
+import { assertHookOutput } from "../../../../test/lib/hook-output.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ENTRY = path.resolve(__dirname, "..", "..", "scripts", "user-prompt-submit.mjs");
@@ -52,8 +53,7 @@ test("live server -> reminder emitted", async (t) => {
     { KCC_PREVIEW_ROOT: root },
   );
   assert.equal(code, 0);
-  const j = JSON.parse(out);
-  assert.equal(j.hookSpecificOutput.hookEventName, "UserPromptSubmit");
+  const j = await assertHookOutput("UserPromptSubmit", out);
   assert.match(j.hookSpecificOutput.additionalContext, /kcc-preview-reminder/);
   assert.match(j.hookSpecificOutput.additionalContext, new RegExp(`:${port}`));
 });
@@ -67,7 +67,7 @@ test("no session dir -> empty context, exit 0", async (t) => {
     { KCC_PREVIEW_ROOT: root },
   );
   assert.equal(code, 0);
-  const j = JSON.parse(out);
+  const j = await assertHookOutput("UserPromptSubmit", out);
   assert.equal(j.hookSpecificOutput.additionalContext, "");
 });
 
@@ -86,7 +86,7 @@ test("dead server port -> restart succeeds, reminder emitted with new port", asy
     { KCC_PREVIEW_ROOT: root },
   );
   assert.equal(code, 0);
-  const j = JSON.parse(out);
+  const j = await assertHookOutput("UserPromptSubmit", out);
   // Either the restart succeeded (new port reminder) OR fell back to unavailable.
   const ctx = j.hookSpecificOutput.additionalContext;
   assert.ok(
