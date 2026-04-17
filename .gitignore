@@ -21,3 +21,6 @@ coverage/
 
 # Superpowers brainstorming artifacts (visual companion session dirs)
 .superpowers/
+
+# Playwright MCP browser automation cache
+.playwright-mcp/
