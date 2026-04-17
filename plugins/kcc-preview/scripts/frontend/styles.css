@@ -62,3 +62,32 @@ body { font: 14px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, san
 .content-host th { background: var(--panel); }
 .content-host blockquote { border-left: 3px solid var(--accent); padding: 4px 16px; color: var(--fg-2); margin: 16px 0; background: var(--panel); }
 .content-host .mermaid { text-align: center; background: var(--panel); padding: 20px; border-radius: 8px; }
+
+/* Bundled "dark" theme leaves a few SVG element categories with white fills
+ * or invisible text. Force-color them via post-render selectors so every
+ * diagram type stays readable on our dark palette. */
+.content-host .mermaid svg { background: transparent; }
+.content-host .mermaid svg text,
+.content-host .mermaid svg .messageText,
+.content-host .mermaid svg .labelText,
+.content-host .mermaid svg .loopText,
+.content-host .mermaid svg .noteText,
+.content-host .mermaid svg .actor > tspan,
+.content-host .mermaid svg .nodeLabel,
+.content-host .mermaid svg .titleText { fill: #f3f4f6 !important; color: #f3f4f6 !important; }
+.content-host .mermaid svg .actor { fill: #1a1d25 !important; stroke: #6366f1 !important; }
+.content-host .mermaid svg line.actor-line { stroke: #6366f1 !important; }
+.content-host .mermaid svg .note { fill: #374151 !important; stroke: #9ca3af !important; }
+.content-host .mermaid svg .activation0,
+.content-host .mermaid svg .activation1,
+.content-host .mermaid svg .activation2 { fill: #1f2937 !important; stroke: #9ca3af !important; }
+.content-host .mermaid svg .labelBox { fill: #1a1d25 !important; stroke: #6366f1 !important; }
+.content-host .mermaid svg .messageLine0,
+.content-host .mermaid svg .messageLine1 { stroke: #c7d2fe !important; }
+.content-host .mermaid svg .node rect,
+.content-host .mermaid svg .node circle,
+.content-host .mermaid svg .node ellipse,
+.content-host .mermaid svg .node polygon,
+.content-host .mermaid svg .node path { fill: #1a1d25 !important; stroke: #6366f1 !important; }
+.content-host .mermaid svg .edgeLabel { background-color: #1a1d25 !important; color: #f3f4f6 !important; }
+.content-host .mermaid svg .edgeLabel rect { fill: #1a1d25 !important; }

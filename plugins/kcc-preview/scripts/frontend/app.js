@@ -6,49 +6,11 @@ import { marked } from "https://cdn.jsdelivr.net/npm/marked@13/+esm";
 import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
 import hljs from "https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/+esm";
 
-// Mermaid's bundled "dark" theme leaves several element categories (sequence
-// actors, note rectangles, signal labels) on near-white backgrounds with
-// gray text — unreadable against our #0f1116 page. Pin themeVariables so
-// every diagram type stays high-contrast on the kcc-preview palette.
-mermaid.initialize({
-  startOnLoad: false,
-  theme: "base",
-  securityLevel: "loose",
-  themeVariables: {
-    background: "#13161d",
-    primaryColor: "#1a1d25",
-    primaryBorderColor: "#6366f1",
-    primaryTextColor: "#f3f4f6",
-    secondaryColor: "#1f2937",
-    secondaryBorderColor: "#9ca3af",
-    secondaryTextColor: "#f3f4f6",
-    tertiaryColor: "#111827",
-    tertiaryBorderColor: "#9ca3af",
-    tertiaryTextColor: "#f3f4f6",
-    lineColor: "#c7d2fe",
-    textColor: "#f3f4f6",
-    mainBkg: "#1a1d25",
-    nodeBorder: "#6366f1",
-    clusterBkg: "#13161d",
-    clusterBorder: "#374151",
-    edgeLabelBackground: "#1a1d25",
-    actorBkg: "#1a1d25",
-    actorBorder: "#6366f1",
-    actorTextColor: "#f3f4f6",
-    actorLineColor: "#9ca3af",
-    signalColor: "#c7d2fe",
-    signalTextColor: "#f3f4f6",
-    labelBoxBkgColor: "#1a1d25",
-    labelBoxBorderColor: "#6366f1",
-    labelTextColor: "#f3f4f6",
-    loopTextColor: "#f3f4f6",
-    noteBkgColor: "#374151",
-    noteBorderColor: "#9ca3af",
-    noteTextColor: "#f3f4f6",
-    activationBkgColor: "#1f2937",
-    activationBorderColor: "#9ca3af",
-  },
-});
+// Use Mermaid's bundled "dark" theme as the base — it handles most diagram
+// types correctly. We pair it with CSS overrides in styles.css that force
+// SVG text fills and actor/note rectangle colors, so any element category
+// the bundled theme misses still ends up readable on our dark palette.
+mermaid.initialize({ startOnLoad: false, theme: "dark", securityLevel: "loose" });
 
 const state = {
   items: [],
