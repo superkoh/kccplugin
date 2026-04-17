@@ -7,7 +7,7 @@
 // - On failure, tries to respawn the detached server once; on that failure,
 //   emits an "unavailable" marker so Claude stops trying this session.
 
-import { readFile } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { spawn } from "node:child_process";
 import path from "node:path";
@@ -44,7 +44,15 @@ function emit(ctx) {
   process.exit(0);
 }
 
-function respawnServer(sessionDir, sessionId) {
+async function respawnServer(sessionDir, sessionId) {
+  // Capture the existing port file's mtime BEFORE spawning so we can
+  // distinguish "old port file from the dead server still on disk" from
+  // "new port file written by the fresh server we just spawned." Without
+  // this baseline we'd happily ping the dead port forever.
+  const portFile = path.join(sessionDir, "server.port");
+  let baselineMtime = 0;
+  try { baselineMtime = (await stat(portFile)).mtimeMs; } catch {}
+
   const child = spawn(process.execPath, [SERVER_ENTRY], {
     detached: true,
     stdio: ["ignore", "ignore", "ignore"],
@@ -56,8 +64,11 @@ function respawnServer(sessionDir, sessionId) {
     const start = Date.now();
     const tick = async () => {
       try {
-        const p = Number(await readFile(path.join(sessionDir, "server.port"), "utf-8"));
-        if (p > 0 && await pingHealth(p, 200)) return resolve(p);
+        const s = await stat(portFile);
+        if (s.mtimeMs > baselineMtime) {
+          const p = Number(await readFile(portFile, "utf-8"));
+          if (p > 0 && await pingHealth(p, 200)) return resolve(p);
+        }
       } catch {}
       if (Date.now() - start > 2500) return resolve(0);
       setTimeout(tick, 40);
