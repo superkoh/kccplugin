@@ -28,6 +28,11 @@ async function readStdin() {
   try { return JSON.parse(buf); } catch { return {}; }
 }
 
+// Existence of server.port is intentionally the only "live" signal — no
+// extra GET /health probe here. SessionStart sits on the session-start
+// critical path, so an extra round-trip would add latency on every session;
+// UserPromptSubmit's per-turn /health ping is the backstop that catches a
+// server that crashed between writing port and the first user turn.
 function waitForFile(file, timeoutMs = 2500) {
   return new Promise((resolve, reject) => {
     const start = Date.now();

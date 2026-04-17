@@ -25,9 +25,19 @@ function runHook(stdinJson, env = {}) {
   });
 }
 
+function killOnAfter(t, pidPath) {
+  t.after(async () => {
+    try {
+      const pid = Number(await readFile(pidPath, "utf-8"));
+      if (pid > 0) process.kill(pid, "SIGTERM");
+    } catch { /* server already gone or pid file missing */ }
+  });
+}
+
 test("SessionStart hook emits JSON with sentinel and URL", async (t) => {
   const tmpRoot = await mkdtemp(path.join(os.tmpdir(), "kcc-ss-test-"));
   t.after(() => rm(tmpRoot, { recursive: true, force: true }));
+  killOnAfter(t, path.join(tmpRoot, "abc-123", "server.pid"));
 
   const { code, out } = await runHook(
     { session_id: "abc-123", cwd: process.cwd(), hook_event_name: "SessionStart" },
@@ -38,17 +48,12 @@ test("SessionStart hook emits JSON with sentinel and URL", async (t) => {
   assert.equal(parsed.hookSpecificOutput.hookEventName, "SessionStart");
   assert.match(parsed.hookSpecificOutput.additionalContext, /<!-- kcc-preview-sentinel: v1 -->/);
   assert.match(parsed.hookSpecificOutput.additionalContext, /http:\/\/localhost:\d+/);
-
-  // Cleanup: kill the server we started
-  try {
-    const pid = Number(await readFile(path.join(tmpRoot, "abc-123", "server.pid"), "utf-8"));
-    if (pid > 0) process.kill(pid, "SIGTERM");
-  } catch {}
 });
 
 test("SessionStart creates session dir with server.port, server.pid, and content/", async (t) => {
   const tmpRoot = await mkdtemp(path.join(os.tmpdir(), "kcc-ss-test-"));
   t.after(() => rm(tmpRoot, { recursive: true, force: true }));
+  killOnAfter(t, path.join(tmpRoot, "sess-xyz", "server.pid"));
 
   const { code, out } = await runHook(
     { session_id: "sess-xyz", cwd: process.cwd(), hook_event_name: "SessionStart" },
@@ -67,7 +72,4 @@ test("SessionStart creates session dir with server.port, server.pid, and content
   assert.equal(res.status, 200);
   const j = await res.json();
   assert.equal(j.sessionId, "sess-xyz");
-
-  // Cleanup: kill the server we started
-  try { process.kill(pid, "SIGTERM"); } catch {}
 });
