@@ -27,6 +27,14 @@
       "source": "./plugins/kcc-dev-core",
       "description": "Development-focused plugin: conditionally injects code-discipline principles when the session is inside a software project, and hosts shared dev skills / hooks.",
       "version": "0.1.0"
+    },
+    {
+      "name": "kcc-preview",
+      "source": "./plugins/kcc-preview",
+      "description": "Mirror preview-worthy content from a Claude Code session to a local browser UI with a session-scoped index.",
+      "version": "0.1.1",
+      "category": "visualization",
+      "tags": ["preview", "browser", "mirror"]
     }
   ]
 }

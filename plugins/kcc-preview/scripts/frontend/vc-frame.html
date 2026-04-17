@@ -1,0 +1,40 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>{{title}}</title>
+<style>{{css}}</style>
+</head>
+<body>
+<div class="frame-container">
+{{content}}
+</div>
+<div id="selection-indicator"></div>
+<script>
+function toggleSelect(el) {
+  const container = el.parentElement;
+  const multi = container.hasAttribute("data-multiselect");
+  if (!multi) {
+    for (const sib of container.children) sib.classList.remove("selected");
+  }
+  el.classList.toggle("selected");
+  const choice = el.dataset.choice || el.dataset.id || null;
+  const text = el.innerText.trim();
+  const ev = { type: "click", choice, id: el.dataset.id || null, text, timestamp: Date.now() };
+  fetch("/api/vc-event", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(ev),
+  }).catch(() => {});
+  const ind = document.getElementById("selection-indicator");
+  const selected = container.querySelectorAll(".selected");
+  if (selected.length) {
+    ind.textContent = multi ? `${selected.length} selected` : `Selected: ${choice ?? text.slice(0, 32)}`;
+    ind.classList.add("visible");
+  } else {
+    ind.classList.remove("visible");
+  }
+}
+</script>
+</body>
+</html>

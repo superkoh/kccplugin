@@ -31,18 +31,8 @@
     },
     "homepage": { "type": "string", "format": "uri" },
     "repository": {
-      "oneOf": [
-        { "type": "string" },
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["type", "url"],
-          "properties": {
-            "type": { "type": "string" },
-            "url": { "type": "string" }
-          }
-        }
-      ]
+      "type": "string",
+      "description": "Repository URL. Official `claude plugin validate` rejects the object form — keep as string."
     },
     "license": { "type": "string" },
     "keywords": {

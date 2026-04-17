@@ -18,3 +18,13 @@ npm-debug.log*
 # Test framework artifacts
 test/.artifacts/
 coverage/
+
+# Superpowers brainstorming artifacts (visual companion session dirs)
+.superpowers/
+
+# Playwright MCP browser automation cache
+.playwright-mcp/
+
+# Agent collaboration artifacts (brainstorm transcripts, plans, specs)
+# produced by superpowers skills — local-only, not public repo material.
+docs/superpowers/
