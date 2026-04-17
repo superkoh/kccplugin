@@ -1,0 +1,58 @@
+{
+  "$id": "https://kccplugin.dev/schemas/hook-output.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Claude Code hook stdout JSON",
+  "description": "Shape a hook script may write to stdout on exit 0. Source: https://code.claude.com/docs/en/hooks",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "continue":       { "type": "boolean" },
+    "stopReason":     { "type": "string" },
+    "suppressOutput": { "type": "boolean" },
+    "systemMessage":  { "type": "string" },
+    "decision":       { "enum": ["block"] },
+    "reason":         { "type": "string" },
+    "hookSpecificOutput": { "$ref": "#/definitions/hookSpecificOutput" }
+  },
+  "definitions": {
+    "hookEventName": {
+      "enum": [
+        "SessionStart",
+        "UserPromptSubmit",
+        "PreToolUse",
+        "PostToolUse",
+        "PostToolUseFailure",
+        "PermissionRequest",
+        "PermissionDenied",
+        "SubagentStart",
+        "SubagentStop",
+        "Stop",
+        "PreCompact",
+        "PostCompact",
+        "Notification",
+        "Elicitation",
+        "ElicitationResult",
+        "WorktreeCreate"
+      ]
+    },
+    "hookSpecificOutput": {
+      "type": "object",
+      "required": ["hookEventName"],
+      "additionalProperties": false,
+      "properties": {
+        "hookEventName":            { "$ref": "#/definitions/hookEventName" },
+        "additionalContext":        { "type": "string" },
+        "sessionTitle":             { "type": "string" },
+        "permissionDecision":       { "enum": ["allow", "deny", "ask", "defer"] },
+        "permissionDecisionReason": { "type": "string" },
+        "updatedInput":             { "type": "object" },
+        "updatedMCPToolOutput":     {},
+        "decision":                 { "type": "object" },
+        "retry":                    { "type": "boolean" },
+        "action":                   { "enum": ["accept", "decline", "cancel"] },
+        "content":                  { "type": "object" },
+        "worktreePath":             { "type": "string" }
+      }
+    }
+  }
+}

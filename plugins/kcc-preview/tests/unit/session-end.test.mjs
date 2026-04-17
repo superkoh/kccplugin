@@ -6,6 +6,7 @@ import os from "node:os";
 import { mkdtemp, mkdir, writeFile, rm, readdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { assertHookOutput } from "../../../../test/lib/hook-output.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ENTRY = path.resolve(__dirname, "..", "..", "scripts", "session-end.mjs");
@@ -41,8 +42,9 @@ test("SessionEnd kills server pid and removes session dir", async (t) => {
     { KCC_PREVIEW_ROOT: root },
   );
   assert.equal(code, 0);
-  const j = JSON.parse(out);
-  assert.equal(j.hookSpecificOutput.hookEventName, "SessionEnd");
+  const j = await assertHookOutput("SessionEnd", out);
+  assert.equal(j.continue, true);
+  assert.equal(j.suppressOutput, true);
 
   // Session dir is gone
   assert.equal(existsSync(sessionDir), false);
@@ -63,5 +65,6 @@ test("SessionEnd is a no-op when session dir does not exist", async (t) => {
     { KCC_PREVIEW_ROOT: root },
   );
   assert.equal(code, 0);
-  assert.match(out, /SessionEnd/);
+  const j = await assertHookOutput("SessionEnd", out);
+  assert.equal(j.continue, true);
 });

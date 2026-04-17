@@ -5,6 +5,7 @@ import path from "node:path";
 import os from "node:os";
 import { mkdtemp, rm, readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
+import { assertHookOutput } from "../../../../test/lib/hook-output.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ENTRY = path.resolve(__dirname, "..", "..", "scripts", "session-start.mjs");
@@ -44,8 +45,7 @@ test("SessionStart hook emits JSON with sentinel and URL", async (t) => {
     { KCC_PREVIEW_ROOT: tmpRoot },
   );
   assert.equal(code, 0);
-  const parsed = JSON.parse(out);
-  assert.equal(parsed.hookSpecificOutput.hookEventName, "SessionStart");
+  const parsed = await assertHookOutput("SessionStart", out);
   assert.match(parsed.hookSpecificOutput.additionalContext, /<!-- kcc-preview-sentinel: v1 -->/);
   assert.match(parsed.hookSpecificOutput.additionalContext, /http:\/\/localhost:\d+/);
 });
