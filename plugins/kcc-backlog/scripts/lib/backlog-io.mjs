@@ -3,7 +3,9 @@
 // reader scoped to the keys kcc-backlog writes.
 
 import { readdir, readFile, writeFile, mkdir, rename, unlink } from "node:fs/promises";
+import { existsSync } from "node:fs";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { generateId } from "./backlog-id.mjs";
 
 const PRIORITY_RANK = { high: 0, medium: 1, low: 2 };
@@ -173,4 +175,108 @@ export async function mergeInto({ root, targetId, sourceId, now = new Date() }) 
 
 export async function deleteItem({ root, id, dir = "items" }) {
   await unlink(itemPath(root, id, dir));
+}
+
+// ---------------------------------------------------------------------
+// CLI. Invoked as `node backlog-io.mjs <subcommand> [options]`.
+
+function resolveRoot() {
+  if (process.env.KCC_BACKLOG_ROOT) return process.env.KCC_BACKLOG_ROOT;
+  let dir = process.cwd();
+  while (dir !== path.dirname(dir)) {
+    if (existsSync(path.join(dir, ".kcc"))) return path.join(dir, ".kcc", "backlog");
+    dir = path.dirname(dir);
+  }
+  return path.join(process.cwd(), ".kcc", "backlog");
+}
+
+function resolveNow() {
+  return process.env.KCC_BACKLOG_NOW ? new Date(process.env.KCC_BACKLOG_NOW) : new Date();
+}
+
+function parseArgs(argv) {
+  const out = {};
+  for (let i = 0; i < argv.length; i += 1) {
+    const a = argv[i];
+    if (!a.startsWith("--")) continue;
+    const key = a.slice(2);
+    const next = argv[i + 1];
+    if (next === undefined || next.startsWith("--")) {
+      out[key] = true;
+    } else {
+      out[key] = next;
+      i += 1;
+    }
+  }
+  return out;
+}
+
+async function main(argv) {
+  const [sub, ...rest] = argv;
+  const args = parseArgs(rest);
+  const root = resolveRoot();
+  const now = resolveNow();
+  switch (sub) {
+    case "root":
+      process.stdout.write(root + "\n");
+      return;
+    case "list":
+      process.stdout.write(JSON.stringify(await listItems({ root }), null, 2) + "\n");
+      return;
+    case "read": {
+      if (!args.id) throw new Error("read: --id required");
+      process.stdout.write(JSON.stringify(await readItem({ root, id: args.id }), null, 2) + "\n");
+      return;
+    }
+    case "add": {
+      if (!args.title) throw new Error("add: --title required");
+      const tags = typeof args.tags === "string" ? args.tags.split(",").map((t) => t.trim()).filter(Boolean) : [];
+      const id = await addItem({
+        root,
+        title: args.title,
+        priority: args.priority || "medium",
+        tags,
+        body: args.body || "",
+        now,
+      });
+      process.stdout.write(JSON.stringify({ id }) + "\n");
+      return;
+    }
+    case "update": {
+      if (!args.id) throw new Error("update: --id required");
+      const patch = {};
+      for (const k of ["status", "priority", "title"]) if (k in args) patch[k] = args[k];
+      await updateItem({ root, id: args.id, patch, now });
+      process.stdout.write(JSON.stringify({ ok: true }) + "\n");
+      return;
+    }
+    case "archive": {
+      if (!args.id) throw new Error("archive: --id required");
+      await moveToArchive({ root, id: args.id, status: args.status || "done", now });
+      process.stdout.write(JSON.stringify({ ok: true }) + "\n");
+      return;
+    }
+    case "merge": {
+      if (!args.target || !args.source) throw new Error("merge: --target and --source required");
+      await mergeInto({ root, targetId: args.target, sourceId: args.source, now });
+      process.stdout.write(JSON.stringify({ ok: true }) + "\n");
+      return;
+    }
+    case "delete": {
+      if (!args.id) throw new Error("delete: --id required");
+      await deleteItem({ root, id: args.id });
+      process.stdout.write(JSON.stringify({ ok: true }) + "\n");
+      return;
+    }
+    default:
+      process.stderr.write(`unknown subcommand: ${sub}\n`);
+      process.exit(2);
+  }
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main(process.argv.slice(2)).catch((err) => {
+    process.stderr.write(String(err?.stack ?? err) + "\n");
+    process.exit(1);
+  });
 }

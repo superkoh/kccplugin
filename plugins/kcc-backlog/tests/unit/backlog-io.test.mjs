@@ -187,3 +187,55 @@ test("deleteItem removes a file from items/", async () => {
     await rm(dir, { recursive: true });
   }
 });
+
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
+
+const CLI = fileURLToPath(new URL("../../scripts/lib/backlog-io.mjs", import.meta.url));
+
+function runCli(args, env = {}) {
+  return spawnSync("node", [CLI, ...args], {
+    encoding: "utf-8",
+    env: { ...process.env, ...env },
+  });
+}
+
+test("CLI `list` on empty dir prints []", async () => {
+  const dir = await tmpBacklog();
+  try {
+    const res = runCli(["list"], { KCC_BACKLOG_ROOT: dir });
+    assert.equal(res.status, 0);
+    assert.deepEqual(JSON.parse(res.stdout), []);
+  } finally {
+    await rm(dir, { recursive: true });
+  }
+});
+
+test("CLI `add` writes an item and prints { id }", async () => {
+  const dir = await tmpBacklog();
+  try {
+    const res = runCli(
+      ["add", "--title", "Cli test item", "--priority", "low", "--body", "hello"],
+      { KCC_BACKLOG_ROOT: dir, KCC_BACKLOG_NOW: "2026-04-17T10:00:00Z" }
+    );
+    assert.equal(res.status, 0);
+    const out = JSON.parse(res.stdout);
+    assert.equal(out.id, "2026-04-17-cli-test-item");
+    const items = await listItems({ root: dir });
+    assert.equal(items.length, 1);
+    assert.equal(items[0].priority, "low");
+  } finally {
+    await rm(dir, { recursive: true });
+  }
+});
+
+test("CLI `root` prints the resolved backlog root path", async () => {
+  const dir = await tmpBacklog();
+  try {
+    const res = runCli(["root"], { KCC_BACKLOG_ROOT: dir });
+    assert.equal(res.status, 0);
+    assert.equal(res.stdout.trim(), dir);
+  } finally {
+    await rm(dir, { recursive: true });
+  }
+});
