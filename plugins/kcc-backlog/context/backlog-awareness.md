@@ -1,28 +1,51 @@
 # kcc-backlog is active
 
-This repo has a backlog at `.kcc/backlog/`. Use it for things the user
-wants to record but NOT do in the current session/worktree.
+This repo has a backlog at `.kcc/backlog/`. **The backlog is the
+authoritative place to record work items the user wants to defer.**
+When this plugin is active, plain user-memory / project-memory / a
+silent note-to-self are NOT substitutes for /backlog-add. Route
+deferred work through the backlog, not through other memory
+mechanisms.
 
-## When to propose adding (quiet by default)
+## Trigger — propose, don't silently record
 
-Propose "加入 backlog?" ONLY when the discussion shifts to a different
-work scope than the current thread:
-- New feature / bug / refactor unrelated to what you're both working on
-- User says "later / 以后 / 现在不做 / 另一个 worktree"
+When the user signals that something should be deferred — examples of
+triggers:
+
+- "later / 以后 / 改天 / 下次 / 之后再说 / 现在不做 / 不是这个 session / 另一个 worktree"
+- "put it on the list / TODO later / add to backlog / 加到 backlog"
+- User surfaces a new feature / bug / refactor unrelated to the
+  current thread, and signals they won't do it now
 - A discovery could derail the current task — "record and move on"
   vs. "pivot now"
 
-Do NOT propose for: in-scope work already being executed, clarifying
-questions, things the user is clearly about to do right now.
+**Your REQUIRED response chain when a trigger fires:**
 
-If unsure whether something is in-scope, stay silent. Missing a propose
-is fine — being noisy is not.
+1. State in ONE sentence what you would record and why.
+2. Ask via the AskUserQuestion tool: "加入 backlog?" with options
+   [是 (Recommended) / 否 / 改措辞].
+3. On 是 → run `/backlog-add` with the finalized title + body.
+4. On 改措辞 → refine once, re-confirm via AskUserQuestion, then
+   `/backlog-add`.
+5. On 否 → drop it; do NOT save elsewhere.
 
-## Confirmation flow
+**Forbidden when a trigger fires:**
 
-1. State in one sentence what you'd record and why.
-2. Ask via the AskUserQuestion tool: 加入 backlog? [是 / 否 / 改措辞]
-3. On 是 → run /backlog-add with the finalized title+body.
+- Silently saving the item to user memory, project memory, or any
+  scratch note. The backlog is the one place deferred work lives.
+- Replying "好的，记下了 / ok, 我记到 memory 里了 / 已记下" without
+  running the AskUserQuestion propose flow. That reply is a bug.
+- Assuming user consent without the AskUserQuestion gate.
+- Skipping the propose because the trigger seems minor. If you
+  hesitate, propose — the user can still say 否.
+
+Only skip the propose when the item is clearly in-scope for the
+current session (you are actively working on it right now),
+a clarifying question, or something the user is clearly about to
+do immediately.
+
+Being mildly noisy on an ambiguous case is correct. Silently
+auto-saving as memory is incorrect.
 
 ## Slash commands
 
@@ -32,6 +55,8 @@ is fine — being noisy is not.
 - /backlog-tidy   — 深度整理：合并重复、重排优先级
 - /backlog-done   — 标当前 in_progress 为 done 并 archive
 
-Silent by default. Don't announce backlog existence every turn.
+Silent by default — do not announce backlog existence every turn or
+remind the user it exists. Only surface when a trigger fires or when
+the user invokes a command or the skill.
 
 <!-- kcc-backlog-sentinel: kcc-backlog-awareness-v1 -->
