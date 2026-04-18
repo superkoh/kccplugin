@@ -239,3 +239,25 @@ test("CLI `root` prints the resolved backlog root path", async () => {
     await rm(dir, { recursive: true });
   }
 });
+
+test("CLI `update --tags` replaces the tag list (comma-split, trimmed)", async () => {
+  const dir = await tmpBacklog();
+  try {
+    const id = await addItem({
+      root: dir,
+      title: "tag test",
+      tags: ["old"],
+      body: "",
+      now: new Date("2026-04-17"),
+    });
+    const res = runCli(
+      ["update", "--id", id, "--tags", "a, b ,c"],
+      { KCC_BACKLOG_ROOT: dir, KCC_BACKLOG_NOW: "2026-04-18T00:00:00Z" },
+    );
+    assert.equal(res.status, 0);
+    const item = await readItem({ root: dir, id });
+    assert.deepEqual(item.frontmatter.tags, ["a", "b", "c"]);
+  } finally {
+    await rm(dir, { recursive: true });
+  }
+});

@@ -1,7 +1,7 @@
 ---
 description: Add a new backlog item. Scans existing titles for duplicates before writing; if similar, proposes merging instead of adding.
 argument-hint: "[optional title or short description]"
-allowed-tools: Bash, AskUserQuestion
+allowed-tools: Bash, AskUserQuestion, Read, Edit
 ---
 
 You are responding to `/backlog-add`. The user's arguments (if any) follow `$ARGUMENTS`.

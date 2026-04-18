@@ -246,6 +246,9 @@ async function main(argv) {
       if (!args.id) throw new Error("update: --id required");
       const patch = {};
       for (const k of ["status", "priority", "title"]) if (k in args) patch[k] = args[k];
+      if (typeof args.tags === "string") {
+        patch.tags = args.tags.split(",").map((t) => t.trim()).filter(Boolean);
+      }
       await updateItem({ root, id: args.id, patch, now });
       process.stdout.write(JSON.stringify({ ok: true }) + "\n");
       return;
