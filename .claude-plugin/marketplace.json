@@ -35,6 +35,14 @@
       "version": "0.1.2",
       "category": "visualization",
       "tags": ["preview", "browser", "mirror"]
+    },
+    {
+      "name": "kcc-testing",
+      "source": "./plugins/kcc-testing",
+      "description": "Testing-related tools plugin (scaffold — components TBD).",
+      "version": "0.1.0",
+      "category": "testing",
+      "tags": ["testing"]
     }
   ]
 }

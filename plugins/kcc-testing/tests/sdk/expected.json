@@ -1,0 +1,9 @@
+{
+  "slashCommands": {
+    "requires": [],
+    "forbids": []
+  },
+  "mcpServers": {
+    "requires": []
+  }
+}
