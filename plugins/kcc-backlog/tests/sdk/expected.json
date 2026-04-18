@@ -6,7 +6,8 @@
       "kcc-backlog:backlog-pick",
       "kcc-backlog:backlog-done",
       "kcc-backlog:backlog-tidy",
-      "kcc-backlog:picking-from-backlog"
+      "kcc-backlog:picking-from-backlog",
+      "kcc-backlog:capture-deferred-work"
     ],
     "forbids": []
   },

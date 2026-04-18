@@ -9,8 +9,12 @@ mechanisms.
 
 ## Trigger — propose, don't silently record
 
-When the user signals that something should be deferred — examples of
-triggers:
+Trigger capture is handled by the `capture-deferred-work` skill
+(same plugin). When the user signals deferral, that skill fires first
+and runs the propose chain. This file exists to reinforce what the
+skill does and list the trigger shapes.
+
+Trigger shapes:
 
 - "later / 以后 / 改天 / 下次 / 之后再说 / 现在不做 / 不是这个 session / 另一个 worktree"
 - "put it on the list / TODO later / add to backlog / 加到 backlog"
@@ -19,7 +23,8 @@ triggers:
 - A discovery could derail the current task — "record and move on"
   vs. "pivot now"
 
-**Your REQUIRED response chain when a trigger fires:**
+**REQUIRED response chain when a trigger fires (enforced by the
+capture-deferred-work skill):**
 
 1. State in ONE sentence what you would record and why.
 2. Ask via the AskUserQuestion tool: "加入 backlog?" with options
