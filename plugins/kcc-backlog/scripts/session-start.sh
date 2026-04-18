@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# kcc-backlog SessionStart hook: inject the top-level thinking & communication
-# principles into Claude Code's context before the first user turn.
+# kcc-backlog SessionStart hook: inject the backlog-awareness rule
+# into Claude Code's context before the first user turn.
 #
 # Contract (from Claude Code hooks reference):
 #   stdout MUST be a single JSON object of the form
