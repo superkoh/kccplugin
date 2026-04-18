@@ -136,3 +136,41 @@ export async function addItem({ root, title, body = "", priority = "medium", tag
   await writeFile(itemPath(root, id), text, "utf-8");
   return id;
 }
+
+export async function updateItem({ root, id, patch, now = new Date(), dir = "items" }) {
+  const { frontmatter, body } = await readItem({ root, id, dir });
+  const merged = { ...frontmatter, ...patch, updated_at: now.toISOString() };
+  const text = `${formatFrontmatter(merged)}\n\n${body.trim()}\n`;
+  await writeFile(itemPath(root, id, dir), text, "utf-8");
+}
+
+export async function moveToArchive({ root, id, status = "done", now = new Date() }) {
+  const { frontmatter, body } = await readItem({ root, id, dir: "items" });
+  const merged = { ...frontmatter, status, closed_at: now.toISOString(), updated_at: now.toISOString() };
+  const text = `${formatFrontmatter(merged)}\n\n${body.trim()}\n`;
+  await mkdir(path.join(root, "archive"), { recursive: true });
+  await writeFile(itemPath(root, id, "archive"), text, "utf-8");
+  await unlink(itemPath(root, id, "items"));
+}
+
+export async function mergeInto({ root, targetId, sourceId, now = new Date() }) {
+  const target = await readItem({ root, id: targetId });
+  const source = await readItem({ root, id: sourceId });
+  const date = now.toISOString().slice(0, 10);
+  const mergedBody = [
+    target.body.trim(),
+    "",
+    `## Merged from ${sourceId} (${date})`,
+    "",
+    source.body.trim(),
+  ].join("\n");
+  const related = Array.from(new Set([...(target.frontmatter.related_items ?? []), sourceId]));
+  const fm = { ...target.frontmatter, related_items: related, updated_at: now.toISOString() };
+  const text = `${formatFrontmatter(fm)}\n\n${mergedBody.trim()}\n`;
+  await writeFile(itemPath(root, targetId), text, "utf-8");
+  await unlink(itemPath(root, sourceId));
+}
+
+export async function deleteItem({ root, id, dir = "items" }) {
+  await unlink(itemPath(root, id, dir));
+}

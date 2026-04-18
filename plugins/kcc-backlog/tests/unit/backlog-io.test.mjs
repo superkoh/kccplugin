@@ -7,6 +7,10 @@ import {
   listItems,
   readItem,
   addItem,
+  updateItem,
+  moveToArchive,
+  mergeInto,
+  deleteItem,
 } from "../../scripts/lib/backlog-io.mjs";
 
 async function tmpBacklog() {
@@ -113,6 +117,72 @@ test("listItems returns a summary sorted by in_progress → priority → created
       items.map((i) => i.id),
       [a, b, c]
     );
+  } finally {
+    await rm(dir, { recursive: true });
+  }
+});
+
+test("updateItem rewrites frontmatter and bumps updated_at", async () => {
+  const dir = await tmpBacklog();
+  try {
+    const id = await addItem({ root: dir, title: "x", body: "body", now: new Date("2026-04-17") });
+    const later = new Date("2026-04-18T12:00:00Z");
+    await updateItem({ root: dir, id, patch: { status: "in_progress", priority: "high" }, now: later });
+    const item = await readItem({ root: dir, id });
+    assert.equal(item.frontmatter.status, "in_progress");
+    assert.equal(item.frontmatter.priority, "high");
+    assert.equal(item.frontmatter.updated_at, later.toISOString());
+    assert.equal(item.body.trim(), "body");
+  } finally {
+    await rm(dir, { recursive: true });
+  }
+});
+
+test("moveToArchive flips status, stamps closed_at, moves the file", async () => {
+  const dir = await tmpBacklog();
+  try {
+    const id = await addItem({ root: dir, title: "x", body: "", now: new Date("2026-04-17") });
+    const done = new Date("2026-04-20T09:00:00Z");
+    await moveToArchive({ root: dir, id, status: "done", now: done });
+    const itemsListing = await listItems({ root: dir });
+    assert.deepEqual(itemsListing, []);
+    const archived = await readItem({ root: dir, id, dir: "archive" });
+    assert.equal(archived.frontmatter.status, "done");
+    assert.equal(archived.frontmatter.closed_at, done.toISOString());
+  } finally {
+    await rm(dir, { recursive: true });
+  }
+});
+
+test("mergeInto appends source body and related_items ref, then deletes source", async () => {
+  const dir = await tmpBacklog();
+  try {
+    const now = new Date("2026-04-17");
+    const target = await addItem({ root: dir, title: "target", body: "target-body", now });
+    const source = await addItem({ root: dir, title: "src", body: "src-body", now });
+    const later = new Date("2026-04-18");
+    await mergeInto({ root: dir, targetId: target, sourceId: source, now: later });
+
+    const item = await readItem({ root: dir, id: target });
+    assert.ok(item.frontmatter.related_items.includes(source));
+    assert.match(item.body, new RegExp(`## Merged from ${source}`));
+    assert.match(item.body, /target-body/);
+    assert.match(item.body, /src-body/);
+
+    const listing = (await listItems({ root: dir })).map((i) => i.id);
+    assert.deepEqual(listing, [target]);
+  } finally {
+    await rm(dir, { recursive: true });
+  }
+});
+
+test("deleteItem removes a file from items/", async () => {
+  const dir = await tmpBacklog();
+  try {
+    const id = await addItem({ root: dir, title: "x", body: "", now: new Date("2026-04-17") });
+    await deleteItem({ root: dir, id });
+    const listing = await listItems({ root: dir });
+    assert.deepEqual(listing, []);
   } finally {
     await rm(dir, { recursive: true });
   }
