@@ -149,6 +149,10 @@ test("moveToArchive flips status, stamps closed_at, moves the file", async () =>
     const archived = await readItem({ root: dir, id, dir: "archive" });
     assert.equal(archived.frontmatter.status, "done");
     assert.equal(archived.frontmatter.closed_at, done.toISOString());
+    // Regression: archive round-trip must preserve source_session as null,
+    // not corrupt it into [] (parseFrontmatter used to misread empty-value
+    // keys as list-starts).
+    assert.equal(archived.frontmatter.source_session, null);
   } finally {
     await rm(dir, { recursive: true });
   }

@@ -130,7 +130,7 @@ export async function addItem({ root, title, body = "", priority = "medium", tag
     tags,
     created_at: iso,
     updated_at: iso,
-    source_session: session ?? "",
+    source_session: session ?? null,
     related_items: [],
     closed_at: null,
   };
