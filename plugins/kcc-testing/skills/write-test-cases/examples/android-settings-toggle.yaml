@@ -1,5 +1,6 @@
 # Example — Android settings feature.
 # Demonstrates content-description / resource-id locator vocabulary and Material 48dp floor.
+# requirement_ref below is illustrative only — adopt your own PRD/ticket scheme.
 
 feature: "设置页通知开关"
 requirement_ref: "PRD-2026-073 §3.3"
@@ -84,4 +85,4 @@ cases:
       state_reachable: true
       deterministic: true
       isolated: true
-      waits_specified: "step 2 waits for snackbar dismiss"
+      waits_specified: "step 2 waits up to 4s for Material default snackbar dismiss"

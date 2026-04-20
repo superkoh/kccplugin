@@ -1,5 +1,6 @@
 # Example — web checkout feature with a coupon flow.
 # Demonstrates token references, WCAG auto-injection, and per-case cleanup.
+# requirement_ref below is illustrative only — adopt your own PRD/ticket scheme.
 
 feature: "结算页优惠券应用"
 requirement_ref: "PRD-2026-042 §4.2"
@@ -60,7 +61,7 @@ cases:
       state_reachable: true
       deterministic: true
       isolated: true
-      waits_specified: "step 3 waits for order summary refresh"
+      waits_specified: "step 3 waits up to 5s for order summary refresh"
 
   - id: TC-COUPON-002
     title: "过期优惠码应明确报错且不改动总价"
@@ -108,4 +109,4 @@ cases:
       state_reachable: true
       deterministic: true
       isolated: true
-      waits_specified: "step 2 oracle is DOM-based, no explicit wait needed"
+      waits_specified: "n/a — DOM-based oracles settle synchronously on this flow"
