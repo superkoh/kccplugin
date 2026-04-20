@@ -1,8 +1,23 @@
 # Lint rules
 
-Every case passes two lint passes **at generation time**, before being
+Every case passes three lint passes **at generation time**, before being
 written to disk. Cases that fail a hard check never land in the YAML file;
 they are listed in the user-facing summary's `rejected` bucket with a reason.
+
+## UI-change consistency (file-level)
+
+The top-level `ui_change` flag gates all visual assertions in the file.
+This check runs first because it can reject whole cases before the
+finer-grained passes.
+
+| `ui_change` | Requirement | Violation disposition |
+|-------------|-------------|----------------------|
+| `true`  | At least one case in the file MUST carry a non-empty `assertions.visual[]`. | **Hard reject file** — regenerate step 3 with a visual-regression case added. |
+| `false` | No case in the file MAY carry `assertions.visual[]`. | **Hard reject case** — drop the visual block from the offending case and list it in the summary's `rejected` bucket. |
+| missing | N/A | **Hard reject file** — `ui_change` is a required top-level field. |
+
+See `coverage-techniques.md` §7 for the definition of what counts as a
+UI change.
 
 ## Testability five-check
 

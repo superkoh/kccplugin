@@ -11,6 +11,7 @@ Every case file is one YAML document, one feature. Top-level metadata, then a
 | `requirement_ref` | no | string | Link / citation to PRD or ticket. |
 | `platform` | yes | enum | `web`, `ios`, `android`, `desktop`. |
 | `design_tokens_source` | yes | string \| null | Path to a token file, or `null`. |
+| `ui_change` | yes | boolean | `true` if the feature introduces or modifies user-visible rendering; `false` for pure logic / data changes. Gates whether any case may carry `assertions.visual[]`. |
 | `generated_at` | yes | string (ISO date) | Date the file was generated. |
 | `generated_by` | yes | string | Must start with `kcc-testing/write-test-cases`. |
 | `cases` | yes | array | One entry per case. Order = intended execution order. |

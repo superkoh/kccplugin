@@ -6,6 +6,7 @@ feature: "结算页优惠券应用"
 requirement_ref: "PRD-2026-042 §4.2"
 platform: web
 design_tokens_source: "design/tokens.json"
+ui_change: true
 generated_at: "2026-04-18"
 generated_by: "kcc-testing/write-test-cases v0.1"
 

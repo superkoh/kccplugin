@@ -11,7 +11,7 @@ const examplesDir = path.join(pluginRoot, "skills", "write-test-cases", "example
 
 const VALID_PLATFORMS = new Set(["web", "ios", "android", "desktop"]);
 const VALID_PRIORITIES = new Set(["P0", "P1", "P2"]);
-const REQUIRED_TOP = ["feature", "platform", "cases", "generated_by"];
+const REQUIRED_TOP = ["feature", "platform", "ui_change", "cases", "generated_by"];
 const REQUIRED_CASE = [
   "id",
   "title",
@@ -94,6 +94,32 @@ test("each case inside every example has the required fields", async () => {
           `${file} cases[${i}].steps[${j}] missing "oracle" — every step needs exactly one expected result`
         );
       }
+    }
+  }
+});
+
+test("ui_change is boolean and the visual-assertion presence is consistent with it", async () => {
+  const examples = await loadExamples();
+  for (const { file, doc } of examples) {
+    assert.equal(
+      typeof doc.ui_change,
+      "boolean",
+      `${file} ui_change must be a boolean, got ${typeof doc.ui_change}`
+    );
+    const casesWithVisual = doc.cases.filter(
+      (c) => Array.isArray(c.assertions?.visual) && c.assertions.visual.length > 0
+    );
+    if (doc.ui_change === true) {
+      assert.ok(
+        casesWithVisual.length >= 1,
+        `${file} declares ui_change=true but no case carries assertions.visual[]`
+      );
+    } else {
+      assert.equal(
+        casesWithVisual.length,
+        0,
+        `${file} declares ui_change=false but ${casesWithVisual.length} case(s) carry assertions.visual[]: ${casesWithVisual.map((c) => c.id).join(", ")}`
+      );
     }
   }
 });

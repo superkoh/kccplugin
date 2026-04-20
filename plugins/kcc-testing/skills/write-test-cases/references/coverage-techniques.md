@@ -31,9 +31,36 @@ At least one case per feature should exercise keyboard-only flow or
 assistive-tech announcement (`role=alert` showing on error). For GUI
 features this is **mandatory**, not a nice-to-have.
 
-## 7. Visual regression
-For features with new UI, at least one case should carry `assertions.visual`
-tied to design tokens.
+## 7. Visual regression — gated by `ui_change`
+
+The top-level `ui_change` flag is the single switch that decides whether
+any case in this file may carry `assertions.visual[]`.
+
+**`ui_change: true`** — the feature introduces or modifies user-visible
+rendering. Any of these counts:
+- New visible element (new button, modal, screen, field, icon).
+- Changed style (color, typography, spacing, radius, elevation).
+- New visual state (new error / empty / loading / success surface).
+- Layout restructure (reflow, alignment, responsive breakpoint, RTL).
+
+Rule: **at least one case in the file MUST carry `assertions.visual[]`**.
+Prefer `{token: ...}` + `resolved_value` when `design_tokens_source` is
+non-null. If tokens are unavailable, fall back to `number + unit +
+tolerance` or a WCAG / HIG / Material rule reference — but the visual
+case still happens. Token absence does NOT waive the visual requirement.
+
+**`ui_change: false`** — the feature is pure logic / data / algorithm
+with no visible rendering change. A new backend validation rule that
+surfaces through an existing error component does **not** count as UI
+change (the component already existed).
+
+Rule: **no case in the file may carry `assertions.visual[]`**. Writing
+one is a hard-reject anti-pattern — the `ui_change` consistency lint
+(see `lint-rules.md`) blocks the file from landing.
+
+`assertions.accessibility[]` auto-injection is independent of this gate.
+Any case touching an interactive control still gets the platform a11y
+floor appended, regardless of `ui_change`.
 
 ## 8. Error guessing (free-form)
 Senior-QA adversarial case — what would break this? Double-submit, rapid

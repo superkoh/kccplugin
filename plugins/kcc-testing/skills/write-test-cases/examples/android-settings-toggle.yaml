@@ -6,6 +6,7 @@ feature: "设置页通知开关"
 requirement_ref: "PRD-2026-073 §3.3"
 platform: android
 design_tokens_source: null
+ui_change: false
 generated_at: "2026-04-18"
 generated_by: "kcc-testing/write-test-cases v0.1"
 

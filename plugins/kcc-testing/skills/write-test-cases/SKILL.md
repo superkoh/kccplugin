@@ -43,7 +43,7 @@ not a report.
 
 ### Step 2 — Confirm scope with `AskUserQuestion`
 
-**Required.** Never skip this step. Ask three questions in a single
+**Required.** Never skip this step. Ask four questions in a single
 `AskUserQuestion` call:
 
 1. *Feature scope* — four options:
@@ -52,8 +52,19 @@ not a report.
    - *Something else* — user types the feature in prose.
 2. *Target platform* — `web`, `ios`, `android`, `desktop`. Single-select.
 3. *Design-tokens source* — path to a token file, or "no tokens available".
+4. *UI change?* — does this feature introduce or modify user-visible
+   rendering? Single-select:
+   - `new-ui` / 新增 UI — new elements, screens, fields, icons.
+   - `modified-ui` / 修改 UI — style, layout, spacing, or a new visual state.
+   - `logic-only` / 纯逻辑或数据改动，无可见渲染变化.
+   - `unsure` — default to UI change (conservative).
 
-Do not generate any cases until all three are answered.
+The answer becomes the top-level `ui_change: true | false` in the
+output YAML (`logic-only` → `false`; everything else → `true`) and
+gates whether any case may carry `assertions.visual[]` — see
+`references/coverage-techniques.md` §7.
+
+Do not generate any cases until all four are answered.
 
 ### Step 3 — Generate coverage candidates
 
@@ -62,6 +73,12 @@ Enumerate 8–15 candidate cases using the techniques in
 happy path, equivalence partitioning, boundary values, state transitions,
 error handling, accessibility, visual regression, and one free-form
 error-guessing case. One `P0` (happy path); 1–3 `P1`; the rest `P2`.
+
+The *visual regression* angle is gated by `ui_change`:
+- `ui_change: true` → at least one case MUST carry `assertions.visual[]`.
+- `ui_change: false` → no case may carry `assertions.visual[]`.
+
+See `references/coverage-techniques.md` §7 for the full gate.
 
 ### Step 4 — Populate the YAML schema
 
@@ -83,9 +100,16 @@ See the three shipped examples for the exact shape:
 - `examples/ios-login-flow.yaml` — accessibility-id + HIG floors.
 - `examples/android-settings-toggle.yaml` — resource-id + Material floors.
 
-### Step 5 — Dual lint
+### Step 5 — Triple lint
 
-Run both checks in [`references/lint-rules.md`](references/lint-rules.md).
+Run all three checks in [`references/lint-rules.md`](references/lint-rules.md).
+
+**UI-change consistency** (hard, file-level): verify the top-level
+`ui_change` flag matches the cases actually produced. `ui_change: true`
+with zero visual assertions across the file → regenerate step 3 with a
+visual-regression case. `ui_change: false` with any `assertions.visual[]`
+→ drop the visual block from the offending case and list it in the
+summary's `rejected` bucket.
 
 **Testability five-check** (hard):
 - `oracle_present` — every step has exactly one verifiable expected result.
@@ -132,6 +156,9 @@ opt out.
 Before returning to the user, confirm:
 
 - The `platform:` header matches what the user picked in step 2.
+- The `ui_change:` header is present and matches the step-2 answer.
+- `ui_change: true` → at least one case carries `assertions.visual[]`.
+- `ui_change: false` → no case carries `assertions.visual[]`.
 - Every case's `testability` block has all five fields filled.
 - No case's oracle or visual `expected` matches a blacklisted pattern.
 - No case references another case's state ("TC-001's order", "the user
@@ -145,6 +172,10 @@ Before returning to the user, confirm:
 - "Looks properly aligned." → Token reference or `number + unit + tolerance`.
 - "Uses the order from TC-COUPON-001." → Seed fresh data in `preconditions`.
 - Missing `waits_specified` for an async step. → Add `等待 <target> 在 N 秒内出现`.
+- `assertions.visual[]` on a `ui_change: false` case. → Drop the visual
+  block; that case isn't claiming a visual contract.
+- `ui_change: true` with no visual assertions anywhere. → Add one P1 or P2
+  visual-regression case per coverage-techniques.md §7.
 
 <!-- kcc-testing-write-test-cases-sentinel: v1 -->
 
