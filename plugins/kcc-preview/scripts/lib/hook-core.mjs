@@ -2,6 +2,7 @@
 // hook entry scripts. Kept stateless so they are easy to unit-test.
 
 import { appendFile, readFile, readdir, rm, stat } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -9,7 +10,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PROMPTS_DIR = path.resolve(__dirname, "..", "prompts");
 
 // The Stop hook's noise-gate threshold. Mirrors the "code blocks under ~40
-// lines" cutoff from prompts/rules.md — changing one should change both.
+// lines" cutoff from prompts/rules-core.md — changing one should change both.
 export const PUSHABLE_MIN_LINES = 40;
 // File extensions that we treat as long-form, browser-worth-reading artifacts.
 // Source code and binaries are intentionally excluded — the prompt's guidance
@@ -50,11 +51,34 @@ export async function sweepStale(root, activeIds = new Set()) {
   }
 }
 
-export async function buildSessionStartContext({ url, contentDir, vcStateDir, reason }) {
+// Check whether superpowers is installed via any marketplace under the user's
+// plugin cache. Used to gate the superpowers brainstorming compatibility
+// appendix so users who don't have superpowers don't pay ~1KB of dead-weight
+// context on every session. The check is a cache-dir glob, not a runtime
+// probe — fast, no side effects, no false positives on inactive installs.
+// `claudeHome` is overridable for tests; defaults to ~/.claude.
+export async function isSuperpowersInstalled({ claudeHome } = {}) {
+  const root = path.join(claudeHome || path.join(os.homedir(), ".claude"), "plugins", "cache");
+  let marketplaces;
+  try { marketplaces = await readdir(root); } catch { return false; }
+  for (const mp of marketplaces) {
+    try {
+      const plugins = await readdir(path.join(root, mp));
+      if (plugins.includes("superpowers")) return true;
+    } catch {}
+  }
+  return false;
+}
+
+export async function buildSessionStartContext({ url, contentDir, vcStateDir, reason, claudeHome }) {
   if (!url) {
     return `<!-- kcc-preview: unavailable (${reason || "unknown"}) -->`;
   }
-  const tpl = await readFile(path.join(PROMPTS_DIR, "rules.md"), "utf-8");
+  let tpl = await readFile(path.join(PROMPTS_DIR, "rules-core.md"), "utf-8");
+  if (await isSuperpowersInstalled({ claudeHome })) {
+    const appendix = await readFile(path.join(PROMPTS_DIR, "rules-superpowers.md"), "utf-8");
+    tpl = tpl + appendix;
+  }
   return tpl
     .replace(/\{\{URL\}\}/g, url)
     .replace(/\{\{CONTENT_DIR\}\}/g, contentDir)

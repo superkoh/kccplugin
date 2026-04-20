@@ -9,8 +9,22 @@ import {
   emitSessionStart, emitUserPromptSubmit, emitSessionEnd,
   appendWriteSidecar, scanSidecarForPushableFiles,
   listPushedEntryPaths, buildStopBlockReason,
-  emitStopBlock, PUSHABLE_MIN_LINES, WRITE_SIDECAR,
+  emitStopBlock, isSuperpowersInstalled,
+  PUSHABLE_MIN_LINES, WRITE_SIDECAR,
 } from "../../scripts/lib/hook-core.mjs";
+
+async function fakeClaudeHome(t, { superpowers } = {}) {
+  const home = await mkdtemp(path.join(os.tmpdir(), "kcc-ch-"));
+  t.after(() => rm(home, { recursive: true, force: true }));
+  const cacheRoot = path.join(home, "plugins", "cache", "some-marketplace");
+  await mkdir(cacheRoot, { recursive: true });
+  if (superpowers) {
+    await mkdir(path.join(cacheRoot, "superpowers"), { recursive: true });
+  } else {
+    await mkdir(path.join(cacheRoot, "other-plugin"), { recursive: true });
+  }
+  return home;
+}
 import { assertHookOutput, validateHookOutput } from "../../../../test/lib/hook-output.mjs";
 
 function longBody(lines = PUSHABLE_MIN_LINES + 5) {
@@ -75,18 +89,62 @@ test("sweepStale removes dirs with dead pids", async (t) => {
   assert.ok(remaining.includes("live-session"));
 });
 
-test("buildSessionStartContext substitutes URL, CONTENT_DIR, VC_STATE_DIR", async () => {
+test("buildSessionStartContext (no superpowers) substitutes URL + CONTENT_DIR and omits appendix", async (t) => {
+  const claudeHome = await fakeClaudeHome(t, { superpowers: false });
   const ctx = await buildSessionStartContext({
     url: "http://localhost:12345",
     contentDir: "/tmp/s1/content",
     vcStateDir: "/tmp/s1/state",
+    claudeHome,
   });
   assert.match(ctx, /<!-- kcc-preview-sentinel: v1 -->/);
   assert.match(ctx, /http:\/\/localhost:12345/);
   assert.match(ctx, /\/tmp\/s1\/content/);
-  assert.match(ctx, /\/tmp\/s1\/state/);
   assert.ok(!ctx.includes("{{URL}}"));
   assert.ok(!ctx.includes("{{CONTENT_DIR}}"));
+  // VC_STATE_DIR placeholder lives only in the superpowers appendix, so its
+  // substituted value must not appear in a no-superpowers context — and the
+  // appendix header itself must be absent. If either shows up, the conditional
+  // split regressed and users without superpowers are paying for dead weight.
+  assert.ok(!ctx.includes("/tmp/s1/state"),
+    "VC_STATE_DIR is appendix-only; should not appear without superpowers");
+  assert.ok(!ctx.includes("superpowers brainstorming compatibility"),
+    "superpowers appendix must be omitted when not installed");
+});
+
+test("buildSessionStartContext appends superpowers section only when installed", async (t) => {
+  const noSp = await fakeClaudeHome(t, { superpowers: false });
+  const withSp = await fakeClaudeHome(t, { superpowers: true });
+  const common = { url: "http://localhost:1", contentDir: "/c", vcStateDir: "/s" };
+
+  const ctxWithout = await buildSessionStartContext({ ...common, claudeHome: noSp });
+  const ctxWith = await buildSessionStartContext({ ...common, claudeHome: withSp });
+
+  assert.ok(!ctxWithout.includes("superpowers brainstorming compatibility"));
+  assert.ok(ctxWith.includes("superpowers brainstorming compatibility"));
+  // The appendix also uses template placeholders; substitution pass must
+  // cover the concatenated text, not just the core. If it didn't, users
+  // would see raw {{URL}} / {{VC_STATE_DIR}} tokens in their sidebar.
+  assert.ok(ctxWith.includes("http://localhost:1"));
+  assert.ok(ctxWith.includes("/s"), "VC_STATE_DIR should be substituted in appendix");
+  assert.ok(!ctxWith.includes("{{URL}}"));
+  assert.ok(!ctxWith.includes("{{VC_STATE_DIR}}"));
+  assert.ok(ctxWith.length > ctxWithout.length,
+    "with-superpowers context must be strictly larger");
+});
+
+test("isSuperpowersInstalled returns false when plugins cache dir is missing", async (t) => {
+  const home = await mkdtemp(path.join(os.tmpdir(), "kcc-ch-"));
+  t.after(() => rm(home, { recursive: true, force: true }));
+  assert.equal(await isSuperpowersInstalled({ claudeHome: home }), false);
+});
+
+test("isSuperpowersInstalled finds superpowers under any marketplace name", async (t) => {
+  const home = await mkdtemp(path.join(os.tmpdir(), "kcc-ch-"));
+  t.after(() => rm(home, { recursive: true, force: true }));
+  // Mimic the real-world path ~/.claude/plugins/cache/<marketplace>/<plugin>
+  await mkdir(path.join(home, "plugins", "cache", "a-non-standard-marketplace", "superpowers", "9.9.9"), { recursive: true });
+  assert.equal(await isSuperpowersInstalled({ claudeHome: home }), true);
 });
 
 test("buildReminderContext substitutes URL", async () => {
