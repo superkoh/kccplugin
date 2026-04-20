@@ -32,9 +32,19 @@ PLUGIN=hello-world npm test
 PLUGIN=hello-world npm run test:l1
 ```
 
-L3 and L4 self-skip when `ANTHROPIC_API_KEY` is unset. CI runs
-`test:offline` on every push/PR; the full L3+L4 suite runs nightly and on
-manual dispatch — see `.github/workflows/test.yml`.
+L3 and L4 only skip when **no auth is available at all**. "Auth" means
+any of `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN`,
+`CLAUDE_CODE_OAUTH_TOKEN`, or an existing `claude auth` keychain login.
+**The local dev box this repo is worked on has `CLAUDE_CODE_OAUTH_TOKEN`
+exported and/or OAuth keychain logged in — L3 and L4 run directly.**
+
+Do NOT reflexively reply "L3/L4 skipped because ANTHROPIC_API_KEY is
+unset" — that's only correct in bare CI runners. Locally, run the layer
+and read its output. If the banner says `fallback (user keychain /
+OAuth; --bare dropped)` that's a normal successful run, not a skip.
+
+CI runs `test:offline` on every push/PR; the full L3+L4 suite runs
+nightly and on manual dispatch — see `.github/workflows/test.yml`.
 
 ## Four-layer test framework
 
