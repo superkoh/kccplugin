@@ -39,10 +39,10 @@
     {
       "name": "kcc-testing",
       "source": "./plugins/kcc-testing",
-      "description": "Testing-related tools plugin (scaffold — components TBD).",
+      "description": "LLM-executable manual QA test case authoring — write-test-cases skill turns a PRD into a YAML coverage set.",
       "version": "0.1.0",
       "category": "testing",
-      "tags": ["testing"]
+      "tags": ["testing", "qa", "manual-testing"]
     }
   ]
 }
