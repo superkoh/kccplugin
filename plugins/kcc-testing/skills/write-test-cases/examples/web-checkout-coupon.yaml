@@ -1,24 +1,39 @@
 # Example — web checkout feature with a coupon flow.
-# Demonstrates token references, WCAG auto-injection, and per-case cleanup.
-# requirement_ref below is illustrative only — adopt your own PRD/ticket scheme.
+# Demonstrates token references, Form A (property-based) AND Form B
+# (description-based LLM-vision) visual assertions, WCAG auto-injection,
+# RTM self-check, and coverage-trigger fulfilment.
+# requirement_ref values are illustrative — adopt your own PRD/ticket scheme.
 
 feature: "结算页优惠券应用"
 requirement_ref: "PRD-2026-042 §4.2"
 platform: web
 design_tokens_source: "design/tokens.json"
 ui_change: true
-generated_at: "2026-04-18"
-generated_by: "kcc-testing/write-test-cases v0.1"
+coverage_triggers:
+  security: true
+  i18n: false
+  performance: false
+generated_at: "2026-04-20"
+generated_by: "kcc-testing/write-test-cases v0.2"
+
+rtm_summary:
+  requirement_branches_total: 4
+  requirement_branches_covered: 3
+  uncovered_branches:
+    - "PRD §4.2-d 优惠券叠加: deferred, separate feature landing next sprint"
+  unreferenced_cases: []
 
 cases:
   - id: TC-COUPON-001
     title: "输入有效优惠码后订单总价正确扣减"
     priority: P0
+    requirement_ref: "PRD-2026-042 §4.2-a (accept valid coupon)"
     tags: [happy-path, pricing]
 
     preconditions:
       state: "用户已登录且购物车含 1 件 ¥100 的商品"
       data_setup:
+        - "通过 API DELETE /test/fixtures/user?email=qa+{{uuid}}@example.com (idempotent cleanup in case of prior abort)"
         - "通过 API POST /test/fixtures/user 创建 qa+{{uuid}}@example.com, role=buyer"
         - "通过 API POST /test/fixtures/cart 放入 SKU-1001 数量 1"
         - "确保优惠券 WELCOME10 存在且有效 (-10%)"
@@ -29,23 +44,41 @@ cases:
         oracle: '输入框的值为 "WELCOME10"'
       - n: 2
         action: '点击 role=button, name="应用优惠码"'
-        oracle: 'role=status, name="优惠码状态" 的文本包含 "已应用"'
+        oracle:
+          - 'role=status, name="优惠码状态" 的文本包含 "已应用"'
+          - 'role=button, name="应用优惠码" 的 aria-disabled 为 "true"'
       - n: 3
         action: "等待订单汇总刷新"
-        oracle: "订单总价文本为 ¥90.00 (原价 ¥100 - 10%)"
+        oracle: '订单总价文本匹配正则 /^¥90\.00$/ (原价 ¥100 - 10%)'
 
     assertions:
       visual:
+        # Form A — property-based, token reference
         - target: 'role=button, name="应用优惠码"'
           property: background-color
-          expected: "{token: color.primary.500}"
+          expected_value: "{token: color.primary.500}"
           resolved_value: "#1E6FFF"
-          tolerance: strict
-        - target: 'role=status, name="优惠码状态"'
+          match: color-equal
+          tolerance:
+            delta_e_max: 2.3
+        # Form A — property-based, token reference
+        - target: 'role=status, name="优惠券状态"'
           property: color
-          expected: "{token: color.success.600}"
+          expected_value: "{token: color.success.600}"
           resolved_value: "#0F8A4A"
-          tolerance: strict
+          match: color-equal
+          tolerance:
+            delta_e_max: 2.3
+        # Form B — description-based, LLM-vision judge
+        - target: "订单汇总区块"
+          description: |
+            应用优惠券后，订单汇总区块显示两行金额：
+            上方一行是原价 ¥100.00，带删除线 (text-decoration: line-through)，
+            颜色较浅以示作废；下方一行是折后价 ¥90.00，字号比原价大一档，
+            颜色为 success 绿系，视觉上明显突出。两行左对齐，
+            垂直方向紧密排列（行距不超过 4px），整块与右侧「结算」按钮
+            垂直居中对齐。
+          judge_by: llm-vision
       accessibility:
         - rule: WCAG-1.4.3
           target: 'role=status, name="优惠码状态"'
@@ -55,23 +88,26 @@ cases:
           min_target_size_px: 24
 
     cleanup:
-      - "删除测试用户及其所有订单"
+      - "删除测试用户及其所有订单 (idempotent: ignore 404)"
 
     testability:
       oracle_present: true
       state_reachable: true
       deterministic: true
       isolated: true
-      waits_specified: "step 3 waits up to 5s for order summary refresh"
+      has_explicit_wait: true
+      wait_spec: "step 3 waits up to 5s for order summary refresh"
 
   - id: TC-COUPON-002
     title: "过期优惠码应明确报错且不改动总价"
     priority: P1
+    requirement_ref: "PRD-2026-042 §4.2-b (reject expired coupon)"
     tags: [error, boundary]
 
     preconditions:
       state: "用户已登录且购物车含 1 件 ¥100 的商品"
       data_setup:
+        - "通过 API DELETE /test/fixtures/user?email=qa+{{uuid}}@example.com (idempotent)"
         - "通过 API POST /test/fixtures/user 创建 qa+{{uuid}}@example.com, role=buyer"
         - "通过 API POST /test/fixtures/cart 放入 SKU-1001 数量 1"
         - "确保优惠券 EXPIRED50 存在但已过期"
@@ -85,15 +121,17 @@ cases:
         oracle: 'role=alert 的文本包含 "优惠码已过期"'
       - n: 3
         action: "检查订单总价"
-        oracle: "订单总价文本仍为 ¥100.00"
+        oracle: '订单总价文本匹配正则 /^¥100\.00$/'
 
     assertions:
       visual:
         - target: "role=alert"
           property: color
-          expected: "{token: color.danger.600}"
+          expected_value: "{token: color.danger.600}"
           resolved_value: "#C62828"
-          tolerance: strict
+          match: color-equal
+          tolerance:
+            delta_e_max: 2.3
       accessibility:
         - rule: WCAG-1.4.3
           target: "role=alert"
@@ -103,11 +141,56 @@ cases:
           requirement: "role=alert triggers assistive-tech announcement"
 
     cleanup:
-      - "删除测试用户及其购物车"
+      - "删除测试用户及其购物车 (idempotent)"
 
     testability:
       oracle_present: true
       state_reachable: true
       deterministic: true
       isolated: true
-      waits_specified: "n/a — DOM-based oracles settle synchronously on this flow"
+      has_explicit_wait: false
+      wait_spec: "n/a — DOM-based oracles settle synchronously on this flow"
+
+  - id: TC-COUPON-003
+    title: "优惠码字段 XSS payload 不应执行也不应破坏渲染"
+    priority: P1
+    requirement_ref: "PRD-2026-042 §4.2-c (malformed coupon rejection)"
+    tags: [security, injection]
+
+    preconditions:
+      state: "用户已登录且购物车含 1 件 ¥100 的商品"
+      data_setup:
+        - "通过 API DELETE /test/fixtures/user?email=qa+{{uuid}}@example.com (idempotent)"
+        - "通过 API POST /test/fixtures/user 创建 qa+{{uuid}}@example.com, role=buyer"
+        - "通过 API POST /test/fixtures/cart 放入 SKU-1001 数量 1"
+
+    steps:
+      - n: 1
+        action: '在 role=textbox, name="优惠码" 的输入框粘贴 "<img src=x onerror=\"window.__xss=1\">"'
+        oracle: "输入框保留原始字符串，未被浏览器解析为 DOM 元素"
+      - n: 2
+        action: '点击 role=button, name="应用优惠码"'
+        oracle:
+          - 'role=alert 的文本包含 "无效优惠码"'
+          - "执行 JS 查询 window.__xss 返回 undefined (payload 未执行)"
+      - n: 3
+        action: "检查订单总价"
+        oracle: '订单总价文本匹配正则 /^¥100\.00$/'
+
+    assertions:
+      accessibility:
+        - rule: WCAG-2.5.8
+          target: 'role=button, name="应用优惠码"'
+          min_target_size_px: 24
+
+    cleanup:
+      - "删除测试用户 (idempotent)"
+      - "JS: delete window.__xss"
+
+    testability:
+      oracle_present: true
+      state_reachable: true
+      deterministic: true
+      isolated: true
+      has_explicit_wait: false
+      wait_spec: "n/a — synchronous DOM/JS reads"

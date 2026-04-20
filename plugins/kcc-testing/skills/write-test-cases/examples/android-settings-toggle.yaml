@@ -1,25 +1,41 @@
 # Example — Android settings feature.
 # Demonstrates content-description / resource-id locator vocabulary and Material 48dp floor.
-# requirement_ref below is illustrative only — adopt your own PRD/ticket scheme.
+# NOTE: this example assumes the CURRENT change is a backend persistence fix only —
+# the switch UI layout / styling is unchanged from the prior release.
+# That is why ui_change is false despite the settings page being visible.
+# requirement_ref values are illustrative — adopt your own PRD/ticket scheme.
 
 feature: "设置页通知开关"
 requirement_ref: "PRD-2026-073 §3.3"
 platform: android
 design_tokens_source: null
 ui_change: false
-generated_at: "2026-04-18"
-generated_by: "kcc-testing/write-test-cases v0.1"
+coverage_triggers:
+  security: false
+  i18n: false
+  performance: true
+generated_at: "2026-04-20"
+generated_by: "kcc-testing/write-test-cases v0.2"
+
+rtm_summary:
+  requirement_branches_total: 3
+  requirement_branches_covered: 3
+  uncovered_branches: []
+  unreferenced_cases: []
 
 cases:
   - id: TC-SETTINGS-001
     title: "打开通知开关后状态持久化到重启"
     priority: P0
+    requirement_ref: "PRD-2026-073 §3.3-a (toggle persists across cold restart)"
     tags: [happy-path, persistence]
 
     preconditions:
       state: "应用已登录并进入 设置 → 通知 页"
       data_setup:
+        - "通过测试后台删除任何 qa+{{uuid}}@example.com (idempotent)"
         - "通过测试后台创建账号 qa+{{uuid}}@example.com 并将通知设置置为 off"
+        - "清除应用 shared preferences (idempotent)"
 
     steps:
       - n: 1
@@ -42,34 +58,39 @@ cases:
           min_contrast_ratio: 4.5
 
     cleanup:
-      - "通过测试后台删除账号"
-      - "清除应用 shared preferences"
+      - "通过测试后台删除账号 (idempotent)"
+      - "清除应用 shared preferences (idempotent)"
 
     testability:
       oracle_present: true
       state_reachable: true
       deterministic: true
       isolated: true
-      waits_specified: "step 2 waits up to 5s for app resume"
+      has_explicit_wait: true
+      wait_spec: "step 2 waits up to 5s for app resume"
 
   - id: TC-SETTINGS-002
     title: "关闭网络时切换开关应显示离线提示且不改变状态"
     priority: P1
+    requirement_ref: "PRD-2026-073 §3.3-b (offline toggle shows message, no state change)"
     tags: [error, network]
 
     preconditions:
       state: "应用进入 设置 → 通知 页，通知开关为 off"
       data_setup:
+        - "通过测试后台删除任何 qa+{{uuid}}@example.com (idempotent)"
         - "通过测试后台创建账号 qa+{{uuid}}@example.com 并将通知设置置为 off"
         - "切换设备到飞行模式"
 
     steps:
       - n: 1
         action: '点击 resource-id="com.app:id/switch_notifications", content-description="通知开关"'
-        oracle: 'resource-id="com.app:id/snackbar_offline" 的文本包含 "当前无网络"'
+        oracle:
+          - 'resource-id="com.app:id/snackbar_offline" 的文本包含 "当前无网络"'
+          - '开关的 content-description 仍为 "通知开关，已关闭"'
       - n: 2
-        action: "等待 snackbar 消失后检查开关"
-        oracle: '开关的 content-description 仍为 "通知开关，已关闭"'
+        action: "等待 snackbar 自动消失 (Material 默认 4s)"
+        oracle: 'resource-id="com.app:id/snackbar_offline" 从 view hierarchy 移除'
 
     assertions:
       accessibility:
@@ -79,11 +100,53 @@ cases:
 
     cleanup:
       - "关闭飞行模式"
-      - "通过测试后台删除账号"
+      - "通过测试后台删除账号 (idempotent)"
 
     testability:
       oracle_present: true
       state_reachable: true
       deterministic: true
       isolated: true
-      waits_specified: "step 2 waits up to 4s for Material default snackbar dismiss"
+      has_explicit_wait: true
+      wait_spec: "step 2 waits up to 4s for Material default snackbar dismiss"
+
+  - id: TC-SETTINGS-003
+    title: "快速双击开关只产生一次服务端调用"
+    priority: P1
+    requirement_ref: "PRD-2026-073 §3.3-c (toggle is debounced server-side)"
+    tags: [performance, concurrency]
+
+    preconditions:
+      state: "应用进入 设置 → 通知 页，通知开关为 off；已启用网络抓包或测试拦截器"
+      data_setup:
+        - "通过测试后台删除任何 qa+{{uuid}}@example.com (idempotent)"
+        - "通过测试后台创建账号 qa+{{uuid}}@example.com 并将通知设置置为 off"
+        - "清空拦截器请求记录"
+
+    steps:
+      - n: 1
+        action: '在 200ms 内连续两次点击 resource-id="com.app:id/switch_notifications"'
+        oracle:
+          - '开关的 content-description 最终为 "通知开关，已开启"'
+          - "拦截器记录中 PUT /api/user/settings/notifications 的请求数恰好为 1"
+      - n: 2
+        action: "等待 2 秒后再次检查拦截器记录"
+        oracle: "PUT /api/user/settings/notifications 的请求数仍为 1"
+
+    assertions:
+      accessibility:
+        - rule: Material-TargetSize
+          target: 'resource-id="com.app:id/switch_notifications"'
+          min_target_size_dp: 48
+
+    cleanup:
+      - "通过测试后台删除账号 (idempotent)"
+      - "清空拦截器记录"
+
+    testability:
+      oracle_present: true
+      state_reachable: true
+      deterministic: true
+      isolated: true
+      has_explicit_wait: true
+      wait_spec: "step 2 waits 2s to catch any delayed duplicate request"
