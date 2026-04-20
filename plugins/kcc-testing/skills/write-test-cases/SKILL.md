@@ -145,3 +145,6 @@ Before returning to the user, confirm:
 - "Looks properly aligned." → Token reference or `number + unit + tolerance`.
 - "Uses the order from TC-COUPON-001." → Seed fresh data in `preconditions`.
 - Missing `waits_specified` for an async step. → Add `等待 <target> 在 N 秒内出现`.
+
+<!-- kcc-testing-write-test-cases-sentinel: v1 -->
+
