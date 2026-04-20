@@ -1,0 +1,55 @@
+# L3 end-to-end case for kcc-preview's Stop hook.
+#
+# Proves the block-then-continue pattern works in a real `claude -p --bare`
+# session:
+#   1. SessionStart hook spawns the preview server and injects its rules.
+#   2. The prompt tells Claude to Write a long .md file — and specifically
+#      does NOT mention preview. Under the noise gate rules this file is
+#      "push-worthy" (≥ 40 lines), so a compliant assistant would push an
+#      entry to content/ and say `👀 已推送到 preview: ...`. We instruct
+#      Claude in the prompt to skip that step, which simulates the real-
+#      world "AI generated a doc but forgot to push" bug.
+#   3. When Claude tries to stop, the Stop hook scans the transcript, sees
+#      the unreconciled .md write, and emits `decision:"block"` with a
+#      concrete push-entry template in `reason`.
+#   4. Claude continues the same turn, writes the `kind:file` entry, and
+#      finishes with the push announcement line.
+#   5. Stop hook re-fires with `stop_hook_active=true` → exits silently →
+#      turn actually ends.
+#
+# Assertion: stdout contains `👀 已推送到 preview`. That literal string
+# only appears when Claude pushed a preview entry, per the rules.md
+# template Claude Code injects via SessionStart. Since the prompt told
+# Claude *not* to do that, the only path to that string is the Stop hook
+# forcing compliance.
+
+name: "kcc-preview Stop hook blocks when a long md is written without a push entry"
+prompt: |
+  Write a markdown plan to /tmp/kcc-e2e-stop-block-plan.md that is at least
+  60 lines long. The body should be a plausible project plan (phases,
+  bullets, owners — it does not matter what the content says, only that it
+  is 60+ lines of plausible markdown).
+  After writing the file, respond with a single short sentence confirming
+  the file was written. Do not talk about previews, browsers, or push.
+  Then stop.
+model: claude-haiku-4-5-20251001
+maxBudgetUsd: 0.15
+timeoutMs: 180000
+
+# Write is the only mutation tool Claude needs. Read/Grep/Bash are locked
+# so the model can't cheat its way around the Stop hook (e.g., by listing
+# files or bypassing the content/ dir conventions). The Stop hook's block
+# reason instructs Claude to use Write to drop an entry file — that still
+# works under this allowlist.
+allowedTools:
+  - Write
+
+expect:
+  exitCode: 0
+  parsedJson:
+    type: "result"
+    subtype: "success"
+    is_error: false
+  stdout:
+    contains:
+      - "已推送到 preview"
