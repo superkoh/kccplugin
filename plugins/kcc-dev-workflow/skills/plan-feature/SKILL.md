@@ -88,6 +88,17 @@ Trigger phrases (Chinese + English):
    | T5 | `Step 5: Write test cases for <feature-slug>` | T4 |
    | T6 | `Step 6: Review test cases for <feature-slug>` | T5 |
 
+### Step skill bindings
+
+Each step spawns a teammate that invokes a specific skill via the Skill tool. The `<role>` placeholder in the teammate prompt template maps to these concrete skill names:
+
+- Step 1 → `kcc-dev-workflow:step-brainstorm`
+- Step 2 → `kcc-dev-workflow:step-spec-writer`
+- Step 3 → `kcc-dev-workflow:step-ac-writer`
+- Step 4 → `kcc-dev-workflow:step-spec-ac-reviewer`
+- Step 5 → `kcc-dev-workflow:step-test-case-writer`
+- Step 6 → `kcc-dev-workflow:step-test-case-reviewer`
+
 ### Task description template
 
 Each task's `description` (set via TaskCreate's `description` field) uses this format:
