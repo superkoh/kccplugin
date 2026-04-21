@@ -43,6 +43,14 @@
       "version": "0.1.0",
       "category": "testing",
       "tags": ["testing", "qa", "manual-testing"]
+    },
+    {
+      "name": "kcc-dev-workflow",
+      "source": "./plugins/kcc-dev-workflow",
+      "description": "Orchestrates brainstorm → spec → AC → review → test cases → review via a 6-teammate team. Produces 3 docs under .kcc/.",
+      "version": "0.1.0",
+      "category": "workflow",
+      "tags": ["workflow", "spec", "testing", "team"]
     }
   ]
 }
