@@ -1,0 +1,11 @@
+{
+  "slashCommands": {
+    "requires": [
+      "kcc-testing:write-test-cases"
+    ],
+    "forbids": []
+  },
+  "mcpServers": {
+    "requires": []
+  }
+}

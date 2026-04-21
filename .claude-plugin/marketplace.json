@@ -35,6 +35,14 @@
       "version": "0.1.3",
       "category": "visualization",
       "tags": ["preview", "browser", "mirror"]
+    },
+    {
+      "name": "kcc-testing",
+      "source": "./plugins/kcc-testing",
+      "description": "LLM-executable manual QA test case authoring — write-test-cases skill turns a PRD into a YAML coverage set.",
+      "version": "0.1.0",
+      "category": "testing",
+      "tags": ["testing", "qa", "manual-testing"]
     }
   ]
 }

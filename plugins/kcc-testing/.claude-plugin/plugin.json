@@ -1,0 +1,5 @@
+{
+  "name": "kcc-testing",
+  "version": "0.1.0",
+  "description": "Testing-related tools. Ships write-test-cases, a skill that turns a feature or PRD fragment into a YAML coverage set of LLM-executable manual QA test cases with built-in testability and UI/UX-quantification lint."
+}

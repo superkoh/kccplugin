@@ -1,0 +1,58 @@
+# L3 end-to-end case for kcc-testing's write-test-cases skill.
+#
+# Proves the full chain works:
+#   1. `claude --bare --plugin-dir <kcc-testing>` loads the plugin.
+#   2. The natural-language prompt matches SKILL.md triggers and the
+#      skill's content lands in the model's context (model-routed — not
+#      deterministic like a slash command, so we pick a prompt that
+#      closely mirrors the activation phrases in SKILL.md).
+#   3. The sentinel `kcc-testing-write-test-cases-sentinel: v1` — which
+#      only exists in this plugin's SKILL.md — can be quoted by the model.
+#
+# Trick borrowed from kcc-core's principles-injected.yaml: we lock out
+# every filesystem / execution tool so the model cannot grep the sentinel
+# out of the file directly. The only path from prompt to sentinel is via
+# the skill's content reaching the model's context, which requires the
+# skill to be loaded AND routed to by SKILL.md's description.
+
+name: "kcc-testing:write-test-cases skill loads and its content reaches context"
+prompt: |
+  帮我覆盖这个需求：一个简单的邮箱密码登录页。
+
+  先做一个 sanity check：在你当前可用的 skill 指令内容里应该有一个以
+  "kcc-testing-write-test-cases-sentinel" 开头的 HTML 注释。请原样引用
+  该 sentinel 字符串（例如 `kcc-testing-write-test-cases-sentinel: v1`），
+  然后停止，不用继续写用例，也不用调用任何工具。
+
+  如果你在 skill 指令内容里找不到这样的 sentinel，请回复
+  NO_SENTINEL_IN_SKILL。
+model: claude-haiku-4-5-20251001
+maxBudgetUsd: 0.10
+timeoutMs: 180000
+
+# Lock out every out-of-band path to the sentinel. The model cannot read
+# SKILL.md directly, grep for it, execute shell, or fetch it from the
+# web. The only remaining path is the skill-content-in-context path that
+# --plugin-dir + model-routed activation provides.
+disallowedTools:
+  - Read
+  - Glob
+  - Grep
+  - Bash
+  - Write
+  - Edit
+  - WebFetch
+  - WebSearch
+  - Task
+
+expect:
+  exitCode: 0
+  parsedJson:
+    type: "result"
+    subtype: "success"
+    is_error: false
+  stdout:
+    contains:
+      - "kcc-testing-write-test-cases-sentinel: v1"
+    notContains:
+      - "NO_SENTINEL_IN_SKILL"
