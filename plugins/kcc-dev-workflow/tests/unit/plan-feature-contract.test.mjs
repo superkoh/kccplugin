@@ -44,11 +44,28 @@ test("plan-feature SKILL.md references both output roots", async () => {
   assert.match(body, /\.kcc\/tests\/cases\//);
 });
 
-test("plan-feature SKILL.md describes the 6-step task chain", async () => {
+test("plan-feature SKILL.md describes the 5-step teammate task chain (T1..T5)", async () => {
   const body = await readPlanFeature();
-  for (let i = 1; i <= 6; i++) {
+  for (let i = 1; i <= 5; i++) {
     assert.match(body, new RegExp(`T${i}\\b`), `missing reference to task T${i}`);
   }
+});
+
+test("plan-feature SKILL.md no longer carries a T6 task reference", async () => {
+  const body = await readPlanFeature();
+  assert.doesNotMatch(body, /\bT6\b/, "T6 should be removed — brainstorm is now Phase 0, chain is T1..T5");
+});
+
+test("plan-feature Phase 0 delegates to step-brainstorm via Skill tool", async () => {
+  const body = await readPlanFeature();
+  assert.match(body, /Phase 0 — Brainstorm/);
+  assert.match(body, /Skill\(skill="kcc-dev-workflow:step-brainstorm"\)/);
+});
+
+test("plan-feature SKILL.md references kickoff.md (not _kickoff.md)", async () => {
+  const body = await readPlanFeature();
+  assert.match(body, /kickoff\.md/);
+  assert.doesNotMatch(body, /_kickoff\.md/, "underscore-prefixed kickoff.md is stale — step-brainstorm now owns the single-file kickoff.md");
 });
 
 test("plan-feature SKILL.md references failure escalation with 4 stages", async () => {
