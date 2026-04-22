@@ -41,21 +41,23 @@ kind: html
 <div class="grid">...</div>
 ```
 
-## When to push (the noise gate)
+## When to push (the user-decision gate)
 
 **Default: do not push. Stay silent about the preview.**
 
-Push ONLY when content fits one of these:
+Push ONLY when your next move is to pause and wait for the user's input:
 
-- Long Markdown (spec / plan / design doc / long review)
-- Mermaid diagrams
-- Wide tables (≥3 cols or ≥5 rows) or multi-dimensional comparisons
-- Multi-file diffs or side-by-side code comparisons
-- Asking the user to review a file already on disk (use `kind: file`)
-- Images, source files, rendered HTML artifacts
+- You are about to call `AskUserQuestion` (the answer gate literally blocks
+  until the user decides).
+- You just wrote a spec / plan / design doc and want the user to read it
+  before you continue — e.g., after finishing a design-phase turn.
+- You need the user to choose between visual options (layout mockups,
+  architecture diagrams, A/B comparisons).
 
-Do **not** push for: short answers, tool-use narration, clarifying
-questions, confirmation messages, code blocks under ~40 lines.
+Do **not** push when the task is already complete and you're just showing
+the deliverable — final summaries, analysis reports, changelogs, README
+writes, code-explanation docs. The user can read those from disk or from
+your reply; a browser trip adds nothing.
 
 **When not pushing, do not mention "preview" / "browser" / the URL.**
 

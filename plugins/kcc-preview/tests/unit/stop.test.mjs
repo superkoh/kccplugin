@@ -54,6 +54,13 @@ async function seedSidecar(sessionDir, filePaths) {
   await writeFile(path.join(sessionDir, WRITE_SIDECAR), body);
 }
 
+async function seedSidecarWithEvents(sessionDir, events) {
+  const body = events
+    .map((e) => JSON.stringify({ ts: Date.now(), ...e }))
+    .join("\n") + "\n";
+  await writeFile(path.join(sessionDir, WRITE_SIDECAR), body);
+}
+
 test("stop_hook_active=true -> exit silently", async (t) => {
   const { root, previewRoot, sessionId, sessionDir } = await scaffold(t);
 
@@ -91,25 +98,6 @@ test("no sidecar -> exit silently (nothing written this session)", async (t) => 
   assert.equal(out, "");
 });
 
-test("pushable file written but no entry -> emit Stop block JSON", async (t) => {
-  const { root, previewRoot, sessionId, sessionDir, contentDir } = await scaffold(t);
-
-  const planPath = path.join(root, "plan.md");
-  await writeFile(planPath, longBody());
-  await seedSidecar(sessionDir, [planPath]);
-
-  const { code, out } = await runHook(
-    { session_id: sessionId, cwd: root, hook_event_name: "Stop" },
-    { KCC_PREVIEW_ROOT: previewRoot },
-  );
-  assert.equal(code, 0);
-  const j = await assertHookOutput("Stop", out);
-  assert.equal(j.decision, "block");
-  assert.match(j.reason, new RegExp(planPath.replace(/[.]/g, "\\.")));
-  assert.match(j.reason, /kind: file/);
-  assert.match(j.reason, new RegExp(contentDir.replace(/[.]/g, "\\.")));
-});
-
 test("pushable file with matching kind:file entry -> exit silently", async (t) => {
   const { root, previewRoot, sessionId, sessionDir, contentDir } = await scaffold(t);
 
@@ -144,14 +132,131 @@ test("sub-threshold file written -> exit silently", async (t) => {
   assert.equal(out, "");
 });
 
-test("multiple unpushed files -> block reason lists all of them", async (t) => {
-  const { root, previewRoot, sessionId, sessionDir } = await scaffold(t);
+test("file under /specs/ path, no entry -> block (C signal)", async (t) => {
+  const { root, previewRoot, sessionId, sessionDir, contentDir } = await scaffold(t);
+  const specDir = path.join(root, "docs", "specs");
+  await mkdir(specDir, { recursive: true });
+  const specPath = path.join(specDir, "plan.md");
+  await writeFile(specPath, longBody());
+  await seedSidecarWithEvents(sessionDir, [
+    { event: "write", tool: "Write", file_path: specPath },
+  ]);
 
-  const a = path.join(root, "a.md");
-  const b = path.join(root, "b.md");
+  const { code, out } = await runHook(
+    { session_id: sessionId, cwd: root, hook_event_name: "Stop" },
+    { KCC_PREVIEW_ROOT: previewRoot },
+  );
+  assert.equal(code, 0);
+  const j = await assertHookOutput("Stop", out);
+  assert.equal(j.decision, "block");
+  assert.match(j.reason, new RegExp(specPath.replace(/[.]/g, "\\.")));
+});
+
+test("file under /plans/ path, no entry -> block (C signal)", async (t) => {
+  const { root, previewRoot, sessionId, sessionDir } = await scaffold(t);
+  const planDir = path.join(root, "docs", "plans");
+  await mkdir(planDir, { recursive: true });
+  const planPath = path.join(planDir, "impl.md");
+  await writeFile(planPath, longBody());
+  await seedSidecarWithEvents(sessionDir, [
+    { event: "write", tool: "Write", file_path: planPath },
+  ]);
+
+  const { code, out } = await runHook(
+    { session_id: sessionId, cwd: root, hook_event_name: "Stop" },
+    { KCC_PREVIEW_ROOT: previewRoot },
+  );
+  assert.equal(code, 0);
+  const j = await assertHookOutput("Stop", out);
+  assert.equal(j.decision, "block");
+  assert.match(j.reason, new RegExp(planPath.replace(/[.]/g, "\\.")));
+});
+
+test("non-review path without intent signal -> NOT block (core new behavior)", async (t) => {
+  const { root, previewRoot, sessionId, sessionDir } = await scaffold(t);
+  const readmePath = path.join(root, "README.md");
+  await writeFile(readmePath, longBody());
+  await seedSidecarWithEvents(sessionDir, [
+    { event: "write", tool: "Write", file_path: readmePath },
+  ]);
+
+  const { code, out } = await runHook(
+    { session_id: sessionId, cwd: root, hook_event_name: "Stop" },
+    { KCC_PREVIEW_ROOT: previewRoot },
+  );
+  assert.equal(code, 0);
+  assert.equal(out, "", "README write must not trigger Stop block under v0.2.0 semantics");
+});
+
+test("non-review path + intent signal (B) -> block", async (t) => {
+  const { root, previewRoot, sessionId, sessionDir } = await scaffold(t);
+  const notePath = path.join(root, "docs", "notes", "log.md");
+  await mkdir(path.dirname(notePath), { recursive: true });
+  await writeFile(notePath, longBody());
+  await seedSidecarWithEvents(sessionDir, [
+    { event: "turn_start" },
+    { event: "write", tool: "Write", file_path: notePath },
+    { event: "ask_user_question" },
+  ]);
+
+  const { code, out } = await runHook(
+    { session_id: sessionId, cwd: root, hook_event_name: "Stop" },
+    { KCC_PREVIEW_ROOT: previewRoot },
+  );
+  assert.equal(code, 0);
+  const j = await assertHookOutput("Stop", out);
+  assert.equal(j.decision, "block");
+  assert.match(j.reason, new RegExp(notePath.replace(/[.]/g, "\\.")));
+});
+
+test("ask_user_question BEFORE last turn_start -> treated as previous turn, no B signal", async (t) => {
+  const { root, previewRoot, sessionId, sessionDir } = await scaffold(t);
+  const notePath = path.join(root, "docs", "notes", "log.md");
+  await mkdir(path.dirname(notePath), { recursive: true });
+  await writeFile(notePath, longBody());
+  await seedSidecarWithEvents(sessionDir, [
+    { event: "turn_start" },
+    { event: "ask_user_question" },     // previous turn
+    { event: "turn_start" },             // current turn boundary
+    { event: "write", tool: "Write", file_path: notePath },
+  ]);
+
+  const { code, out } = await runHook(
+    { session_id: sessionId, cwd: root, hook_event_name: "Stop" },
+    { KCC_PREVIEW_ROOT: previewRoot },
+  );
+  assert.equal(code, 0);
+  assert.equal(out, "", "ask_user_question from a prior turn must not carry over");
+});
+
+test("CHANGELOG.md, no intent -> NOT block", async (t) => {
+  const { root, previewRoot, sessionId, sessionDir } = await scaffold(t);
+  const chPath = path.join(root, "CHANGELOG.md");
+  await writeFile(chPath, longBody());
+  await seedSidecarWithEvents(sessionDir, [
+    { event: "write", tool: "Write", file_path: chPath },
+  ]);
+
+  const { code, out } = await runHook(
+    { session_id: sessionId, cwd: root, hook_event_name: "Stop" },
+    { KCC_PREVIEW_ROOT: previewRoot },
+  );
+  assert.equal(code, 0);
+  assert.equal(out, "");
+});
+
+test("multiple unpushed files under /specs/ -> block reason lists all", async (t) => {
+  const { root, previewRoot, sessionId, sessionDir } = await scaffold(t);
+  const specDir = path.join(root, "docs", "specs");
+  await mkdir(specDir, { recursive: true });
+  const a = path.join(specDir, "a.md");
+  const b = path.join(specDir, "b.md");
   await writeFile(a, longBody());
   await writeFile(b, longBody());
-  await seedSidecar(sessionDir, [a, b]);
+  await seedSidecarWithEvents(sessionDir, [
+    { event: "write", tool: "Write", file_path: a },
+    { event: "write", tool: "Write", file_path: b },
+  ]);
 
   const { code, out } = await runHook(
     { session_id: sessionId, cwd: root, hook_event_name: "Stop" },
