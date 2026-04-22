@@ -408,3 +408,56 @@ test("appendTurnStart and appendAskUserQuestionEvent silently no-op on empty ses
   await appendAskUserQuestionEvent(null);
   await appendAskUserQuestionEvent("");
 });
+
+test("matchReviewPath matches /specs/ and /plans/ substrings case-insensitively", async () => {
+  const { matchReviewPath } = await import("../../scripts/lib/hook-core.mjs");
+  assert.equal(matchReviewPath("/x/docs/specs/a.md"), true);
+  assert.equal(matchReviewPath("/x/docs/plans/b.md"), true);
+  assert.equal(matchReviewPath("/x/docs/feature-specs/c.md"), true);
+  assert.equal(matchReviewPath("/x/archives/Plans/d.md"), true);  // case-insensitive
+  assert.equal(matchReviewPath("/x/SPECS/e.md"), true);
+  assert.equal(matchReviewPath("/x/docs/notes/f.md"), false);
+  assert.equal(matchReviewPath("/x/README.md"), false);
+  assert.equal(matchReviewPath("/x/CHANGELOG.md"), false);
+  assert.equal(matchReviewPath("/x/specifications/g.md"), true);  // "specs" substring in "specifications"
+  assert.equal(matchReviewPath(""), false);
+  assert.equal(matchReviewPath(null), false);
+  assert.equal(matchReviewPath(undefined), false);
+});
+
+test("hasAskUserQuestionThisTurn finds event after last turn_start only", async (t) => {
+  const { hasAskUserQuestionThisTurn, appendTurnStart, appendAskUserQuestionEvent, appendWriteSidecar } =
+    await import("../../scripts/lib/hook-core.mjs");
+  const root = await mkdtemp(path.join(os.tmpdir(), "kcc-has-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+
+  // Empty sidecar -> false
+  assert.equal(await hasAskUserQuestionThisTurn(root), false);
+
+  // Turn 1: turn_start + write + ask_user_question
+  await appendTurnStart(root);
+  await appendWriteSidecar(root, { tool: "Write", filePath: "/x/a.md" });
+  await appendAskUserQuestionEvent(root);
+  assert.equal(await hasAskUserQuestionThisTurn(root), true);
+
+  // Turn 2: new turn_start, no ask_user_question after it -> false
+  await appendTurnStart(root);
+  await appendWriteSidecar(root, { tool: "Write", filePath: "/x/b.md" });
+  assert.equal(await hasAskUserQuestionThisTurn(root), false);
+
+  // Turn 3: new turn_start + ask_user_question -> true
+  await appendTurnStart(root);
+  await appendAskUserQuestionEvent(root);
+  assert.equal(await hasAskUserQuestionThisTurn(root), true);
+});
+
+test("hasAskUserQuestionThisTurn without any turn_start -> false", async (t) => {
+  const { hasAskUserQuestionThisTurn, appendAskUserQuestionEvent } =
+    await import("../../scripts/lib/hook-core.mjs");
+  const root = await mkdtemp(path.join(os.tmpdir(), "kcc-has-nots-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+
+  // If turn markers never came in (legacy session), we conservatively return false.
+  await appendAskUserQuestionEvent(root);
+  assert.equal(await hasAskUserQuestionThisTurn(root), false);
+});

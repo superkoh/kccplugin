@@ -248,3 +248,39 @@ export async function appendAskUserQuestionEvent(sessionDir) {
   const line = JSON.stringify({ event: "ask_user_question", ts: Date.now() }) + "\n";
   try { await appendFile(path.join(sessionDir, WRITE_SIDECAR), line); } catch {}
 }
+
+// C-signal: is the file path review-worthy by convention? Case-insensitive
+// substring match on "spec" or "plan" anywhere in the lowered path.
+// Matches docs/specs/, docs/plans/, docs/feature-specs/, archives/Plans/,
+// and — acceptably for an MVP — also "specifications/" and "planning/".
+// Tighten to path-segment equality if the false-positive causes real noise.
+export function matchReviewPath(absPath) {
+  if (!absPath || typeof absPath !== "string") return false;
+  const p = absPath.replace(/\\/g, "/").toLowerCase();
+  return p.includes("spec") || p.includes("plan");
+}
+
+// B-signal: was AskUserQuestion invoked since the most recent turn boundary?
+// Read the sidecar as JSONL, find the last "event: turn_start" line, and scan
+// forward for any "event: ask_user_question". Absent turn boundaries -> false
+// (conservative: legacy sessions don't trigger B).
+export async function hasAskUserQuestionThisTurn(sessionDir) {
+  if (!sessionDir) return false;
+  let raw;
+  try { raw = await readFile(path.join(sessionDir, WRITE_SIDECAR), "utf-8"); }
+  catch { return false; }
+
+  const lines = raw.split("\n").filter(Boolean);
+  let lastTurnIdx = -1;
+  for (let i = lines.length - 1; i >= 0; i--) {
+    let e; try { e = JSON.parse(lines[i]); } catch { continue; }
+    if (e.event === "turn_start") { lastTurnIdx = i; break; }
+  }
+  if (lastTurnIdx < 0) return false;
+
+  for (let i = lastTurnIdx + 1; i < lines.length; i++) {
+    let e; try { e = JSON.parse(lines[i]); } catch { continue; }
+    if (e.event === "ask_user_question") return true;
+  }
+  return false;
+}
