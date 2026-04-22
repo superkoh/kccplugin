@@ -156,6 +156,12 @@ test("step-test-case-writer allows requirement_ref to cite ui §... entries", as
   assert.match(body, /ui §User Flows/);
 });
 
+test("step-test-case-writer design_tokens_source falls back to ui-kickoff.html when present", async () => {
+  const body = await readSkill();
+  assert.match(body, /ui-kickoff\.html/);
+  assert.match(body, /approved concrete palette|carries the approved concrete palette/);
+});
+
 test("step-test-case-writer writes YAML to .kcc/tests/cases/<slug>.yaml", async () => {
   const body = await readSkill();
   assert.match(body, /\.kcc\/tests\/cases\/<feature-slug>\.yaml|\.kcc\/tests\/cases\/<slug>\.yaml/);

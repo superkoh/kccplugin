@@ -131,6 +131,14 @@ test("step-spec-ac-reviewer SKILL.md covers ui.md in backup + rollback + schema-
   assert.match(body, /Component Catalog table header/);
 });
 
+test("step-spec-ac-reviewer UX lens audits kickoff faithfulness and anti-pattern appearance", async () => {
+  const body = await readSkill();
+  assert.match(body, /Faithfulness audit/);
+  assert.match(body, /ui-kickoff\.html/);
+  assert.match(body, /drift[\s\S]*?Major/);
+  assert.match(body, /anti-pattern[\s\S]*?Critical/i);
+});
+
 test("step-spec-ac-reviewer SKILL.md writes review.md with # Review header when missing", async () => {
   const body = await readSkill();
   assert.match(body, /# Review — <feature-name>/);

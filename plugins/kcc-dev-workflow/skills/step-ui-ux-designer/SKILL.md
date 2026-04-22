@@ -1,5 +1,5 @@
 ---
-description: Internal step skill for kcc-dev-workflow:plan-feature orchestrator. Do not invoke directly — trigger only via the orchestrator. Runs as teammate T2 in the dev-plan-<slug> team. Reads .kcc/specs/<slug>/kickoff.md + spec.md, writes .kcc/specs/<slug>/ui.md with a fixed 7-section engineer-ready UI/UX design schema (Summary & UI Scope, User Flows, Component Catalog, Interaction Specs, Visual Hierarchy & Design Tokens, Accessibility Targets, Open UX Questions), then marks its task completed. Path B only — no standalone UI/UX design skill available to leverage.
+description: Internal step skill for kcc-dev-workflow:plan-feature orchestrator. Do not invoke directly — trigger only via the orchestrator. Runs as teammate T2 in the dev-plan-<slug> team. Reads .kcc/specs/<slug>/kickoff.md (with §UX Direction as the ground-truth direction) + spec.md + ui-kickoff.html (the visual ground truth — palette, typography, density, sample components, anti-patterns — approved by the user during Phase 0). Writes .kcc/specs/<slug>/ui.md with a fixed 7-section engineer-ready UI/UX design schema (Summary & UI Scope, User Flows, Component Catalog, Interaction Specs, Visual Hierarchy & Design Tokens, Accessibility Targets, Open UX Questions) as a faithful implementation of those inputs — not a fresh invention. Path B only — no standalone UI/UX design skill available to leverage.
 ---
 
 # Step 2 — UI/UX Designer (teammate T2)
@@ -20,11 +20,26 @@ standalone UI/UX design functionality.
 ## Inputs
 
 - `.kcc/specs/<feature-slug>/kickoff.md` — Phase 0. Supplies feature
-  framing, user flows, personas, scope.
+  framing, user flows, personas, scope. **§UX Direction is the
+  direction ground truth** for this step (Visual pillar, Accessibility
+  priority, Interaction archetypes, Anti-patterns). If §UX Direction
+  carries `Status: N/A`, treat this feature as UI-less — see Failure
+  modes below.
 - `.kcc/specs/<feature-slug>/spec.md` — T1 (`step-spec-writer`).
   Supplies the technical architecture that the UI must sit on top of;
   the `## System Design` section in particular constrains what UI
   states / events are possible.
+- `.kcc/specs/<feature-slug>/ui-kickoff.html` — Phase 0 (only when
+  present; absent for UI-less features). **The visual ground truth**
+  — palette, typography, density, sample components, and anti-pattern
+  callouts, all approved by the user. Parse the HTML to extract:
+  - Palette hex codes + semantic roles from `<section class="palette">`
+  - Typography specs (font-family / size / weight / line-height) from
+    `<section class="typography">`
+  - Density tokens from `<section class="density">`
+  - Sample components (implicit visual conventions) from
+    `<section class="components">`
+  - Banned patterns from `<section class="anti-patterns">` if present
 
 ## Output
 
@@ -99,6 +114,36 @@ Single file: `.kcc/specs/<feature-slug>/ui.md`. Exactly these seven
   assumed form field count) on the derived component row or
   interaction spec line.
 
+## Faithfulness rule
+
+Your job is **faithful implementation** of the user's approved
+direction, not fresh invention. Concretely:
+
+- **Visual Hierarchy & Design Tokens** must be consistent with
+  `ui-kickoff.html`'s palette (use the same hex codes or a proper
+  semantic mapping — do not invent a new palette), typography (same
+  font-family / sizes / weights), and density tokens.
+- **Component Catalog** choices must follow kickoff §UX Direction's
+  Visual pillar and Interaction archetypes. If direction says
+  "minimalist, tap-primary", do not propose dense sidebars with
+  keyboard-heavy interactions.
+- **Accessibility Targets** must meet or exceed kickoff §UX Direction's
+  Accessibility priority. If direction says "WCAG AA + low-vision
+  audience", ui.md must include contrast / zoom / screen-reader specs
+  meeting that bar.
+- **Anti-patterns listed in kickoff §UX Direction or shown in
+  `ui-kickoff.html` §anti-patterns MUST NOT appear in ui.md.** This is
+  a hard reject at self-check — a violation aborts `TaskUpdate` until
+  fixed.
+- You MAY add implementation detail the kickoff didn't spell out
+  (specific component names, concrete pixel values within density
+  conventions, specific ARIA labels). You MAY NOT contradict the
+  kickoff's direction.
+- If kickoff §UX Direction is genuinely silent on something critical:
+  emit an `ASSUMPTION:` bullet on the affected component / interaction
+  AND add a matching `needs user confirmation: <question>` entry in
+  `## Open UX Questions`.
+
 ## Process
 
 ### 0. Idempotence check (resume fast-path)
@@ -116,32 +161,43 @@ Accessibility Targets has WCAG / keyboard / screen-reader sub-bullets,
 
 Proceed to step 1 only when this check fails.
 
-### 1. Read kickoff.md + spec.md
+### 1. Read kickoff.md + spec.md + ui-kickoff.html
 
-Read both files in full. From kickoff, extract the personas, key
-scenarios, and any UI-related constraints / open questions. From spec,
-extract the `## System Design` section (particularly the state machine
-and API / interface surfaces) to understand what UI states are
-possible.
+Read all three files in full. From kickoff, extract the personas,
+key scenarios, UI-related constraints, open questions, and — most
+importantly — **§UX Direction** (posture, visual pillar, a11y priority,
+interaction archetypes, anti-patterns). From spec, extract the
+`## System Design` section (particularly the state machine and API /
+interface surfaces). From `ui-kickoff.html` (if present), extract the
+concrete palette, typography, density tokens, sample component
+conventions, and any banned patterns from `<section class="anti-
+patterns">`.
 
 ### 2. Synthesize the 7 sections
 
 Derive content for each section by mapping upstream artifacts:
 
-- kickoff `§Users & Personas` + `§Key Scenarios` → Summary, Flows,
-  Interaction Specs.
-- spec `§System Design §State Machine` → UI component states
-  (per-component in Component Catalog).
+- kickoff `§UX Direction` + `§Users & Personas` + `§Key Scenarios`
+  → Summary & UI Scope (posture, in / out of scope).
+- kickoff `§Key Scenarios` → User Flows (Mermaid diagrams per journey).
+- spec `§System Design §State Machine` + `ui-kickoff.html §components`
+  → Component Catalog states.
 - spec `§System Design §API / Interface` → Events emitted by
-  components (what each action triggers upstream).
-- kickoff `§Constraints` → Visual Hierarchy constraints + Accessibility
-  targets (e.g. if kickoff cites regulatory / a11y mandates).
+  components.
+- `ui-kickoff.html §palette` + `§typography` + `§density` + kickoff
+  `§UX Direction` Visual pillar → Visual Hierarchy & Design Tokens.
+- kickoff `§UX Direction` Accessibility priority + `§Constraints`
+  (regulatory / a11y mandates) → Accessibility Targets.
 - spec `§Non-functional Requirements` + `§Edge Cases & Error Handling`
   → failure modes in Interaction Specs + Loading states in Component
   Catalog.
+- kickoff `§UX Direction` Anti-patterns → **must be absent from ui.md**;
+  no component / interaction / hierarchy may instantiate a banned
+  pattern.
 
 Do NOT transcribe upstream sections verbatim — the UI/UX design is a
-fresh synthesis on top of them.
+synthesis on top of them. But the direction is fixed; your job is
+faithful implementation, not re-invention (see Faithfulness rule).
 
 ### 3. Write ui.md
 
@@ -172,6 +228,10 @@ Before `TaskUpdate`, verify:
 - No bullet is exactly `TBD`.
 - Every `ASSUMPTION:` marker has a matching `needs user confirmation`
   entry in `## Open UX Questions`.
+- **Faithfulness check**: no kickoff §UX Direction Anti-pattern and no
+  pattern from `ui-kickoff.html §anti-patterns` appears as a proposed
+  component / interaction / visual treatment in ui.md. A single
+  violation fails this check and blocks `TaskUpdate`.
 
 If any check fails, fix inline and rewrite the file before `TaskUpdate`.
 

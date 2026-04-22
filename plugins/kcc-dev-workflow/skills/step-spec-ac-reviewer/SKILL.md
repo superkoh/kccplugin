@@ -85,7 +85,13 @@ skill. This step runs inline with its own multi-agent choreography.
   mode specified)? Do Accessibility Targets list concrete WCAG level,
   keyboard order, and screen-reader labels for every interactive
   component? Does Visual Hierarchy & Design Tokens avoid vague /
-  subjective language?
+  subjective language? **Faithfulness audit**: does ui.md faithfully
+  implement kickoff §UX Direction and the approved `ui-kickoff.html`?
+  Flag any drift (ui proposes illustrative style when direction was
+  minimalist, palette in ui.md deviates from ui-kickoff.html's hex
+  codes, a11y targets are below direction's priority, etc.) as
+  Major; flag any appearance of a kickoff-banned anti-pattern or an
+  HTML-declared anti-pattern inside ui.md as Critical.
 
 Every reviewer subagent receives the same base prompt PLUS a persona
 directive ("You are R1 — review from the Requirements lens. Focus on
@@ -199,7 +205,9 @@ Do not spawn subagents. Read all 8 drafts. Compute:
      Catalog table header broken or missing columns, User Flows
      section missing Mermaid block without N/A justification,
      Accessibility Targets missing WCAG / keyboard / screen-reader
-     sub-bullets.
+     sub-bullets, OR any kickoff §UX Direction Anti-pattern (or
+     `ui-kickoff.html §anti-patterns` entry) appearing in ui.md as a
+     proposed component / interaction / visual treatment.
    - ac.md: missing one of its three group headers (Functional /
      Non-functional / Edge Cases), AC missing one of its four fields
      (Traces to / Given / When / Then).

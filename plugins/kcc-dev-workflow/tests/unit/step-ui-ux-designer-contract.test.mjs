@@ -87,13 +87,28 @@ test("step-ui-ux-designer SKILL.md states it runs as teammate T2 + no AskUserQue
   assert.match(body, /no Path A|frontend-design:frontend-design generates UI code/i);
 });
 
-test("step-ui-ux-designer SKILL.md reads kickoff.md + spec.md (no ac / yaml)", async () => {
+test("step-ui-ux-designer SKILL.md reads kickoff.md + spec.md + ui-kickoff.html (no ac / yaml)", async () => {
   const body = await readSkill();
   assert.match(body, /\.kcc\/specs\/<feature-slug>\/kickoff\.md/);
   assert.match(body, /\.kcc\/specs\/<feature-slug>\/spec\.md/);
+  assert.match(body, /\.kcc\/specs\/<feature-slug>\/ui-kickoff\.html/);
   // Should not claim ac.md or yaml as inputs
   assert.doesNotMatch(body, /\.kcc\/specs\/<feature-slug>\/ac\.md/);
   assert.doesNotMatch(body, /\.kcc\/tests\/cases\/<feature-slug>\.yaml/);
+});
+
+test("step-ui-ux-designer SKILL.md declares the Faithfulness rule", async () => {
+  const body = await readSkill();
+  assert.match(body, /## Faithfulness rule/);
+  assert.match(body, /faithful implementation/i);
+  assert.match(body, /Anti-patterns listed in kickoff[\s\S]*?MUST NOT appear in ui\.md/);
+  assert.match(body, /ui-kickoff\.html's palette|palette \(use the same hex codes/);
+});
+
+test("step-ui-ux-designer self-check includes faithfulness (anti-patterns absent)", async () => {
+  const body = await readSkill();
+  assert.match(body, /[Ff]aithfulness check/);
+  assert.match(body, /Anti-pattern[\s\S]*?appears.*ui\.md|blocks `TaskUpdate`/);
 });
 
 test("step-ui-ux-designer SKILL.md writes ui.md to the canonical path", async () => {

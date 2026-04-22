@@ -1,14 +1,18 @@
 ---
-description: Use when the user wants to plan a new feature end-to-end — brainstorm → spec → UI/UX → acceptance criteria → review → QA test cases → review. Triggers on 规划功能 / 写 spec 和测试用例 / 做需求规划 / 出新 feature 的 spec / 帮我规划这个 feature / plan feature / plan this feature / write spec and test cases / draft spec and AC. Delegates the interactive brainstorm to kcc-dev-workflow:step-brainstorm in the main session, then runs a 6-teammate team via TeamCreate and produces 4 artifacts under .kcc/.
+description: Use when the user wants to plan a new feature end-to-end — brainstorm (including a user-driven UX visual direction loop that produces an approved ui-kickoff.html style reference) → spec → UI/UX → acceptance criteria → review → QA test cases → review. Triggers on 规划功能 / 写 spec 和测试用例 / 做需求规划 / 出新 feature 的 spec / 帮我规划这个 feature / plan feature / plan this feature / write spec and test cases / draft spec and AC. Delegates the interactive brainstorm to kcc-dev-workflow:step-brainstorm in the main session (brainstorm now produces kickoff.md with 10 sections incl. §UX Direction, plus a conditional ui-kickoff.html visual ground truth), then runs a 6-teammate team via TeamCreate and produces 5 artifacts under .kcc/.
 ---
 
 # plan-feature — orchestrate a new feature from idea to QA cases
 
 Run this in the main session. The skill first delegates the interactive
-brainstorm to `kcc-dev-workflow:step-brainstorm` (Phase 0), then builds a
-team of 6 teammates that each own one production step, and produces
-four artifacts:
+brainstorm to `kcc-dev-workflow:step-brainstorm` (Phase 0) — which also
+runs a user-driven UX visual direction loop for UI-surface features
+and writes an approved `ui-kickoff.html` — then builds a team of 6
+teammates that each own one production step, and produces five
+artifacts:
 
+- `.kcc/specs/<feature-slug>/kickoff.md` (10 sections, incl. §UX Direction)
+- `.kcc/specs/<feature-slug>/ui-kickoff.html` (conditional — only for UI-surface features)
 - `.kcc/specs/<feature-slug>/spec.md`
 - `.kcc/specs/<feature-slug>/ui.md`
 - `.kcc/specs/<feature-slug>/ac.md`
@@ -101,10 +105,16 @@ Skill(skill="kcc-dev-workflow:step-brainstorm")
 - The interactive brainstorm dialog — if `superpowers:brainstorming` is
   available in the session the skill leverages it with a scope override
   (Path A); otherwise it runs an inline probing flow (Path B).
-- Writing `.kcc/specs/<feature-slug>/kickoff.md` with a fixed 9-section
+- Writing `.kcc/specs/<feature-slug>/kickoff.md` with a fixed 10-section
   schema (Metadata, Original material, Problem Statement, Users &
-  Personas, Goals & Non-goals, Key Scenarios, Considered Alternatives,
-  Constraints, Open Questions & Risks).
+  Personas, UX Direction, Goals & Non-goals, Key Scenarios, Considered
+  Alternatives, Constraints, Open Questions & Risks).
+- For UI-surface features: running a UX visual direction discussion
+  loop with the user (unbounded until Approve or Abort) and writing
+  `.kcc/specs/<feature-slug>/ui-kickoff.html` — a self-contained HTML
+  style reference (palette, typography, density, sample components,
+  anti-pattern callouts). For UI-less features, kickoff §UX Direction
+  carries `Status: N/A` and no HTML is written.
 
 The skill returns `<feature-slug>` and `<platform>`. Bind those for use
 in Phase 1. Also create the test-case output root:
@@ -239,16 +249,20 @@ Your task: Step <N> — <role>. Task ID: T<N>.
 ### Phase 3 — Wrap up
 
 1. **Sanity check.** Read the first 30 lines of each of:
+   - `.kcc/specs/<feature-slug>/kickoff.md`
+   - `.kcc/specs/<feature-slug>/ui-kickoff.html` (if present)
    - `.kcc/specs/<feature-slug>/spec.md`
    - `.kcc/specs/<feature-slug>/ui.md`
    - `.kcc/specs/<feature-slug>/ac.md`
    - `.kcc/tests/cases/<feature-slug>.yaml`
 
-   For each, confirm it is non-empty and well-formed (spec.md / ui.md / ac.md are markdown with sections; yaml parses).
+   For each, confirm it is non-empty and well-formed (kickoff.md / spec.md / ui.md / ac.md are markdown with sections; ui-kickoff.html contains an `<html>` block; yaml parses).
 
 2. **Emit summary to user:**
    ```
    ✅ Plan complete: <feature-slug>
+      - kickoff:    .kcc/specs/<slug>/kickoff.md
+      - ui kickoff: .kcc/specs/<slug>/ui-kickoff.html  (if UI-surface feature)
       - spec:       .kcc/specs/<slug>/spec.md
       - ui:         .kcc/specs/<slug>/ui.md
       - AC:         .kcc/specs/<slug>/ac.md

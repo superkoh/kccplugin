@@ -47,7 +47,7 @@ that `kcc-testing:write-test-cases` normally collects via
 |---|---|
 | `feature` | kickoff `## Metadata` → `feature name` |
 | `platform` | kickoff `## Metadata` → `platform` |
-| `design_tokens_source` | **ui.md** `## Visual Hierarchy & Design Tokens` if it cites a token file; otherwise spec `## System Design` / `### Architecture` fallback; otherwise `null` |
+| `design_tokens_source` | **`ui-kickoff.html`** path (if the file exists — it carries the approved concrete palette + typography + density and serves as the token source for Path B test-case visual assertions); otherwise **ui.md** `## Visual Hierarchy & Design Tokens` if it cites a token file; otherwise spec `## System Design` / `### Architecture` fallback; otherwise `null` |
 | `ui_change` | **Primary source is ui.md**: if ui.md's Component Catalog has ≥ 1 row (not just "N/A"), `ui_change: true`; if ui.md is entirely N/A, `false`. Fall back to inferring from spec's System Design only when ui.md is missing. |
 | `coverage_triggers` | inspect spec `## Non-functional Requirements` + `## Edge Cases` AND ui `## Accessibility Targets`: security/auth/input-reaching-server NFR → `security: true`; i18n / locale / RTL NFR → `i18n: true`; latency / performance NFR → `performance: true`. If ui requires WCAG AA but spec lacks an a11y NFR, conservatively set `security: true` (input validation implied). |
 
