@@ -51,16 +51,21 @@ Single file: `.kcc/specs/<feature-slug>/spec.md`. Exactly these seven
   at minimum one of performance / security / accessibility / i18n /
   reliability. Each ends with a rationale source:
   `(kickoff §<section-name>)` or `(derived from US-<NN>)`.
-- **System Design** — MUST contain four sub-sections:
+- **System Design** — this is **technical architecture**, not UI.
+  User-facing concerns (components / interaction details / visual
+  hierarchy / accessibility) belong in `ui.md`, which T2
+  (`step-ui-ux-designer`) writes from this spec. System Design MUST
+  contain four sub-sections:
   - `### Architecture` — components, responsibilities, how they fit.
   - `### Data Model` — entities, fields, relationships. For features
     without persistent data, write `N/A — <one-line reason>`.
   - `### API / Interface` — endpoints, function signatures, event
     shapes. For pure UI / non-interface features, `N/A — <reason>`.
-  - `### State Machine` — if the feature has ≥ 2 user-observable
-    states, provide a Mermaid `stateDiagram-v2` or `graph TD`
-    diagram. For stateless features, `N/A — stateless` with one
-    line of justification.
+  - `### State Machine` — **system-side** state machine (backend /
+    data flow). If the feature has ≥ 2 system-observable states,
+    provide a Mermaid `stateDiagram-v2` or `graph TD` diagram. For
+    stateless features, `N/A — stateless` with one line of
+    justification. UI-side per-component states live in ui.md.
 - **Edge Cases & Error Handling** — **≥ 5** entries, each in the form
   `when X happens, system does Y` (or `When X: Y`).
 - **Open Items** — two sub-sections:

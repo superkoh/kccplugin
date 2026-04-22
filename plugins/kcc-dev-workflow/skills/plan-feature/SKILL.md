@@ -1,15 +1,16 @@
 ---
-description: Use when the user wants to plan a new feature end-to-end — brainstorm → spec → acceptance criteria → review → QA test cases → review. Triggers on 规划功能 / 写 spec 和测试用例 / 做需求规划 / 出新 feature 的 spec / 帮我规划这个 feature / plan feature / plan this feature / write spec and test cases / draft spec and AC. Delegates the interactive brainstorm to kcc-dev-workflow:step-brainstorm in the main session, then runs a 5-teammate team via TeamCreate and produces 3 artifacts under .kcc/.
+description: Use when the user wants to plan a new feature end-to-end — brainstorm → spec → UI/UX → acceptance criteria → review → QA test cases → review. Triggers on 规划功能 / 写 spec 和测试用例 / 做需求规划 / 出新 feature 的 spec / 帮我规划这个 feature / plan feature / plan this feature / write spec and test cases / draft spec and AC. Delegates the interactive brainstorm to kcc-dev-workflow:step-brainstorm in the main session, then runs a 6-teammate team via TeamCreate and produces 4 artifacts under .kcc/.
 ---
 
 # plan-feature — orchestrate a new feature from idea to QA cases
 
 Run this in the main session. The skill first delegates the interactive
 brainstorm to `kcc-dev-workflow:step-brainstorm` (Phase 0), then builds a
-team of 5 teammates that each own one production step, and produces
-three artifacts:
+team of 6 teammates that each own one production step, and produces
+four artifacts:
 
 - `.kcc/specs/<feature-slug>/spec.md`
+- `.kcc/specs/<feature-slug>/ui.md`
 - `.kcc/specs/<feature-slug>/ac.md`
 - `.kcc/tests/cases/<feature-slug>.yaml`
 
@@ -69,12 +70,12 @@ fresh or resumed — they are the single mechanical contract that keeps
 fresh and resume paths symmetric.
 
 1. Team `dev-plan-<slug>` missing → Phase 1 builds it normally.
-2. Team exists but TaskList is empty → Phase 1 adds T1..T5.
-3. Team exists with T1..T5 already present → skip TaskCreate in
+2. Team exists but TaskList is empty → Phase 1 adds T1..T6.
+3. Team exists with T1..T6 already present → skip TaskCreate in
    Phase 1; proceed to Phase 2 using the existing tasks.
 4. Phase 2 per `T<N>`:
    - If `T<N>.status == completed` AND the expected output file exists
-     and is non-empty AND (for N ∈ {3, 5}) `review.md` contains the
+     and is non-empty AND (for N ∈ {4, 6}) `review.md` contains the
      required section header → emit
      `✓ Step <N>: <role> already complete (resumed)` and skip spawning;
      continue to `T<N+1>`.
@@ -127,8 +128,8 @@ mkdir -p .kcc/tests/cases
    )
    ```
 
-2. **Build or reuse the 5-task chain (idempotent).** Call `TaskList`
-   for the team. If T1..T5 are all present, skip creation entirely.
+2. **Build or reuse the 6-task chain (idempotent).** Call `TaskList`
+   for the team. If T1..T6 are all present, skip creation entirely.
    If some are missing, create only the missing ones with the correct
    `addBlockedBy` link into the existing chain. If none exist, create
    the full chain below. Use the task description template for each.
@@ -137,20 +138,22 @@ mkdir -p .kcc/tests/cases
    | # | subject | blocked by |
    |---|---------|------------|
    | T1 | `Step 1: Write spec for <feature-slug>` | — |
-   | T2 | `Step 2: Write AC for <feature-slug>` | T1 |
-   | T3 | `Step 3: Review spec+AC for <feature-slug>` | T2 |
-   | T4 | `Step 4: Write test cases for <feature-slug>` | T3 |
-   | T5 | `Step 5: Review test cases for <feature-slug>` | T4 |
+   | T2 | `Step 2: Design UI/UX for <feature-slug>` | T1 |
+   | T3 | `Step 3: Write AC for <feature-slug>` | T2 |
+   | T4 | `Step 4: Review spec+UI+AC for <feature-slug>` | T3 |
+   | T5 | `Step 5: Write test cases for <feature-slug>` | T4 |
+   | T6 | `Step 6: Review test cases for <feature-slug>` | T5 |
 
 ### Step skill bindings
 
 Each step spawns a teammate that invokes a specific skill via the Skill tool. The `<role>` placeholder in the teammate prompt template maps to these concrete skill names:
 
 - Step 1 → `kcc-dev-workflow:step-spec-writer`
-- Step 2 → `kcc-dev-workflow:step-ac-writer`
-- Step 3 → `kcc-dev-workflow:step-spec-ac-reviewer`
-- Step 4 → `kcc-dev-workflow:step-test-case-writer`
-- Step 5 → `kcc-dev-workflow:step-test-case-reviewer`
+- Step 2 → `kcc-dev-workflow:step-ui-ux-designer`
+- Step 3 → `kcc-dev-workflow:step-ac-writer`
+- Step 4 → `kcc-dev-workflow:step-spec-ac-reviewer` (scope now includes ui.md; see that skill for persona expansion)
+- Step 5 → `kcc-dev-workflow:step-test-case-writer`
+- Step 6 → `kcc-dev-workflow:step-test-case-reviewer`
 
 ### Task description template
 
@@ -177,13 +180,13 @@ Each task's `description` (set via TaskCreate's `description` field) uses this f
 
 ### Phase 2 — Execute steps sequentially (with resume)
 
-For each step N from 1 to 5, first run the **resume check** before the
+For each step N from 1 to 6, first run the **resume check** before the
 spawn sequence below:
 
 Read `T<N>` via `TaskGet`. If `status == completed` AND the expected
-output file exists and is non-empty AND (for N ∈ {3, 5}) `review.md`
-contains the required section header (`## spec-ac` for N=3,
-`## test-cases` for N=5), emit
+output file exists and is non-empty AND (for N ∈ {4, 6}) `review.md`
+contains the required section header (`## spec-ac` for N=4,
+`## test-cases` for N=6), emit
 `✓ Step <N>: <role> already complete (resumed)` and continue to
 `T<N+1>`. If `status == completed` but the artifact check fails
 (drift), treat T<N> as `pending` and proceed with the normal sequence.
@@ -208,7 +211,7 @@ Normal sequence:
 4. **Verify on idle:**
    - Read T<N> via TaskGet; status must be `completed`.
    - Stat the expected output file; it must exist and be non-empty.
-   - For Steps 3 and 5 (reviewers), also confirm `review.md` contains the required section header (`## spec-ac` for Step 3, `## test-cases` for Step 5).
+   - For Steps 4 and 6 (reviewers), also confirm `review.md` contains the required section header (`## spec-ac` for Step 4, `## test-cases` for Step 6).
 
 5. **On failure, follow the escalation protocol** (see below).
 
@@ -237,15 +240,17 @@ Your task: Step <N> — <role>. Task ID: T<N>.
 
 1. **Sanity check.** Read the first 30 lines of each of:
    - `.kcc/specs/<feature-slug>/spec.md`
+   - `.kcc/specs/<feature-slug>/ui.md`
    - `.kcc/specs/<feature-slug>/ac.md`
    - `.kcc/tests/cases/<feature-slug>.yaml`
 
-   For each, confirm it is non-empty and well-formed (spec.md and ac.md are markdown with sections; yaml parses).
+   For each, confirm it is non-empty and well-formed (spec.md / ui.md / ac.md are markdown with sections; yaml parses).
 
 2. **Emit summary to user:**
    ```
    ✅ Plan complete: <feature-slug>
       - spec:       .kcc/specs/<slug>/spec.md
+      - ui:         .kcc/specs/<slug>/ui.md
       - AC:         .kcc/specs/<slug>/ac.md
       - test cases: .kcc/tests/cases/<slug>.yaml
       - review:     .kcc/specs/<slug>/review.md
@@ -272,10 +277,10 @@ If a teammate does not complete its task (task status not `completed` OR expecte
 ## Invariants
 
 Before returning to the user, confirm:
-- All 5 teammate tasks are `completed`.
-- All 3 output files exist and are non-empty.
-- `review.md` contains both `## spec-ac` (from Step 3) and `## test-cases` (from Step 5) sections.
-- `<feature-slug>` is ASCII-only kebab-case and matches all 3 output paths.
+- All 6 teammate tasks are `completed`.
+- All 4 output files exist and are non-empty.
+- `review.md` contains both `## spec-ac` (from Step 4; scope covers spec + ui + ac) and `## test-cases` (from Step 6) sections.
+- `<feature-slug>` is ASCII-only kebab-case and matches all 4 output paths.
 - The team `dev-plan-<feature-slug>` has received a shutdown_request for each teammate.
 
 ## Anti-patterns

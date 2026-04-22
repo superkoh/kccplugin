@@ -19,11 +19,12 @@ test("step-spec-ac-reviewer SKILL.md announces the multi-agent review+vote archi
   assert.match(body, /multi-agent review \+ vote/i);
 });
 
-test("step-spec-ac-reviewer SKILL.md defines the three distinct reviewer personas", async () => {
+test("step-spec-ac-reviewer SKILL.md defines the four distinct reviewer personas (incl. UX)", async () => {
   const body = await readSkill();
   assert.match(body, /Requirements lens/);
   assert.match(body, /Testability lens/);
   assert.match(body, /Risk\/Architecture lens/);
+  assert.match(body, /UX lens/);
 });
 
 test("step-spec-ac-reviewer SKILL.md declares 6 Phases R1..R6", async () => {
@@ -37,8 +38,8 @@ test("step-spec-ac-reviewer SKILL.md declares Round 1 + Round 2 reviewer drafts"
   const body = await readSkill();
   assert.match(body, /reviewer-<N>-round1\.md/);
   assert.match(body, /reviewer-<N>-round2\.md/);
-  // Round 2 prompt must tell each reviewer to read the other two drafts
-  assert.match(body, /read reviewer-<A>-round1\.md and[\s\S]*?reviewer-<B>-round1\.md/);
+  // Round 2 prompt must tell each reviewer to read the other three drafts
+  assert.match(body, /read reviewer-<A>-round1\.md,[\s\S]*?reviewer-<B>-round1\.md[\s\S]*?reviewer-<C>-round1\.md/);
 });
 
 test("step-spec-ac-reviewer SKILL.md declares the review-drafts/ and .pre-review/ dirs", async () => {
@@ -58,12 +59,13 @@ test("step-spec-ac-reviewer SKILL.md specifies schema-level override to request-
   const body = await readSkill();
   assert.match(body, /schema-level/i);
   assert.match(body, /override/i);
-  assert.match(body, /automatically overrides the verdict to request-changes/);
+  assert.match(body, /automatically overrides the verdict to[\s\S]*?request-changes/);
 });
 
-test("step-spec-ac-reviewer SKILL.md specifies Phase R4.3 rewriter subagents (rewriter-spec + rewriter-ac)", async () => {
+test("step-spec-ac-reviewer SKILL.md specifies Phase R4.3 rewriter subagents (rewriter-spec + rewriter-ui + rewriter-ac)", async () => {
   const body = await readSkill();
   assert.match(body, /rewriter-spec/);
+  assert.match(body, /rewriter-ui/);
   assert.match(body, /rewriter-ac/);
   assert.match(body, /Apply the rewrite plan/);
 });
@@ -95,12 +97,12 @@ test("step-spec-ac-reviewer SKILL.md specifies review.md ## spec-ac 7-subsection
     "### Reviewers",
     "### Round 2 convergence highlights",
     "### Consensus findings",
-    "### Traceability audit",
+    "### Traceability + UI audit",
     "### Vote",
     "### Final verdict",
     "### Rewrite",
   ]) {
-    assert.match(body, new RegExp(sub.replace(/\s+/g, "\\s+")), `missing sub-section: ${sub}`);
+    assert.ok(body.includes(sub), `missing sub-section: ${sub}`);
   }
 });
 
@@ -112,13 +114,21 @@ test("step-spec-ac-reviewer SKILL.md requires all 4 severity headers with _none_
   assert.match(body, /_none_/);
 });
 
-test("step-spec-ac-reviewer SKILL.md reads kickoff + spec + ac (not brainstorm or _kickoff)", async () => {
+test("step-spec-ac-reviewer SKILL.md reads kickoff + spec + ui + ac (not brainstorm or _kickoff)", async () => {
   const body = await readSkill();
   assert.match(body, /\.kcc\/specs\/<feature-slug>\/kickoff\.md/);
   assert.match(body, /\.kcc\/specs\/<feature-slug>\/spec\.md/);
+  assert.match(body, /\.kcc\/specs\/<feature-slug>\/ui\.md/);
   assert.match(body, /\.kcc\/specs\/<feature-slug>\/ac\.md/);
   assert.doesNotMatch(body, /_kickoff\.md/);
   assert.doesNotMatch(body, /brainstorm\.md/);
+});
+
+test("step-spec-ac-reviewer SKILL.md covers ui.md in backup + rollback + schema-level override", async () => {
+  const body = await readSkill();
+  assert.match(body, /\.pre-review\/ui\.md/);
+  assert.match(body, /ui\.md: section order broken/);
+  assert.match(body, /Component Catalog table header/);
 });
 
 test("step-spec-ac-reviewer SKILL.md writes review.md with # Review header when missing", async () => {
@@ -127,9 +137,9 @@ test("step-spec-ac-reviewer SKILL.md writes review.md with # Review header when 
   assert.match(body, /\.kcc\/specs\/<feature-slug>\/review\.md/);
 });
 
-test("step-spec-ac-reviewer SKILL.md declares T3 + spawns Agent + no AskUserQuestion + no Path A", async () => {
+test("step-spec-ac-reviewer SKILL.md declares T4 + spawns Agent + no AskUserQuestion + no Path A", async () => {
   const body = await readSkill();
-  assert.match(body, /teammate T3|task T3/);
+  assert.match(body, /teammate T4|task T4/);
   assert.match(body, /[Nn]o `?AskUserQuestion`?/);
   assert.match(body, /[Nn]o Path A|superpowers ships no standalone/i);
   assert.match(body, /`?Agent`?\s*tool|via `Agent`|Agent\(/);
@@ -146,16 +156,16 @@ test("step-spec-ac-reviewer SKILL.md removes the legacy <!-- TODO: blocker- mark
   assert.doesNotMatch(body, /TODO:\s*blocker-/);
 });
 
-test("step-spec-ac-reviewer SKILL.md closes with TaskUpdate(taskId=T3, status=completed)", async () => {
+test("step-spec-ac-reviewer SKILL.md closes with TaskUpdate(taskId=T4, status=completed)", async () => {
   const body = await readSkill();
-  assert.match(body, /TaskUpdate\(taskId=T3,\s*status=completed\)/);
+  assert.match(body, /TaskUpdate\(taskId=T4,\s*status=completed\)/);
 });
 
 test("step-spec-ac-reviewer SKILL.md has Phase R0 idempotence check (resume fast-path)", async () => {
   const body = await readSkill();
   assert.match(body, /Phase R0 — Idempotence check \(resume fast-path\)/);
   assert.match(body, /already present — resumed/);
-  assert.match(body, /TaskUpdate\(taskId=T3,\s*status=completed\)/);
+  assert.match(body, /TaskUpdate\(taskId=T4,\s*status=completed\)/);
   assert.match(body, /Partial state[\s\S]*?counts as a fail/);
 });
 

@@ -1,16 +1,16 @@
 ---
-description: Internal step skill for kcc-dev-workflow:plan-feature orchestrator. Do not invoke directly — trigger only via the orchestrator. Runs as teammate T4 in the dev-plan-<slug> team. Reads kickoff.md + spec.md + ac.md, derives the 5 scoping answers kcc-testing normally asks the user, then either invokes kcc-testing:write-test-cases with a scope override that skips its Step 2 AskUserQuestion (Path A — when the skill is available) or synthesizes a minimum-viable kcc-testing-schema-compatible YAML inline (Path B fallback). Output always lands at .kcc/tests/cases/<slug>.yaml.
+description: Internal step skill for kcc-dev-workflow:plan-feature orchestrator. Do not invoke directly — trigger only via the orchestrator. Runs as teammate T5 in the dev-plan-<slug> team. Reads kickoff.md + spec.md + ui.md + ac.md, derives the 5 scoping answers kcc-testing normally asks the user (with ui.md providing concrete ui_change + Component Catalog input), then either invokes kcc-testing:write-test-cases with a scope override that skips its Step 2 AskUserQuestion (Path A — when the skill is available) or synthesizes a minimum-viable kcc-testing-schema-compatible YAML inline (Path B fallback). Output always lands at .kcc/tests/cases/<slug>.yaml.
 ---
 
-# Step 4 — Test Case Writer (teammate T4)
+# Step 5 — Test Case Writer (teammate T5)
 
 > ⚠️ Orchestrator-only. Direct invocation is unsupported. This skill is
 > invoked by a teammate spawned by `kcc-dev-workflow:plan-feature` as
-> task T4 in the `dev-plan-<slug>` team.
+> task T5 in the `dev-plan-<slug>` team.
 
 ## Where this runs
 
-**Inside a teammate subagent** (T4). No `AskUserQuestion`. The
+**Inside a teammate subagent** (T5). No `AskUserQuestion`. The
 `Skill` tool IS available — this step may invoke
 `kcc-testing:write-test-cases` when that skill is present in the
 teammate's session (Path A). Otherwise it synthesizes YAML inline
@@ -20,10 +20,16 @@ teammate's session (Path A). Otherwise it synthesizes YAML inline
 
 - `.kcc/specs/<feature-slug>/kickoff.md` — from Phase 0. Supplies
   feature name, platform, input-material path.
-- `.kcc/specs/<feature-slug>/spec.md` — from T1. Supplies FR-NN /
-  US-NN / NFR-NN / edge-case list and System Design cues.
-- `.kcc/specs/<feature-slug>/ac.md` — from T2 (possibly rewritten by
-  T3). Supplies AC-F / AC-N / AC-E and Traces-to map.
+- `.kcc/specs/<feature-slug>/spec.md` — from T1 (possibly rewritten
+  by T4). Supplies FR-NN / US-NN / NFR-NN / edge-case list and System
+  Design cues.
+- `.kcc/specs/<feature-slug>/ui.md` — from T2 (possibly rewritten by
+  T4). Supplies Component Catalog (component names, states, events,
+  emits), User Flows (concrete step sequences), Interaction Specs
+  (loading / error / success visual states), and Accessibility
+  Targets (ARIA locators, keyboard order).
+- `.kcc/specs/<feature-slug>/ac.md` — from T3 (possibly rewritten by
+  T4). Supplies AC-F / AC-N / AC-E and Traces-to map.
 
 ## Output
 
@@ -33,7 +39,7 @@ not change it.
 
 ## Pre-answer derivation (both paths)
 
-Before dispatching to Path A or Path B, T4 derives the five answers
+Before dispatching to Path A or Path B, T5 derives the five answers
 that `kcc-testing:write-test-cases` normally collects via
 `AskUserQuestion` in its Step 2:
 
@@ -41,9 +47,9 @@ that `kcc-testing:write-test-cases` normally collects via
 |---|---|
 | `feature` | kickoff `## Metadata` → `feature name` |
 | `platform` | kickoff `## Metadata` → `platform` |
-| `design_tokens_source` | spec `## System Design` / `### Architecture` — use the token file path if cited; otherwise `null` |
-| `ui_change` | `true` if spec System Design describes user-visible UI elements or the State Machine has observable states; `false` only when the feature is pure data/API with no surfaced rendering |
-| `coverage_triggers` | inspect spec `## Non-functional Requirements` + `## Edge Cases`: security/auth/input-reaching-server NFR → `security: true`; i18n / locale / RTL NFR → `i18n: true`; latency / performance NFR → `performance: true` |
+| `design_tokens_source` | **ui.md** `## Visual Hierarchy & Design Tokens` if it cites a token file; otherwise spec `## System Design` / `### Architecture` fallback; otherwise `null` |
+| `ui_change` | **Primary source is ui.md**: if ui.md's Component Catalog has ≥ 1 row (not just "N/A"), `ui_change: true`; if ui.md is entirely N/A, `false`. Fall back to inferring from spec's System Design only when ui.md is missing. |
+| `coverage_triggers` | inspect spec `## Non-functional Requirements` + `## Edge Cases` AND ui `## Accessibility Targets`: security/auth/input-reaching-server NFR → `security: true`; i18n / locale / RTL NFR → `i18n: true`; latency / performance NFR → `performance: true`. If ui requires WCAG AA but spec lacks an a11y NFR, conservatively set `security: true` (input validation implied). |
 
 If any value cannot be derived confidently, pick the **conservative
 default**: `ui_change: true`, each `coverage_triggers` flag `true`.
@@ -62,10 +68,13 @@ Invoke via the `Skill` tool. Pass this scope override verbatim as
 
 ```
 Scope: invoked inside kcc-dev-workflow:step-test-case-writer as
-teammate T4 in dev-plan-<slug>. The design artifacts are fully
+teammate T5 in dev-plan-<slug>. The design artifacts are fully
 captured in:
 - .kcc/specs/<slug>/kickoff.md
 - .kcc/specs/<slug>/spec.md
+- .kcc/specs/<slug>/ui.md  (Component Catalog + User Flows +
+  Interaction Specs + Accessibility Targets — use these as concrete
+  locators and expected behaviors)
 - .kcc/specs/<slug>/ac.md
 
 SKIP your Step 1 (context scan / hypothesis) and Step 2
@@ -87,7 +96,15 @@ FR-NN / US-NN / NFR-NN list and ac.md's AC-F / AC-N / AC-E Traces-to
 map. Every FR / US / NFR / edge-case already carries a stable
 identifier you can cite as requirement_ref — examples:
 `spec §FR-03`, `spec §NFR-01`, `ac §AC-F02`,
-`kickoff §Key Scenarios item #2`.
+`kickoff §Key Scenarios item #2`, `ui §Component ApplyButton`,
+`ui §User Flows #1`. Use ui refs when a case is specifically
+exercising a UI component or flow; otherwise prefer the
+spec/ac/kickoff identifiers so downstream RTM remains
+implementation-independent.
+
+For `target:` locators inside step actions, prefer ui.md's ARIA-based
+vocabulary (role + accessible name from the Accessibility Targets
+section) over invented selectors.
 
 Run Steps 3-6 normally (generate candidates, populate YAML, lint,
 write + report).
@@ -168,8 +185,10 @@ Every entry in `cases[]` carries:
 - `id` — `TC-<AREA>-<NNN>`, two-digit+ zero-padded, unique.
 - `title` — imperative, short.
 - `priority` — `P0` / `P1` / `P2`. At least one case is `P0`.
-- `requirement_ref` — cites a specific spec/ac identifier, e.g.
-  `"spec §FR-03"` or `"ac §AC-E02"`. Never empty.
+- `requirement_ref` — cites a specific spec / ac / ui / kickoff
+  identifier, e.g. `"spec §FR-03"`, `"ac §AC-E02"`,
+  `"ui §Component ApplyButton"`, or `"ui §User Flows #1"`. Never
+  empty.
 - `tags` — array; includes matching keyword for any active
   `coverage_triggers`.
 - `preconditions.state` — prose description of pre-step-1 state.
@@ -258,7 +277,7 @@ six fields; `rtm_summary.requirement_branches_total` and
 `requirement_branches_covered` counts consistent; at least one case
 is `P0`), then:
 
-1. Call `TaskUpdate(taskId=T4, status=completed)`.
+1. Call `TaskUpdate(taskId=T5, status=completed)`.
 2. Reply `done (already present — resumed)` with the output path.
 3. Stop. Do NOT derive pre-answers, dispatch to Path A/B, or write.
 
@@ -274,7 +293,7 @@ Proceed with the normal sequence below only when this check fails.
 5. Run the path-appropriate checks (Path A post-invocation checks, or
    Path B lint).
 6. Structural self-check (below).
-7. `TaskUpdate(taskId=T4, status=completed)`.
+7. `TaskUpdate(taskId=T5, status=completed)`.
 8. Reply `done` with the output path (and `fell back to Path B
    (reason: …)` if that happened), then stop.
 
@@ -307,7 +326,7 @@ Before `TaskUpdate`:
   self-check item.
 - The path used (A or B) is visible in the teammate reply; Path A →
   Path B fallbacks are explicitly justified.
-- Task T4 has been marked `completed` via `TaskUpdate`.
+- Task T5 has been marked `completed` via `TaskUpdate`.
 
 ## Anti-patterns
 

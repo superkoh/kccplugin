@@ -24,11 +24,12 @@ test("plan-feature SKILL.md uses AskUserQuestion for pre-flight", async () => {
   assert.match(body, /AskUserQuestion/);
 });
 
-test("plan-feature SKILL.md references all 6 step skills by fully-qualified name", async () => {
+test("plan-feature SKILL.md references all 7 step skills by fully-qualified name", async () => {
   const body = await readPlanFeature();
   const stepSkills = [
     "kcc-dev-workflow:step-brainstorm",
     "kcc-dev-workflow:step-spec-writer",
+    "kcc-dev-workflow:step-ui-ux-designer",
     "kcc-dev-workflow:step-ac-writer",
     "kcc-dev-workflow:step-spec-ac-reviewer",
     "kcc-dev-workflow:step-test-case-writer",
@@ -44,16 +45,16 @@ test("plan-feature SKILL.md references both output roots", async () => {
   assert.match(body, /\.kcc\/tests\/cases\//);
 });
 
-test("plan-feature SKILL.md describes the 5-step teammate task chain (T1..T5)", async () => {
+test("plan-feature SKILL.md describes the 6-step teammate task chain (T1..T6)", async () => {
   const body = await readPlanFeature();
-  for (let i = 1; i <= 5; i++) {
+  for (let i = 1; i <= 6; i++) {
     assert.match(body, new RegExp(`T${i}\\b`), `missing reference to task T${i}`);
   }
 });
 
-test("plan-feature SKILL.md no longer carries a T6 task reference", async () => {
+test("plan-feature SKILL.md no longer carries a T7 task reference", async () => {
   const body = await readPlanFeature();
-  assert.doesNotMatch(body, /\bT6\b/, "T6 should be removed — brainstorm is now Phase 0, chain is T1..T5");
+  assert.doesNotMatch(body, /\bT7\b/, "T7 should not appear — chain is T1..T6");
 });
 
 test("plan-feature Phase 0 delegates to step-brainstorm via Skill tool", async () => {
@@ -80,7 +81,7 @@ test("plan-feature SKILL.md Phase 1 is idempotent (reuse team and task chain)", 
   const body = await readPlanFeature();
   assert.match(body, /Create or reuse team and task chain/);
   assert.match(body, /Build or reuse the team \(idempotent\)/);
-  assert.match(body, /Build or reuse the 5-task chain \(idempotent\)/);
+  assert.match(body, /Build or reuse the 6-task chain \(idempotent\)/);
 });
 
 test("plan-feature SKILL.md Phase 2 has resume-check preamble that skips completed steps", async () => {

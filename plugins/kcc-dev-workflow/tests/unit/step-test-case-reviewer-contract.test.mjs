@@ -33,7 +33,7 @@ test("step-test-case-reviewer SKILL.md declares 6 Phases R1..R6", async () => {
   }
 });
 
-test("step-test-case-reviewer uses tc- prefix for drafts to avoid collisions with T3", async () => {
+test("step-test-case-reviewer uses tc- prefix for drafts to avoid collisions with T4", async () => {
   const body = await readSkill();
   assert.match(body, /tc-reviewer-<N>-round1\.md/);
   assert.match(body, /tc-reviewer-<N>-round2\.md/);
@@ -145,9 +145,9 @@ test("step-test-case-reviewer appends to existing review.md (does not recreate h
   assert.match(body, /the file exists|do not recreate its top-level header/i);
 });
 
-test("step-test-case-reviewer declares T5 + Agent + no AskUserQuestion + no Path A", async () => {
+test("step-test-case-reviewer declares T6 + Agent + no AskUserQuestion + no Path A", async () => {
   const body = await readSkill();
-  assert.match(body, /teammate T5|task T5/);
+  assert.match(body, /teammate T6|task T6/);
   assert.match(body, /[Nn]o `?AskUserQuestion`?/);
   assert.match(body, /[Nn]o Path A|kcc-testing ships no standalone test-case review/i);
   assert.match(body, /`?Agent`?\s*tool|via `Agent`|Agent\(/);
@@ -159,16 +159,16 @@ test("step-test-case-reviewer absent-reviewer rule is documented", async () => {
   assert.match(body, /[Rr]etry once/);
 });
 
-test("step-test-case-reviewer closes with TaskUpdate(taskId=T5, status=completed)", async () => {
+test("step-test-case-reviewer closes with TaskUpdate(taskId=T6, status=completed)", async () => {
   const body = await readSkill();
-  assert.match(body, /TaskUpdate\(taskId=T5,\s*status=completed\)/);
+  assert.match(body, /TaskUpdate\(taskId=T6,\s*status=completed\)/);
 });
 
 test("step-test-case-reviewer SKILL.md has Phase R0 idempotence check (resume fast-path)", async () => {
   const body = await readSkill();
   assert.match(body, /Phase R0 — Idempotence check \(resume fast-path\)/);
   assert.match(body, /already present — resumed/);
-  assert.match(body, /TaskUpdate\(taskId=T5,\s*status=completed\)/);
+  assert.match(body, /TaskUpdate\(taskId=T6,\s*status=completed\)/);
   assert.match(body, /Partial state[\s\S]*?(counts as a fail|drop through)/);
 });
 

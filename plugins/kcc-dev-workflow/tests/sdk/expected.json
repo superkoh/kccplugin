@@ -5,6 +5,7 @@
       "kcc-dev-workflow:build-feature",
       "kcc-dev-workflow:step-brainstorm",
       "kcc-dev-workflow:step-spec-writer",
+      "kcc-dev-workflow:step-ui-ux-designer",
       "kcc-dev-workflow:step-ac-writer",
       "kcc-dev-workflow:step-spec-ac-reviewer",
       "kcc-dev-workflow:step-test-case-writer",

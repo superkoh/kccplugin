@@ -82,23 +82,23 @@ test("step-ac-writer SKILL.md writes ac.md to the canonical path", async () => {
   assert.match(body, /\.kcc\/specs\/<feature-slug>\/ac\.md/);
 });
 
-test("step-ac-writer SKILL.md declares teammate T2 + no AskUserQuestion + no Path A", async () => {
+test("step-ac-writer SKILL.md declares teammate T3 + no AskUserQuestion + no Path A", async () => {
   const body = await readSkill();
-  assert.match(body, /teammate T2|task T2/);
+  assert.match(body, /teammate T3|task T3/);
   assert.match(body, /[Nn]o `?AskUserQuestion`? is available/);
   assert.match(body, /no Path A|superpowers does not ship an AC/i);
 });
 
-test("step-ac-writer SKILL.md closes with TaskUpdate(taskId=T2, status=completed)", async () => {
+test("step-ac-writer SKILL.md closes with TaskUpdate(taskId=T3, status=completed)", async () => {
   const body = await readSkill();
-  assert.match(body, /TaskUpdate\(taskId=T2,\s*status=completed\)/);
+  assert.match(body, /TaskUpdate\(taskId=T3,\s*status=completed\)/);
 });
 
 test("step-ac-writer SKILL.md has idempotence check (resume fast-path)", async () => {
   const body = await readSkill();
   assert.match(body, /Idempotence check \(resume fast-path\)/);
   assert.match(body, /already present — resumed/);
-  assert.match(body, /TaskUpdate\(taskId=T2,\s*status=completed\)/);
+  assert.match(body, /TaskUpdate\(taskId=T3,\s*status=completed\)/);
 });
 
 test("step-ac-writer SKILL.md sentinel is v1 (not v1-skeleton)", async () => {
