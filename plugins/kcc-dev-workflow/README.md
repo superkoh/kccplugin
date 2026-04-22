@@ -2,7 +2,7 @@
 
 A two-part dev workflow plugin for the kccplugin marketplace.
 
-## Part 1 — `plan-feature` (v0.1.1, engineer-ready)
+## Part 1 — `plan-feature` (v0.1.2, engineer-ready, resumable)
 
 Orchestrates an end-to-end planning workflow that turns a feature idea
 into four artifacts:
@@ -61,6 +61,27 @@ team, each owning one production step:
 All 5 team tasks chain linearly (T1 → T2 → T3 → T4 → T5). Teammates
 use the `general-purpose` agent type with the `opus` model; reviewer
 and rewriter subagents follow the same pattern.
+
+### Resume support
+
+The plugin is **artifact-driven and resumable**. If a session is
+interrupted mid-run, re-invoking `plan-feature` against the same
+feature picks up from the last completed step rather than restarting.
+
+- **Phase -1 preflight** scans `.kcc/specs/` for prior `kickoff.md`
+  files, matches them against conversation context, and offers Resume
+  / Start fresh / Abort via `AskUserQuestion` when a candidate is
+  detected.
+- **Phase 1 is idempotent**: existing team / existing T1..T5 are
+  reused; only missing pieces are created.
+- **Phase 2 skips completed steps**: per-step resume check reads task
+  status and verifies the artifact matches before spawning teammates.
+- **Each step skill has its own idempotence check** as a second line
+  of defense against drift (task marked completed but artifact gone,
+  or artifact present but task not marked).
+
+No separate state file — task status + filesystem artifacts are the
+single source of truth. Detection is purely artifact-driven.
 
 ### Conditional leverage of companion plugins
 

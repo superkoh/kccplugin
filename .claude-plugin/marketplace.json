@@ -47,10 +47,10 @@
     {
       "name": "kcc-dev-workflow",
       "source": "./plugins/kcc-dev-workflow",
-      "description": "Orchestrates brainstorm → spec → AC → multi-agent review+rewrite → test cases → multi-agent review+rewrite. Phase 0 runs step-brainstorm in the main session; a 5-teammate team chains the production steps. Leverages superpowers:brainstorming and kcc-testing when present, self-contained otherwise.",
-      "version": "0.1.1",
+      "description": "Orchestrates brainstorm → spec → AC → multi-agent review+rewrite → test cases → multi-agent review+rewrite, with resume support (detect prior run, idempotent team / task chain / per-step fast-path). Phase 0 runs step-brainstorm in the main session; a 5-teammate team chains the production steps. Leverages superpowers:brainstorming and kcc-testing when present, self-contained otherwise.",
+      "version": "0.1.2",
       "category": "workflow",
-      "tags": ["workflow", "spec", "testing", "team", "multi-agent"]
+      "tags": ["workflow", "spec", "testing", "team", "multi-agent", "resume"]
     }
   ]
 }

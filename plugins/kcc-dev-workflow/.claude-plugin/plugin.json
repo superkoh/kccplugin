@@ -1,5 +1,5 @@
 {
   "name": "kcc-dev-workflow",
-  "version": "0.1.1",
-  "description": "Orchestrates a feature from idea to QA test cases. Phase 0 (step-brainstorm, main session) produces kickoff.md; a 5-teammate team then chains spec → AC → multi-agent review+rewrite → test cases → multi-agent review+rewrite. Leverages superpowers:brainstorming and kcc-testing:write-test-cases when present; self-contained Path B fallback otherwise. Part 2 (build-feature) is a placeholder."
+  "version": "0.1.2",
+  "description": "Orchestrates a feature from idea to QA test cases. Phase -1 detects resumable prior runs (idempotent team / task chain / per-step fast-path). Phase 0 (step-brainstorm, main session) produces kickoff.md; a 5-teammate team then chains spec → AC → multi-agent review+rewrite → test cases → multi-agent review+rewrite. Leverages superpowers:brainstorming and kcc-testing:write-test-cases when present; self-contained Path B fallback otherwise. Part 2 (build-feature) is a placeholder."
 }
