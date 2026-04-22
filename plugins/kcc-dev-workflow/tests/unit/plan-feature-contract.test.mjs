@@ -68,6 +68,34 @@ test("plan-feature SKILL.md references kickoff.md (not _kickoff.md)", async () =
   assert.doesNotMatch(body, /_kickoff\.md/, "underscore-prefixed kickoff.md is stale — step-brainstorm now owns the single-file kickoff.md");
 });
 
+test("plan-feature SKILL.md declares Phase -1 preflight / state inference for resume", async () => {
+  const body = await readPlanFeature();
+  assert.match(body, /Phase -1 — Preflight \/ state inference/);
+  assert.match(body, /State inference rules/);
+  assert.match(body, /Detected prior plan/);
+  assert.match(body, /Resume[\s\S]*?<slug>[\s\S]*?last completed step/);
+});
+
+test("plan-feature SKILL.md Phase 1 is idempotent (reuse team and task chain)", async () => {
+  const body = await readPlanFeature();
+  assert.match(body, /Create or reuse team and task chain/);
+  assert.match(body, /Build or reuse the team \(idempotent\)/);
+  assert.match(body, /Build or reuse the 5-task chain \(idempotent\)/);
+});
+
+test("plan-feature SKILL.md Phase 2 has resume-check preamble that skips completed steps", async () => {
+  const body = await readPlanFeature();
+  assert.match(body, /Phase 2 — Execute steps sequentially \(with resume\)/);
+  assert.match(body, /resume check/i);
+  assert.match(body, /already complete \(resumed\)/);
+});
+
+test("plan-feature SKILL.md anti-pattern distinguishes fresh-failure recreate from cross-session resume", async () => {
+  const body = await readPlanFeature();
+  assert.match(body, /Do not re-create the team/);
+  assert.match(body, /Resume across sessions[\s\S]*?explicitly supported/);
+});
+
 test("plan-feature SKILL.md references failure escalation with 4 stages", async () => {
   const body = await readPlanFeature();
   assert.match(body, /1st failure/i);

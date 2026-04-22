@@ -27,6 +27,61 @@ Trigger phrases (Chinese + English):
 
 ## Process
 
+### Phase -1 — Preflight / state inference (resume detection)
+
+Before invoking `step-brainstorm`, check whether a prior run for this
+feature exists that the user may want to resume.
+
+1. **Detect candidate resumable features.** List directories under
+   `.kcc/specs/` that contain a non-empty `kickoff.md`. For each, read
+   its `## Metadata` block to extract `feature name` and `slug`. Build
+   a candidate list.
+
+2. **Match against conversation context.** Scan the last ~20 turns for
+   a feature name or slug reference. Narrow the candidate list to ones
+   that plausibly match; rank by recency of
+   `.kcc/specs/<slug>/kickoff.md` mtime.
+
+3. **If at least one candidate matches, confirm with a single
+   `AskUserQuestion`**:
+
+   - "Detected prior plan for `<slug>` (`<feature name>`) — resume it
+     or start fresh?"
+     - **Resume** `<slug>` from its last completed step (recommended)
+     - Start fresh (step-brainstorm will derive `<slug>-v2` as usual)
+     - Abort
+
+   If no candidates match, skip straight to Phase 0.
+
+4. **Resume branch.** If the user picks Resume:
+   - Skip Phase 0 (do NOT invoke `step-brainstorm`).
+   - Set `<feature-slug>` and `<platform>` by reading
+     `.kcc/specs/<slug>/kickoff.md` `## Metadata` directly.
+   - Proceed to Phase 1 under the State inference rules below.
+
+5. **Fresh branch.** If the user picks Start fresh (or no candidates):
+   proceed normally to Phase 0.
+
+### State inference rules
+
+These rules apply in Phases 1 and 2 regardless of whether the run is
+fresh or resumed — they are the single mechanical contract that keeps
+fresh and resume paths symmetric.
+
+1. Team `dev-plan-<slug>` missing → Phase 1 builds it normally.
+2. Team exists but TaskList is empty → Phase 1 adds T1..T5.
+3. Team exists with T1..T5 already present → skip TaskCreate in
+   Phase 1; proceed to Phase 2 using the existing tasks.
+4. Phase 2 per `T<N>`:
+   - If `T<N>.status == completed` AND the expected output file exists
+     and is non-empty AND (for N ∈ {3, 5}) `review.md` contains the
+     required section header → emit
+     `✓ Step <N>: <role> already complete (resumed)` and skip spawning;
+     continue to `T<N+1>`.
+   - Otherwise → spawn normally. (Each step skill carries its own
+     idempotence check as a second line of defense against drift
+     between task status and artifact state.)
+
 ### Phase 0 — Brainstorm (delegated to step-brainstorm)
 
 The interactive brainstorm runs inside a dedicated skill, not inline in
@@ -57,9 +112,13 @@ in Phase 1. Also create the test-case output root:
 mkdir -p .kcc/tests/cases
 ```
 
-### Phase 1 — Create team and task chain
+### Phase 1 — Create or reuse team and task chain
 
-1. **TeamCreate:**
+1. **Build or reuse the team (idempotent).** First check whether team
+   `dev-plan-<feature-slug>` already exists (use `TeamList`, or catch a
+   duplicate-name error from `TeamCreate`). If it exists, reuse it
+   without recreating — its existing task list is the durable state.
+   Otherwise:
    ```
    TeamCreate(
      team_name="dev-plan-<feature-slug>",
@@ -68,7 +127,12 @@ mkdir -p .kcc/tests/cases
    )
    ```
 
-2. **Create 5 tasks with linear `addBlockedBy` chain.** Use the task description template below for each. (Brainstorm is not a teammate — it ran in Phase 0.)
+2. **Build or reuse the 5-task chain (idempotent).** Call `TaskList`
+   for the team. If T1..T5 are all present, skip creation entirely.
+   If some are missing, create only the missing ones with the correct
+   `addBlockedBy` link into the existing chain. If none exist, create
+   the full chain below. Use the task description template for each.
+   (Brainstorm is not a teammate — it ran in Phase 0.)
 
    | # | subject | blocked by |
    |---|---------|------------|
@@ -111,9 +175,20 @@ Each task's `description` (set via TaskCreate's `description` field) uses this f
 - Run TaskUpdate(status=completed) when done
 ```
 
-### Phase 2 — Execute steps sequentially
+### Phase 2 — Execute steps sequentially (with resume)
 
-For each step N from 1 to 5:
+For each step N from 1 to 5, first run the **resume check** before the
+spawn sequence below:
+
+Read `T<N>` via `TaskGet`. If `status == completed` AND the expected
+output file exists and is non-empty AND (for N ∈ {3, 5}) `review.md`
+contains the required section header (`## spec-ac` for N=3,
+`## test-cases` for N=5), emit
+`✓ Step <N>: <role> already complete (resumed)` and continue to
+`T<N+1>`. If `status == completed` but the artifact check fails
+(drift), treat T<N> as `pending` and proceed with the normal sequence.
+
+Normal sequence:
 
 1. **Wait for T<N> to be unblocked.** Poll TaskList; proceed when T<N> status is `pending` and every task in its `blockedBy` is `completed`.
 
@@ -208,6 +283,6 @@ Before returning to the user, confirm:
 - **Do not write any teammate's output yourself.** Your job is orchestration. If you find yourself reaching for Write on spec.md, stop — spawn the teammate instead.
 - **Do not skip step-brainstorm.** The kickoff file it writes is the only thing teammates use to coordinate; without it they'll each ask the user, fragmenting the conversation.
 - **Do not parallelize steps.** The chain is strictly linear. If you're tempted to spawn T1 and T2 together, remember T2 reads spec.md which T1 writes.
-- **Do not re-open the team** if something fails mid-workflow. Use the existing team; the task list is the durable state.
+- **Do not re-create the team** on fresh failures within a single run. Use the existing team; the task list is the durable state. Resume across sessions, by contrast, is explicitly supported — Phase -1 detects it and Phase 1's "reuse if exists" rule reattaches to the durable team / task list.
 
 <!-- kcc-dev-workflow-plan-feature-sentinel: v1 -->
