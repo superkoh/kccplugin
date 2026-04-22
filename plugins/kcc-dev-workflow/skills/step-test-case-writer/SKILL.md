@@ -246,6 +246,26 @@ drop the offending case before writing, not after:
 
 ## Process
 
+### 0. Idempotence check (resume fast-path)
+
+If `.kcc/tests/cases/<feature-slug>.yaml` already exists, parses as
+YAML, and passes the Path B lint checks (all 9 top-level required
+fields present; `ui_change: true` → at least one case has
+`assertions.visual[]`; every `coverage_triggers.X: true` has a tagged
+case; every case `requirement_ref` non-empty and resolves to a real
+identifier in spec.md / kickoff.md; every case `testability` has all
+six fields; `rtm_summary.requirement_branches_total` and
+`requirement_branches_covered` counts consistent; at least one case
+is `P0`), then:
+
+1. Call `TaskUpdate(taskId=T4, status=completed)`.
+2. Reply `done (already present — resumed)` with the output path.
+3. Stop. Do NOT derive pre-answers, dispatch to Path A/B, or write.
+
+Proceed with the normal sequence below only when this check fails.
+
+### Normal sequence
+
 1. Read `kickoff.md` + `spec.md` + `ac.md`.
 2. Derive the five pre-answers (table above).
 3. Inspect the teammate session's available skills. Pick Path A

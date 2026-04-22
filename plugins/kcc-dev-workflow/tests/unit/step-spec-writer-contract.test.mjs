@@ -139,6 +139,14 @@ test("step-spec-writer SKILL.md closes with TaskUpdate(taskId=T1, status=complet
   assert.match(body, /TaskUpdate\(taskId=T1,\s*status=completed\)/);
 });
 
+test("step-spec-writer SKILL.md has idempotence check (resume fast-path)", async () => {
+  const body = await readSkill();
+  assert.match(body, /Idempotence check \(resume fast-path\)/);
+  assert.match(body, /already present — resumed/);
+  assert.match(body, /TaskUpdate\(taskId=T1,\s*status=completed\)/);
+  assert.match(body, /Do NOT[\s\S]*?write/i);
+});
+
 test("step-spec-writer SKILL.md sentinel is v1 (not v1-skeleton)", async () => {
   const body = await readSkill();
   assert.match(body, /kcc-dev-workflow-step-spec-writer-sentinel: v1\b/);

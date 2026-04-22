@@ -166,6 +166,14 @@ test("step-test-case-writer closes with TaskUpdate(taskId=T4, status=completed)"
   assert.match(body, /TaskUpdate\(taskId=T4,\s*status=completed\)/);
 });
 
+test("step-test-case-writer SKILL.md has idempotence check (resume fast-path)", async () => {
+  const body = await readSkill();
+  assert.match(body, /Idempotence check \(resume fast-path\)/);
+  assert.match(body, /already present — resumed/);
+  assert.match(body, /TaskUpdate\(taskId=T4,\s*status=completed\)/);
+  assert.match(body, /Do NOT[\s\S]*?(derive|dispatch|write)/i);
+});
+
 test("step-test-case-writer sentinel is v1 (not v1-skeleton)", async () => {
   const body = await readSkill();
   assert.match(body, /kcc-dev-workflow-step-test-case-writer-sentinel: v1\b/);

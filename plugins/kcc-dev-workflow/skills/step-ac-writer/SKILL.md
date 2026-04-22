@@ -116,6 +116,24 @@ pointer for the reviewer.
 
 ## Process
 
+### 0. Idempotence check (resume fast-path)
+
+If `.kcc/specs/<feature-slug>/ac.md` already exists, is non-empty, and
+passes the structural self-check below (top-level
+`# Acceptance Criteria — <feature-name>` header; 3 group sub-sections
+Functional / Non-functional / Edge Cases; every AC has `Traces to:` /
+`**Given**` / `**When**` / `**Then**`; every spec FR / US / NFR /
+edge-case is covered by ≥ 1 AC; AC-F / AC-N / AC-E numbering correct;
+`[ASSUMED: ...]` markers propagated; `## Pending AC (blocked by open
+items)` section present iff spec has Carried-forward items; no bare
+`TBD`), then:
+
+1. Call `TaskUpdate(taskId=T2, status=completed)`.
+2. Reply `done (already present — resumed)` with the output path.
+3. Stop. Do NOT read inputs or write.
+
+Proceed to step 1 (Read the inputs) only when this check fails.
+
 ### 1. Read the inputs
 
 Read `kickoff.md` and `spec.md` in full. Parse:

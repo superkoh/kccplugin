@@ -86,6 +86,20 @@ These **must not be silently resolved** in a teammate context:
 
 ## Process
 
+### 0. Idempotence check (resume fast-path)
+
+If `.kcc/specs/<feature-slug>/spec.md` already exists, is non-empty,
+and passes the structural self-check below (7 section headers in
+order; 4 System Design sub-sections; ≥ 3 US, ≥ 5 FR, ≥ 3 NFR, ≥ 5
+edge cases; no bare `TBD`; every `ASSUMPTION:` paired with a Carried
+forward entry), then:
+
+1. Call `TaskUpdate(taskId=T1, status=completed)`.
+2. Reply `done (already present — resumed)` with the output path.
+3. Stop. Do NOT read inputs, dispatch to Path A/B, or write.
+
+Proceed to step 1 (Read kickoff.md) only when this check fails.
+
 ### 1. Read kickoff.md
 
 Read `.kcc/specs/<feature-slug>/kickoff.md` in full. Verify all 9

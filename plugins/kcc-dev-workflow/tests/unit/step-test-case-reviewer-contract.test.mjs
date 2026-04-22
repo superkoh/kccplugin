@@ -164,6 +164,14 @@ test("step-test-case-reviewer closes with TaskUpdate(taskId=T5, status=completed
   assert.match(body, /TaskUpdate\(taskId=T5,\s*status=completed\)/);
 });
 
+test("step-test-case-reviewer SKILL.md has Phase R0 idempotence check (resume fast-path)", async () => {
+  const body = await readSkill();
+  assert.match(body, /Phase R0 — Idempotence check \(resume fast-path\)/);
+  assert.match(body, /already present — resumed/);
+  assert.match(body, /TaskUpdate\(taskId=T5,\s*status=completed\)/);
+  assert.match(body, /Partial state[\s\S]*?(counts as a fail|drop through)/);
+});
+
 test("step-test-case-reviewer sentinel is v1 (not v1-skeleton)", async () => {
   const body = await readSkill();
   assert.match(body, /kcc-dev-workflow-step-test-case-reviewer-sentinel: v1\b/);

@@ -76,6 +76,27 @@ directive ("You are R1 — review from the Requirements lens. Focus on
 
 ## Process
 
+### Phase R0 — Idempotence check (resume fast-path)
+
+If `.kcc/specs/<feature-slug>/review.md` already contains a complete
+`## spec-ac` section with all 7 required sub-sections (`### Reviewers`,
+`### Round 2 convergence highlights`, `### Consensus findings` with
+all four severity sub-headers, `### Traceability audit`, `### Vote`,
+`### Final verdict`, `### Rewrite`), AND `### Final verdict` carries
+one of the three allowed values (approve / approve-with-nits /
+request-changes), AND (if the Rewrite sub-section says `applied`)
+`.pre-review/spec.md` and `.pre-review/ac.md` exist — then:
+
+1. Call `TaskUpdate(taskId=T3, status=completed)`.
+2. Reply `done (already present — resumed)` with the review.md path.
+3. Stop. Do NOT spawn reviewer or rewriter subagents. Do NOT modify
+   spec.md / ac.md.
+
+Partial state (some drafts in `review-drafts/` but no complete
+`## spec-ac` section in `review.md`) counts as a fail for this check
+— drop through to Phase R1 and regenerate; overwriting stale drafts is
+expected.
+
 ### Phase R1 — Parallel independent review
 
 Spawn 3 reviewer subagents in parallel via `Agent`:
