@@ -250,14 +250,16 @@ export async function appendAskUserQuestionEvent(sessionDir) {
 }
 
 // C-signal: is the file path review-worthy by convention? Case-insensitive
-// substring match on "spec" or "plan" anywhere in the lowered path.
-// Matches docs/specs/, docs/plans/, docs/feature-specs/, archives/Plans/,
-// and — acceptably for an MVP — also "specifications/" and "planning/".
-// Tighten to path-segment equality if the false-positive causes real noise.
+// substring match on "specs" or "plans" (path separators normalized). Matches
+// docs/specs/, docs/plans/, docs/feature-specs/, archives/Plans/, etc.
+// Substring match (not path-segment equality) is deliberate — it catches
+// common variants without forcing a canonical directory name. Words like
+// "specifications" or "planning" do not match because they lack the trailing
+// "s" / don't contain "plans" respectively.
 export function matchReviewPath(absPath) {
   if (!absPath || typeof absPath !== "string") return false;
   const p = absPath.replace(/\\/g, "/").toLowerCase();
-  return p.includes("spec") || p.includes("plan");
+  return p.includes("specs") || p.includes("plans");
 }
 
 // B-signal: was AskUserQuestion invoked since the most recent turn boundary?

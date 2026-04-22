@@ -419,7 +419,7 @@ test("matchReviewPath matches /specs/ and /plans/ substrings case-insensitively"
   assert.equal(matchReviewPath("/x/docs/notes/f.md"), false);
   assert.equal(matchReviewPath("/x/README.md"), false);
   assert.equal(matchReviewPath("/x/CHANGELOG.md"), false);
-  assert.equal(matchReviewPath("/x/specifications/g.md"), true);  // "specs" substring in "specifications"
+  assert.equal(matchReviewPath("/x/specifications/g.md"), false);  // "specifications" lacks trailing "s" in "specs"
   assert.equal(matchReviewPath(""), false);
   assert.equal(matchReviewPath(null), false);
   assert.equal(matchReviewPath(undefined), false);
