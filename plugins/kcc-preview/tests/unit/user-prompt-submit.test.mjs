@@ -101,3 +101,40 @@ test("dead server port -> restart succeeds, reminder emitted with new port", asy
     if (pid && pid !== 99999999) process.kill(pid, "SIGTERM");
   } catch {}
 });
+
+test("live server -> also appends turn_start to sidecar", async (t) => {
+  const { WRITE_SIDECAR } = await import("../../scripts/lib/hook-core.mjs");
+  const root = await mkdtemp(path.join(os.tmpdir(), "kcc-ups-ts-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const { srv, port } = await startFakeHealth({ sessionId: "sx", uptime: 1 });
+  t.after(() => new Promise(r => srv.close(r)));
+
+  const sessionDir = path.join(root, "sx");
+  await mkdir(sessionDir, { recursive: true });
+  await writeFile(path.join(sessionDir, "server.port"), String(port));
+  await writeFile(path.join(sessionDir, "server.pid"), String(process.pid));
+
+  const { code } = await runHook(
+    { session_id: "sx", hook_event_name: "UserPromptSubmit", prompt: "hi" },
+    { KCC_PREVIEW_ROOT: root },
+  );
+  assert.equal(code, 0);
+  const { readFile } = await import("node:fs/promises");
+  const raw = await readFile(path.join(sessionDir, WRITE_SIDECAR), "utf-8");
+  const line = JSON.parse(raw.trim().split("\n").at(-1));
+  assert.equal(line.event, "turn_start");
+});
+
+test("no session dir -> turn_start not written", async (t) => {
+  const { WRITE_SIDECAR } = await import("../../scripts/lib/hook-core.mjs");
+  const root = await mkdtemp(path.join(os.tmpdir(), "kcc-ups-nodir-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+
+  await runHook(
+    { session_id: "never-started", hook_event_name: "UserPromptSubmit", prompt: "hi" },
+    { KCC_PREVIEW_ROOT: root },
+  );
+  const { stat } = await import("node:fs/promises");
+  await assert.rejects(() =>
+    stat(path.join(root, "never-started", WRITE_SIDECAR)));
+});

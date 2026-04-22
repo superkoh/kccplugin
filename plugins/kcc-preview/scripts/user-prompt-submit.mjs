@@ -14,7 +14,7 @@ import path from "node:path";
 import os from "node:os";
 import http from "node:http";
 import { fileURLToPath } from "node:url";
-import { buildReminderContext, emitUserPromptSubmit, sessionDirFor } from "./lib/hook-core.mjs";
+import { buildReminderContext, emitUserPromptSubmit, sessionDirFor, appendTurnStart } from "./lib/hook-core.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SERVER_ENTRY = path.join(__dirname, "server.mjs");
@@ -85,6 +85,10 @@ async function main() {
   const dir = sessionDirFor(ROOT, sessionId);
   const portFile = path.join(dir, "server.port");
   if (!existsSync(portFile)) return emit("");
+
+  // Turn boundary — write before server health work so even if the server is
+  // dead this turn, Stop still sees the marker.
+  await appendTurnStart(dir);
 
   let port = Number(await readFile(portFile, "utf-8"));
   let alive = await pingHealth(port);
