@@ -367,3 +367,44 @@ test("emitStopBlock output passes Stop schema", async () => {
   assert.equal(j.decision, "block");
   assert.equal(j.reason, "please push");
 });
+
+test("appendWriteSidecar line now carries event:write", async (t) => {
+  const sessionDir = await mkdtemp(path.join(os.tmpdir(), "kcc-sc-"));
+  t.after(() => rm(sessionDir, { recursive: true, force: true }));
+  await appendWriteSidecar(sessionDir, { tool: "Write", filePath: "/abs/one.md" });
+  const raw = await readFile(path.join(sessionDir, WRITE_SIDECAR), "utf-8");
+  const line = JSON.parse(raw.trim().split("\n")[0]);
+  assert.equal(line.event, "write");
+  assert.equal(line.tool, "Write");
+  assert.equal(line.file_path, path.normalize("/abs/one.md"));
+});
+
+test("appendTurnStart appends event:turn_start line", async (t) => {
+  const sessionDir = await mkdtemp(path.join(os.tmpdir(), "kcc-ts-"));
+  t.after(() => rm(sessionDir, { recursive: true, force: true }));
+  const { appendTurnStart } = await import("../../scripts/lib/hook-core.mjs");
+  await appendTurnStart(sessionDir);
+  const raw = await readFile(path.join(sessionDir, WRITE_SIDECAR), "utf-8");
+  const line = JSON.parse(raw.trim().split("\n")[0]);
+  assert.equal(line.event, "turn_start");
+  assert.ok(typeof line.ts === "number" && line.ts > 0);
+});
+
+test("appendAskUserQuestionEvent appends event:ask_user_question line", async (t) => {
+  const sessionDir = await mkdtemp(path.join(os.tmpdir(), "kcc-aq-"));
+  t.after(() => rm(sessionDir, { recursive: true, force: true }));
+  const { appendAskUserQuestionEvent } = await import("../../scripts/lib/hook-core.mjs");
+  await appendAskUserQuestionEvent(sessionDir);
+  const raw = await readFile(path.join(sessionDir, WRITE_SIDECAR), "utf-8");
+  const line = JSON.parse(raw.trim().split("\n")[0]);
+  assert.equal(line.event, "ask_user_question");
+});
+
+test("appendTurnStart and appendAskUserQuestionEvent silently no-op on empty sessionDir", async () => {
+  const { appendTurnStart, appendAskUserQuestionEvent } =
+    await import("../../scripts/lib/hook-core.mjs");
+  await appendTurnStart(null);
+  await appendTurnStart("");
+  await appendAskUserQuestionEvent(null);
+  await appendAskUserQuestionEvent("");
+});

@@ -134,7 +134,7 @@ export async function appendWriteSidecar(sessionDir, { tool, filePath, cwd }) {
   const abs = path.isAbsolute(filePath)
     ? path.normalize(filePath)
     : path.normalize(path.join(cwd || process.cwd(), filePath));
-  const line = JSON.stringify({ ts: Date.now(), tool, file_path: abs }) + "\n";
+  const line = JSON.stringify({ event: "write", ts: Date.now(), tool, file_path: abs }) + "\n";
   try { await appendFile(path.join(sessionDir, WRITE_SIDECAR), line); } catch {}
 }
 
@@ -158,6 +158,7 @@ export async function scanSidecarForPushableFiles(sessionDir, { contentDir } = {
     if (!line) continue;
     let e;
     try { e = JSON.parse(line); } catch { continue; }
+    if (e.event && e.event !== "write") continue;   // 跳过 turn_start / ask_user_question
     const fp = e.file_path;
     if (!fp || seen.has(fp)) continue;
     seen.add(fp);
@@ -226,4 +227,24 @@ export function buildStopBlockReason({ missingPaths, contentDir }) {
 
 export function emitStopBlock(reason) {
   return JSON.stringify({ decision: "block", reason });
+}
+
+// Turn boundary marker, written by the UserPromptSubmit hook. The Stop hook
+// reads the sidecar backward to find the most recent turn_start, then scans
+// forward to decide if `ask_user_question` happened "this turn". Errors are
+// swallowed — missing markers degrade to "no intent signal", never to a
+// broken hook.
+export async function appendTurnStart(sessionDir) {
+  if (!sessionDir) return;
+  const line = JSON.stringify({ event: "turn_start", ts: Date.now() }) + "\n";
+  try { await appendFile(path.join(sessionDir, WRITE_SIDECAR), line); } catch {}
+}
+
+// Intent signal: AI just called AskUserQuestion. Written by the PostToolUse
+// hook matching on tool_name="AskUserQuestion". One event per call is enough
+// — Stop only asks "was at least one call made this turn?".
+export async function appendAskUserQuestionEvent(sessionDir) {
+  if (!sessionDir) return;
+  const line = JSON.stringify({ event: "ask_user_question", ts: Date.now() }) + "\n";
+  try { await appendFile(path.join(sessionDir, WRITE_SIDECAR), line); } catch {}
 }
