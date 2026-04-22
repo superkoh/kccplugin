@@ -1,3 +1,3 @@
 <!-- kcc-preview-reminder: v1 -->
-kcc-preview @ {{URL}} — only push when the content is worth a browser trip;
-otherwise stay silent about the preview.
+kcc-preview @ {{URL}} — push only when you're pausing for the user's
+review or decision; otherwise stay silent about the preview.
