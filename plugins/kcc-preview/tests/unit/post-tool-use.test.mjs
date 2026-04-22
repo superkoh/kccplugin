@@ -136,3 +136,40 @@ test("multiple calls accumulate lines in order", async (t) => {
   const lines = raw.trim().split("\n").map((l) => JSON.parse(l));
   assert.deepEqual(lines.map((l) => l.file_path), ["/a.md", "/b.md", "/c.md"].map(path.normalize));
 });
+
+test("AskUserQuestion tool -> appends ask_user_question event, no file_path", async (t) => {
+  const { previewRoot, sessionId, sessionDir } = await scaffold(t);
+
+  const { code } = await runHook(
+    {
+      session_id: sessionId,
+      cwd: "/work",
+      hook_event_name: "PostToolUse",
+      tool_name: "AskUserQuestion",
+      tool_input: { questions: [{ question: "pick one" }] },
+    },
+    { KCC_PREVIEW_ROOT: previewRoot },
+  );
+  assert.equal(code, 0);
+  const { readFile } = await import("node:fs/promises");
+  const raw = await readFile(path.join(sessionDir, "tool-writes.jsonl"), "utf-8");
+  const line = JSON.parse(raw.trim());
+  assert.equal(line.event, "ask_user_question");
+  assert.equal(line.file_path, undefined);
+});
+
+test("AskUserQuestion with no tool_input -> still appends event", async (t) => {
+  const { previewRoot, sessionId, sessionDir } = await scaffold(t);
+
+  await runHook(
+    {
+      session_id: sessionId,
+      hook_event_name: "PostToolUse",
+      tool_name: "AskUserQuestion",
+    },
+    { KCC_PREVIEW_ROOT: previewRoot },
+  );
+  const { readFile } = await import("node:fs/promises");
+  const raw = await readFile(path.join(sessionDir, "tool-writes.jsonl"), "utf-8");
+  assert.match(raw, /"event":"ask_user_question"/);
+});
