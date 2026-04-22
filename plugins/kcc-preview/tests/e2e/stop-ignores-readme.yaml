@@ -1,0 +1,29 @@
+# L3 case: Stop hook v0.2.0 must NOT block when the file is a plain README
+# (no C-signal, no B-signal). The turn ends on its own, with no forced push.
+#
+# Negative assertion: stdout does NOT contain the push announcement string.
+
+name: "kcc-preview Stop hook ignores plain README writes"
+prompt: |
+  Write a markdown README to /tmp/kcc-e2e/README.md containing at least
+  60 lines of plausible project documentation (overview, usage, features).
+  After writing the file, respond with a single short sentence confirming
+  the file was written. Do not talk about previews, browsers, or push.
+  Then stop.
+model: claude-haiku-4-5-20251001
+maxBudgetUsd: 0.10
+timeoutMs: 120000
+
+allowedTools:
+  - Write
+  - Bash
+
+expect:
+  exitCode: 0
+  parsedJson:
+    type: "result"
+    subtype: "success"
+    is_error: false
+  stdout:
+    notContains:
+      - "已推送到 preview"
