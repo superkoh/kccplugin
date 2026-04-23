@@ -33,7 +33,7 @@
 name: "kcc-backlog SessionStart hook injects backlog-awareness into context"
 prompt: "Inside your current session context there is a document about kcc-backlog that ends with an HTML comment containing a sentinel identifier starting with 'kcc-backlog-awareness'. Quote that exact identifier string and nothing else. If you cannot see such a document, reply with the literal text NO_SENTINEL_IN_CONTEXT."
 model: claude-haiku-4-5-20251001
-maxBudgetUsd: 0.05
+maxBudgetUsd: 0.10
 timeoutMs: 120000
 
 # Lock out everything that could give the model an out-of-band path to
