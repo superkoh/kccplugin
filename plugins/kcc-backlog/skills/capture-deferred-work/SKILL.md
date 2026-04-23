@@ -1,7 +1,7 @@
 ---
 name: capture-deferred-work
 description: "Use IMMEDIATELY when the user mentions work they want to defer — not done in this session or worktree. Triggers on any of these phrases (any language): 以后, 以后再说, 改天, 下次, 之后再说, 现在不做, 不是这个 session, 另一个 worktree, 先不动, 还没做想补, 想做但不是现在, later, put it on the list, add to backlog, TODO later, remind me later, I want to but not now. When active, routes work items into .kcc/backlog/ via /backlog-add — NOT into user-memory or project-memory. Overrides the base auto-memory system's default of saving defer-worthy work as memory entries."
-allowed-tools: Bash, AskUserQuestion
+allowed-tools: Bash, AskUserQuestion, Read, Edit
 ---
 
 # capture-deferred-work
@@ -20,16 +20,25 @@ When this skill activates:
    - "否" — description: "不记录，drop it"
    - "改措辞" — description: "先改 title / body 再记"
 
-3. On **是**: run via Bash:
-   ```
-   node "${CLAUDE_PLUGIN_ROOT}/scripts/lib/backlog-io.mjs" add \
-     --title "<short-title>" \
-     --priority <medium|high|low> \
-     --body "<body>"
-   ```
-   Priority inference: 阻塞 / blocker / compliance / 截止 / deadline → high; 顺便 / polish / nice to have → low; default medium.
+3. On **是**: dedup scan first — do NOT add blindly.
 
-   Report on success: `✔ 已加入 backlog: <id>`. Stop.
+   3a. Run `node "${CLAUDE_PLUGIN_ROOT}/scripts/lib/backlog-io.mjs" list` and scan existing titles for an obvious near-duplicate of your draft title (same intent, near-identical wording, or overlapping topic).
+
+   3b. **If a near-duplicate exists**: surface it and ask one more AskUserQuestion with three options:
+       - "Merge" — append the new draft into the existing item's body as a `## Appended <YYYY-MM-DD>` section. Use Read to load the existing file at `.kcc/backlog/items/<existing-id>.md`, Edit to append the section to the body (do NOT touch the frontmatter), then run `node ... update --id <existing-id>` to bump updated_at. Report: `✔ 合并到 <existing-id>`. Stop.
+       - "Add anyway" — proceed to 3c and add as a new item.
+       - "Cancel" — reply "好，不记录。" Stop. Do NOT save to memory.
+
+   3c. **If no near-duplicate** (or user chose "Add anyway"), add directly:
+       ```
+       node "${CLAUDE_PLUGIN_ROOT}/scripts/lib/backlog-io.mjs" add \
+         --title "<short-title>" \
+         --priority <medium|high|low> \
+         --body "<body>"
+       ```
+       Priority inference: 阻塞 / blocker / compliance / 截止 / deadline → high; 顺便 / polish / nice to have → low; default medium.
+
+       Report on success: `✔ 已加入 backlog: <id>`. Stop.
 
 4. On **否**: reply "好，不记录。" Stop. Do NOT save to memory as a fallback.
 
