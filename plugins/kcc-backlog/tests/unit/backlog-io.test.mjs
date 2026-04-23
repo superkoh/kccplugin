@@ -192,6 +192,40 @@ test("deleteItem removes a file from items/", async () => {
   }
 });
 
+test("mergeInto throws when target and source are the same id", async () => {
+  const dir = await tmpBacklog();
+  try {
+    const id = await addItem({ root: dir, title: "same", body: "body", now: new Date("2026-04-17") });
+    await assert.rejects(
+      () => mergeInto({ root: dir, targetId: id, sourceId: id }),
+      /target and source are the same id/,
+    );
+    const item = await readItem({ root: dir, id });
+    assert.equal(item.body.trim(), "body");
+  } finally {
+    await rm(dir, { recursive: true });
+  }
+});
+
+test("addItem collision check includes archived ids (no archive-slot overwrite)", async () => {
+  const dir = await tmpBacklog();
+  try {
+    const now = new Date("2026-04-17");
+    const first = await addItem({ root: dir, title: "foo", body: "first-body", now });
+    await moveToArchive({ root: dir, id: first, status: "done", now: new Date("2026-04-17T08:00:00Z") });
+    const second = await addItem({ root: dir, title: "foo", body: "second-body", now });
+    assert.notEqual(second, first, "second add must not collide with archived id");
+    assert.equal(second, `${first}-2`);
+    await moveToArchive({ root: dir, id: second, status: "done", now: new Date("2026-04-17T09:00:00Z") });
+    const firstArchive = await readItem({ root: dir, id: first, dir: "archive" });
+    const secondArchive = await readItem({ root: dir, id: second, dir: "archive" });
+    assert.equal(firstArchive.body.trim(), "first-body", "first archive must survive");
+    assert.equal(secondArchive.body.trim(), "second-body");
+  } finally {
+    await rm(dir, { recursive: true });
+  }
+});
+
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 

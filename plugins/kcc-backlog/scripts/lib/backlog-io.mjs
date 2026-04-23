@@ -119,8 +119,11 @@ export async function listItems({ root }) {
 
 export async function addItem({ root, title, body = "", priority = "medium", tags = [], now = new Date(), session = null }) {
   await mkdir(path.join(root, "items"), { recursive: true });
-  const existing = await listIds(root, "items");
-  const id = generateId({ title, date: now, existing });
+  const [activeIds, archivedIds] = await Promise.all([
+    listIds(root, "items"),
+    listIds(root, "archive"),
+  ]);
+  const id = generateId({ title, date: now, existing: [...activeIds, ...archivedIds] });
   const iso = now.toISOString();
   const fm = {
     id,
@@ -156,6 +159,9 @@ export async function moveToArchive({ root, id, status = "done", now = new Date(
 }
 
 export async function mergeInto({ root, targetId, sourceId, now = new Date() }) {
+  if (targetId === sourceId) {
+    throw new Error(`mergeInto: target and source are the same id (${targetId})`);
+  }
   const target = await readItem({ root, id: targetId });
   const source = await readItem({ root, id: sourceId });
   const date = now.toISOString().slice(0, 10);
