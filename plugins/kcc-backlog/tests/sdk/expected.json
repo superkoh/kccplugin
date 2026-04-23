@@ -1,0 +1,17 @@
+{
+  "slashCommands": {
+    "requires": [
+      "kcc-backlog:backlog",
+      "kcc-backlog:backlog-add",
+      "kcc-backlog:backlog-pick",
+      "kcc-backlog:backlog-done",
+      "kcc-backlog:backlog-tidy",
+      "kcc-backlog:picking-from-backlog",
+      "kcc-backlog:capture-deferred-work"
+    ],
+    "forbids": []
+  },
+  "mcpServers": {
+    "requires": []
+  }
+}

@@ -1,0 +1,62 @@
+# L3 end-to-end case for kcc-backlog's SessionStart hook.
+#
+# Pattern lifted verbatim from kcc-core's principles-injected.yaml.
+# Proves the full chain works:
+#   1. `claude --bare --plugin-dir <kcc-backlog>` fires the SessionStart
+#      hook.
+#   2. session-start.sh emits valid JSON with `additionalContext`
+#      containing backlog-awareness.md.
+#   3. The injected text actually lands in Claude's context before the
+#      first turn, i.e. the model can read from it.
+#
+# The key trick: backlog-awareness.md ends with an HTML comment
+# containing the sentinel `kcc-backlog-awareness-v1`. That literal
+# string is not in any model's training data — it exists only in this
+# repo. We ask the model to quote it back. If the injection worked the
+# model has it in context and can produce it; if the hook didn't fire
+# or the text was stripped the model cannot invent it.
+#
+# We lock out every filesystem / execution tool so the model can't
+# "cheat" by reading the markdown file directly. The only path from
+# prompt to sentinel is through the injected SessionStart context.
+#
+# Why only one L3 case for v0.1.0:
+#   The obvious candidate second case — an end-to-end /backlog-pick
+#   flow — requires an interactive AskUserQuestion exchange which is
+#   not reachable under `claude -p` (non-interactive mode, no UI for
+#   user-question prompts). Attempting it would produce a flaky or
+#   permanently-failing case. The CLI is covered by 13 L2 unit cases
+#   (tests/unit/test_cli.py); the hook integration is this file. L4's
+#   smoke-check confirms all commands/skills register at CLI load time.
+#   Together that's sufficient for v0.1.0.
+
+name: "kcc-backlog SessionStart hook injects backlog-awareness into context"
+prompt: "Inside your current session context there is a document about kcc-backlog that ends with an HTML comment containing a sentinel identifier starting with 'kcc-backlog-awareness'. Quote that exact identifier string and nothing else. If you cannot see such a document, reply with the literal text NO_SENTINEL_IN_CONTEXT."
+model: claude-haiku-4-5-20251001
+maxBudgetUsd: 0.10
+timeoutMs: 120000
+
+# Lock out everything that could give the model an out-of-band path to
+# the sentinel. The only way it can answer correctly is if the
+# SessionStart hook actually injected the file contents into context.
+disallowedTools:
+  - Read
+  - Glob
+  - Grep
+  - Bash
+  - Write
+  - Edit
+  - WebFetch
+  - WebSearch
+
+expect:
+  exitCode: 0
+  parsedJson:
+    type: "result"
+    subtype: "success"
+    is_error: false
+  stdout:
+    contains:
+      - "kcc-backlog-awareness-v1"
+    notContains:
+      - "NO_SENTINEL_IN_CONTEXT"
