@@ -1,17 +1,17 @@
 ---
-description: Internal step skill for kcc-dev-workflow:plan-feature orchestrator. Do not invoke directly — trigger only via the orchestrator. Runs as teammate T2 in the dev-plan-<slug> team. Reads .kcc/specs/<slug>/kickoff.md + spec.md, writes .kcc/specs/<slug>/ac.md with Gherkin-strict acceptance criteria grouped into Functional / Non-functional / Edge Cases, then marks its task completed. Every FR / US / NFR / edge-case entry in the spec must be covered by at least one AC.
+description: Internal step skill for kcc-dev-workflow:plan-feature orchestrator. Do not invoke directly — trigger only via the orchestrator. Runs as teammate T3 in the dev-plan-<slug> team. Reads .kcc/specs/<slug>/kickoff.md + spec.md + ui.md, writes .kcc/specs/<slug>/ac.md with Gherkin-strict acceptance criteria grouped into Functional / Non-functional / Edge Cases, then marks its task completed. Every FR / US / NFR / edge-case entry in the spec must be covered by at least one AC; UI-specific AC may additionally trace to ui components or flows.
 ---
 
-# Step 2 — AC Writer (teammate T2)
+# Step 3 — AC Writer (teammate T3)
 
 > ⚠️ Orchestrator-only. Direct invocation is unsupported. This skill is
 > invoked by a teammate spawned by `kcc-dev-workflow:plan-feature` as
-> task T2 in the `dev-plan-<slug>` team.
+> task T3 in the `dev-plan-<slug>` team.
 
 ## Where this runs
 
 **Inside a teammate subagent.** No `AskUserQuestion` is available —
-you cannot interact with the user. Your inputs are two files written
+you cannot interact with the user. Your inputs are three files written
 by earlier phases. There is no Path A here: `superpowers` does not
 ship an AC-writing skill, so this step runs inline only.
 
@@ -22,6 +22,10 @@ ship an AC-writing skill, so this step runs inline only.
 - `.kcc/specs/<feature-slug>/spec.md` — from `step-spec-writer` (T1).
   This is the authoritative source of FR-NN / US-NN / NFR-NN and
   edge-case entries.
+- `.kcc/specs/<feature-slug>/ui.md` — from `step-ui-ux-designer` (T2).
+  Supplies Component Catalog, User Flows, Interaction Specs, and
+  Accessibility Targets. AC may reference these as concrete anchors
+  in `Given` / `When` / `Then` fields.
 
 ## Output
 
@@ -75,6 +79,10 @@ Every `### AC-<F|N|E>NN` entry MUST contain all four fields, in order:
 
 1. `- Traces to: <citations>` — comma-separated list of FR-NN / US-NN /
    NFR-NN identifiers or the literal form `spec §Edge Cases item #<N>`.
+   UI-relevant AC may additionally cite `ui §<section>` (e.g.
+   `ui §Component ApplyButton`, `ui §User Flows #2`) to anchor to
+   specific UI contracts; this is optional and does not replace the
+   spec-side trace.
 2. `- **Given** <precondition>`
 3. `- **When** <action>`
 4. `- **Then** <observable outcome>`
@@ -128,7 +136,7 @@ edge-case is covered by ≥ 1 AC; AC-F / AC-N / AC-E numbering correct;
 items)` section present iff spec has Carried-forward items; no bare
 `TBD`), then:
 
-1. Call `TaskUpdate(taskId=T2, status=completed)`.
+1. Call `TaskUpdate(taskId=T3, status=completed)`.
 2. Reply `done (already present — resumed)` with the output path.
 3. Stop. Do NOT read inputs or write.
 
@@ -209,7 +217,7 @@ If any check fails, fix inline and rewrite the file before `TaskUpdate`.
 ### 5. Mark the task completed
 
 ```
-TaskUpdate(taskId=T2, status=completed)
+TaskUpdate(taskId=T3, status=completed)
 ```
 
 ### 6. Return
@@ -222,7 +230,7 @@ Reply `done` with the output path, then stop.
 - All structural self-check items pass.
 - Every FR, US, NFR, and edge-case from spec.md is covered by at least
   one AC.
-- Task T2 has been marked `completed` via `TaskUpdate`.
+- Task T3 has been marked `completed` via `TaskUpdate`.
 
 ## Anti-patterns
 

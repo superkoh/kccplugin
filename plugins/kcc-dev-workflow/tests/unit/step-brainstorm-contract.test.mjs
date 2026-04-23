@@ -19,6 +19,7 @@ const EXPECTED_SECTIONS = [
   "## Original material",
   "## Problem Statement",
   "## Users & Personas",
+  "## UX Direction",
   "## Goals & Non-goals",
   "## Key Scenarios",
   "## Considered Alternatives",
@@ -26,9 +27,9 @@ const EXPECTED_SECTIONS = [
   "## Open Questions & Risks",
 ];
 
-test("step-brainstorm SKILL.md declares the 9 kickoff.md sections in order", async () => {
+test("step-brainstorm SKILL.md declares the 10 kickoff.md sections in order (includes UX Direction)", async () => {
   const body = await readSkill();
-  // The 9 expected section headers must appear as literal strings in the
+  // The 10 expected section headers must appear as literal strings in the
   // body (they document the produced kickoff.md schema). Their first
   // occurrence indices must be strictly increasing.
   let prev = -1;
@@ -103,4 +104,77 @@ test("step-brainstorm SKILL.md states it runs in the main session (not as a team
 test("step-brainstorm SKILL.md specifies the single-file kickoff.md output", async () => {
   const body = await readSkill();
   assert.match(body, /\.kcc\/specs\/<feature-slug>\/kickoff\.md/);
+});
+
+test("step-brainstorm SKILL.md declares the conditional ui-kickoff.html output", async () => {
+  const body = await readSkill();
+  assert.match(body, /\.kcc\/specs\/<feature-slug>\/ui-kickoff\.html/);
+  assert.match(body, /[Cc]onditional|UX Visual Direction sub-phase/);
+});
+
+test("step-brainstorm SKILL.md defines the UX Visual Direction sub-phase trigger (platform + UI signals)", async () => {
+  const body = await readSkill();
+  assert.match(body, /UX Visual Direction/);
+  assert.match(body, /Trigger|trigger/);
+  assert.match(body, /platform.*web.*ios.*android.*desktop|{web, ios, android, desktop}/s);
+  assert.match(body, /UI-surface signal/);
+});
+
+test("step-brainstorm sub-phase is an unbounded Approve/Request-changes/Abort loop with no round cap", async () => {
+  const body = await readSkill();
+  assert.match(body, /unbounded|no round cap|There is no round cap/i);
+  assert.match(body, /Approve/);
+  assert.match(body, /Request changes/);
+  assert.match(body, /Abort/);
+  assert.match(body, /Iterate until the user picks Approve or\s+Abort/);
+});
+
+test("step-brainstorm sub-phase has a soft nudge at >=3 iterations on same dimension", async () => {
+  const body = await readSkill();
+  assert.match(body, /[Ss]oft nudge/);
+  assert.match(body, /three or more times|round N of iteration/);
+  assert.match(body, /advisory only/);
+});
+
+test("step-brainstorm ui-kickoff.html structural requirements documented", async () => {
+  const body = await readSkill();
+  for (const section of [
+    "<section class=\"palette\">",
+    "<section class=\"typography\">",
+    "<section class=\"density\">",
+    "<section class=\"components\">",
+  ]) {
+    assert.ok(body.includes(section), `ui-kickoff.html should document section ${section}`);
+  }
+  assert.match(body, /self-contained|inline CSS/);
+  assert.match(body, /approved_at/);
+});
+
+test("step-brainstorm UX Direction section specifies 6 required bullets + N/A form", async () => {
+  const body = await readSkill();
+  for (const label of [
+    "Visual pillar:",
+    "Accessibility priority:",
+    "Interaction archetypes:",
+    "Anti-patterns to avoid:",
+    "Reference:",
+    "Status:",
+  ]) {
+    assert.ok(body.includes(label), `UX Direction bullet missing: ${label}`);
+  }
+  assert.match(body, /N\/A — <one-line reason>|Status: N\/A/);
+});
+
+test("step-brainstorm push to kcc-preview is attempted, with file:// fallback when unavailable", async () => {
+  const body = await readSkill();
+  assert.match(body, /kcc-preview/);
+  assert.match(body, /file:\/\//);
+  assert.match(body, /pushed to preview|fallback/i);
+});
+
+test("step-brainstorm idempotence check covers UX Direction Status and ui-kickoff.html pairing", async () => {
+  const body = await readSkill();
+  assert.match(body, /Idempotence check \(resume fast-path\)/);
+  assert.match(body, /Status: approved/);
+  assert.match(body, /ui-kickoff\.html`? exists/);
 });

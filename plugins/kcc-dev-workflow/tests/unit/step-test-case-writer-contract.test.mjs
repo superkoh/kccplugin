@@ -140,13 +140,26 @@ test("step-test-case-writer requires explicit 'fell back to Path B' reply on dow
   assert.match(body, /[Nn]o silent downgrade/);
 });
 
-test("step-test-case-writer reads kickoff + spec + ac (not brainstorm or _kickoff)", async () => {
+test("step-test-case-writer reads kickoff + spec + ui + ac (not brainstorm or _kickoff)", async () => {
   const body = await readSkill();
   assert.match(body, /\.kcc\/specs\/<feature-slug>\/kickoff\.md/);
   assert.match(body, /\.kcc\/specs\/<feature-slug>\/spec\.md/);
+  assert.match(body, /\.kcc\/specs\/<feature-slug>\/ui\.md/);
   assert.match(body, /\.kcc\/specs\/<feature-slug>\/ac\.md/);
   assert.doesNotMatch(body, /_kickoff\.md/);
   assert.doesNotMatch(body, /brainstorm\.md/);
+});
+
+test("step-test-case-writer allows requirement_ref to cite ui §... entries", async () => {
+  const body = await readSkill();
+  assert.match(body, /ui §Component ApplyButton|ui §Component/);
+  assert.match(body, /ui §User Flows/);
+});
+
+test("step-test-case-writer design_tokens_source falls back to ui-kickoff.html when present", async () => {
+  const body = await readSkill();
+  assert.match(body, /ui-kickoff\.html/);
+  assert.match(body, /approved concrete palette|carries the approved concrete palette/);
 });
 
 test("step-test-case-writer writes YAML to .kcc/tests/cases/<slug>.yaml", async () => {
@@ -154,23 +167,23 @@ test("step-test-case-writer writes YAML to .kcc/tests/cases/<slug>.yaml", async 
   assert.match(body, /\.kcc\/tests\/cases\/<feature-slug>\.yaml|\.kcc\/tests\/cases\/<slug>\.yaml/);
 });
 
-test("step-test-case-writer declares T4 + no AskUserQuestion + Skill tool available for Path A", async () => {
+test("step-test-case-writer declares T5 + no AskUserQuestion + Skill tool available for Path A", async () => {
   const body = await readSkill();
-  assert.match(body, /teammate T4|task T4/);
+  assert.match(body, /teammate T5|task T5/);
   assert.match(body, /[Nn]o `?AskUserQuestion`?/);
   assert.match(body, /`Skill` tool IS available|Skill tool/);
 });
 
-test("step-test-case-writer closes with TaskUpdate(taskId=T4, status=completed)", async () => {
+test("step-test-case-writer closes with TaskUpdate(taskId=T5, status=completed)", async () => {
   const body = await readSkill();
-  assert.match(body, /TaskUpdate\(taskId=T4,\s*status=completed\)/);
+  assert.match(body, /TaskUpdate\(taskId=T5,\s*status=completed\)/);
 });
 
 test("step-test-case-writer SKILL.md has idempotence check (resume fast-path)", async () => {
   const body = await readSkill();
   assert.match(body, /Idempotence check \(resume fast-path\)/);
   assert.match(body, /already present — resumed/);
-  assert.match(body, /TaskUpdate\(taskId=T4,\s*status=completed\)/);
+  assert.match(body, /TaskUpdate\(taskId=T5,\s*status=completed\)/);
   assert.match(body, /Do NOT[\s\S]*?(derive|dispatch|write)/i);
 });
 

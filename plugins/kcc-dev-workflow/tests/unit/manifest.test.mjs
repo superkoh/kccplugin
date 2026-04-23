@@ -13,6 +13,7 @@ const EXPECTED_SKILLS = [
   "build-feature",
   "step-brainstorm",
   "step-spec-writer",
+  "step-ui-ux-designer",
   "step-ac-writer",
   "step-spec-ac-reviewer",
   "step-test-case-writer",

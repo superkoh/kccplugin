@@ -1,16 +1,16 @@
 ---
-description: Internal step skill for kcc-dev-workflow:plan-feature orchestrator. Do not invoke directly — trigger only via the orchestrator. Runs as teammate T5 in the dev-plan-<slug> team. Performs multi-agent review + vote on the YAML test cases and conditionally rewrites them to the consensus outcome. Spawns 3 reviewer subagents with distinct personas (Coverage / Testability / Quality lenses) across 2 rounds (independent + cross-read rebuttal), synthesizes findings, votes on a verdict, and if verdict ≤ approve-with-nits executes a rewrite via a rewriter-yaml subagent guarded by pre-backup and post-rewrite kcc-testing-compatible lint. Finally appends a "## test-cases" section to review.md.
+description: Internal step skill for kcc-dev-workflow:plan-feature orchestrator. Do not invoke directly — trigger only via the orchestrator. Runs as teammate T6 in the dev-plan-<slug> team. Performs multi-agent review + vote on the YAML test cases and conditionally rewrites them to the consensus outcome. Spawns 3 reviewer subagents with distinct personas (Coverage / Testability / Quality lenses) across 2 rounds (independent + cross-read rebuttal), synthesizes findings, votes on a verdict, and if verdict ≤ approve-with-nits executes a rewrite via a rewriter-yaml subagent guarded by pre-backup and post-rewrite kcc-testing-compatible lint. Finally appends a "## test-cases" section to review.md.
 ---
 
-# Step 5 — Test Case Reviewer (teammate T5, multi-agent review + vote)
+# Step 6 — Test Case Reviewer (teammate T6, multi-agent review + vote)
 
 > ⚠️ Orchestrator-only. Direct invocation is unsupported. This skill is
 > invoked by a teammate spawned by `kcc-dev-workflow:plan-feature` as
-> task T5 in the `dev-plan-<slug>` team.
+> task T6 in the `dev-plan-<slug>` team.
 
 ## Where this runs
 
-**Inside a teammate subagent** (T5). No `AskUserQuestion`. The `Agent`
+**Inside a teammate subagent** (T6). No `AskUserQuestion`. The `Agent`
 tool IS used to spawn 3 reviewer subagents (×2 rounds) plus one
 rewriter subagent when rewrite is applied. No Path A — `kcc-testing`
 ships no standalone test-case review skill and no `superpowers` skill
@@ -19,14 +19,14 @@ is a fit.
 ## Inputs
 
 - `.kcc/specs/<feature-slug>/kickoff.md` — Phase 0.
-- `.kcc/specs/<feature-slug>/spec.md` — T1 (possibly rewritten by T3).
-- `.kcc/specs/<feature-slug>/ac.md` — T2 (possibly rewritten by T3).
-- `.kcc/tests/cases/<feature-slug>.yaml` — T4.
+- `.kcc/specs/<feature-slug>/spec.md` — T1 (possibly rewritten by T4).
+- `.kcc/specs/<feature-slug>/ac.md` — T3 (possibly rewritten by T4).
+- `.kcc/tests/cases/<feature-slug>.yaml` — T5.
 
 ## Outputs
 
 - `.kcc/specs/<feature-slug>/review.md` — appended with a
-  `## test-cases` section. The file already exists (created by T3
+  `## test-cases` section. The file already exists (created by T4
   with the `# Review — <feature-name>` header and `## spec-ac`
   section).
 - `.kcc/specs/<feature-slug>/review-drafts/` — six reviewer drafts
@@ -41,13 +41,13 @@ is a fit.
 
 ```
 .kcc/specs/<slug>/
-├── review.md                              (T5 appends ## test-cases)
+├── review.md                              (T6 appends ## test-cases)
 ├── .pre-review/
-│   ├── spec.md                            (from T3, may be present)
-│   ├── ac.md                              (from T3, may be present)
-│   └── tests-cases-<slug>.yaml            (T5 backup if rewrite applied)
+│   ├── spec.md                            (from T4, may be present)
+│   ├── ac.md                              (from T4, may be present)
+│   └── tests-cases-<slug>.yaml            (T6 backup if rewrite applied)
 └── review-drafts/
-    ├── reviewer-*-round*.md               (from T3)
+    ├── reviewer-*-round*.md               (from T4)
     ├── tc-reviewer-1-round1.md
     ├── tc-reviewer-1-round2.md
     ├── tc-reviewer-2-round1.md
@@ -55,10 +55,10 @@ is a fit.
     ├── tc-reviewer-3-round1.md
     ├── tc-reviewer-3-round2.md
     └── tc-rewrite-plan.md                 (only if rewrite applied)
-.kcc/tests/cases/<slug>.yaml               (T5 may rewrite in place)
+.kcc/tests/cases/<slug>.yaml               (T6 may rewrite in place)
 ```
 
-The `tc-` prefix keeps T5 artifacts distinct from T3's in the shared
+The `tc-` prefix keeps T6 artifacts distinct from T4's in the shared
 `review-drafts/` directory.
 
 ## Reviewer personas (avoid homogeneity)
@@ -98,7 +98,7 @@ AND `### Final verdict` carries one of the three allowed values
 sub-section says `applied`)
 `.pre-review/tests-cases-<feature-slug>.yaml` exists — then:
 
-1. Call `TaskUpdate(taskId=T5, status=completed)`.
+1. Call `TaskUpdate(taskId=T6, status=completed)`.
 2. Reply `done (already present — resumed)` with the review.md path.
 3. Stop. Do NOT spawn reviewer or rewriter-yaml subagents. Do NOT
    modify the YAML.
@@ -151,13 +151,13 @@ prompt=<reviewer base prompt
 
 All three round-2 drafts complete before Phase R3.
 
-### Phase R3 — Synthesis (T5 inline)
+### Phase R3 — Synthesis (T6 inline)
 
 Do not spawn subagents. Read all 6 drafts. Compute:
 
 1. **Consensus findings**: merge substantively-same findings across
    reviewers. Supported by ≥ 2/3 round-2 reviewers → include at the
-   majority severity. Singletons (1/3) → T5 judgment: include as Minor
+   majority severity. Singletons (1/3) → T6 judgment: include as Minor
    if plausible; as Major with `raised by R<N> only` note if severe;
    drop if weak and refuted.
 2. **Coverage audit**: run mechanically against `<slug>.yaml`:
@@ -172,7 +172,7 @@ Do not spawn subagents. Read all 6 drafts. Compute:
 4. **Preliminary verdict**: majority of round-2 verdicts. Three-way tie
    → most conservative (`request-changes`).
 5. **Schema-level override**: if any Consensus finding OR Coverage
-   audit item falls into the schema-level list below, T5 **overrides
+   audit item falls into the schema-level list below, T6 **overrides
    the verdict to request-changes** regardless of reviewer vote:
    - Any top-level required field missing (`feature`, `platform`,
      `design_tokens_source`, `ui_change`, `coverage_triggers`,
@@ -193,7 +193,7 @@ If final verdict is `request-changes`, skip to R5.
 
 #### R4.1 Generate the rewrite plan
 
-T5 inline writes
+T6 inline writes
 `.kcc/specs/<slug>/review-drafts/tc-rewrite-plan.md`, translating
 Consensus findings at Critical / Major / Minor severity into concrete
 edit operations on `<slug>.yaml`. Each operation: `reason` (cites
@@ -302,7 +302,7 @@ Wait for idle before R4.4.
 
 #### R4.4 Post-rewrite lint (kcc-testing-compatible, 7 checks)
 
-T5 reruns the mechanical lint on the rewritten YAML:
+T6 reruns the mechanical lint on the rewritten YAML:
 
 1. All 9 top-level required fields present and non-null (where
    applicable); `cases[]` non-empty.
@@ -351,7 +351,7 @@ recreate its top-level header). The appended content MUST begin with
 
 ### Round 2 convergence highlights
 - <which round-1 disagreements converged in round-2 and how>
-- <which remained contested, and how T5 resolved them>
+- <which remained contested, and how T6 resolved them>
 
 ### Consensus findings
 
@@ -400,7 +400,7 @@ omit any severity sub-header.
 ### Phase R6 — Finalize
 
 1. Run the structural self-check below.
-2. `TaskUpdate(taskId=T5, status=completed)`.
+2. `TaskUpdate(taskId=T6, status=completed)`.
 3. Reply `done` with the output path, then stop.
 
 ## Per-reviewer draft schema
@@ -457,7 +457,7 @@ omit any severity sub-header.
 - If the Rewrite section says `failed — rewrite aborted`:
   - `<slug>.yaml` on disk matches the backup (rolled back).
   - Final verdict has been downgraded to `request-changes`.
-- Task T5 has been marked `completed` via `TaskUpdate`.
+- Task T6 has been marked `completed` via `TaskUpdate`.
 
 ## Structural self-check (run before TaskUpdate)
 
@@ -493,8 +493,8 @@ omit any severity sub-header.
 - **Do not mix Form A and Form B in `assertions.visual[]`** via
   rewrite. That is a schema-level issue — it forces request-changes.
 - **Do not skip the post-rewrite lint.** The rewriter subagent is a
-  content generator; T5 verifies.
-- **Do not leave `review-drafts/` stale** from a prior T5 run — remove
+  content generator; T6 verifies.
+- **Do not leave `review-drafts/` stale** from a prior T6 run — remove
   any unrelated `tc-*` files before Phase R1.
 - **Do not modify `<slug>.yaml` outside Phase R4.3.** The rewriter
   subagent is the only writer.
