@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Stop hook entry (v0.2.0 semantics).
+// Stop hook entry (v0.2.1 semantics).
 //
 // Blocks the turn only when the LLM is about to pause and wait for the user —
 // not just because it wrote a long .md. Two signals, union of either triggers:
@@ -7,6 +7,11 @@
 //                somewhere in the current turn.
 //   C (path)   — matchReviewPath: the file is under a review-by-convention
 //                directory (contains "specs" or "plans" substring).
+//
+// Both signals are evaluated over THIS turn's writes only — files the AI
+// wrote in earlier turns that were never pushed don't keep re-triggering
+// Stop on every subsequent turn (v0.2.0 regression). scanSidecarForPushableFiles
+// handles the windowing via sinceLastTurnStart.
 //
 // If neither fires, the unpushed write is treated as a display-only
 // deliverable (README / CHANGELOG / analysis summary) and the turn is allowed
@@ -46,7 +51,7 @@ async function main() {
   const sessionDir = sessionDirFor(ROOT, sessionId);
   const contentDir = path.join(sessionDir, "content");
 
-  const written = await scanSidecarForPushableFiles(sessionDir, { contentDir });
+  const written = await scanSidecarForPushableFiles(sessionDir, { contentDir, sinceLastTurnStart: true });
   if (written.length === 0) return;
 
   const pushed = await listPushedEntryPaths(contentDir);
