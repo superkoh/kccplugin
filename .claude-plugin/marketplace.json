@@ -51,6 +51,14 @@
       "version": "0.1.4",
       "category": "workflow",
       "tags": ["workflow", "spec", "testing", "team", "multi-agent", "resume", "uiux", "visual-direction"]
+    },
+    {
+      "name": "kcc-design",
+      "source": "./plugins/kcc-design",
+      "description": "Cross-platform UI decomposer. The decompose-design skill breaks 1..N UI artifacts (web / iOS / Android) into a uniform per-facet tree (attributes / layout / motion) with nested property-value detail — facts only, no classification, no recommendations, no code generation.",
+      "version": "0.1.0",
+      "category": "design",
+      "tags": ["design", "ui", "ux", "cross-platform", "decomposition"]
     }
   ]
 }

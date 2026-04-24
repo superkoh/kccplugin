@@ -1,0 +1,10 @@
+{
+  "name": "kcc-design",
+  "version": "0.1.0",
+  "description": "Decompose one or more UI artifacts (web / iOS / Android — code, HTML, SwiftUI, Jetpack Compose, or prose) into a uniform hierarchical tree (Page → Section → Component → Element) and report what each supplied artifact says per facet (attributes / layout / motion) with nested property-value detail. Reports facts only — no classification, no recommendations, no TODO, no code generation. Accepts 1..N labeled inputs (single = pure decomposition; multi = N-way comparison). 外挂 style — no hardcoded paths or filenames; no silent file writes.",
+  "author": {
+    "name": "koh",
+    "email": "koh.718@gmail.com"
+  },
+  "keywords": ["design", "ui", "ux", "cross-platform", "ios", "android", "web", "decomposition"]
+}

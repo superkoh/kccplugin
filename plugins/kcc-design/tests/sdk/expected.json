@@ -1,0 +1,11 @@
+{
+  "slashCommands": {
+    "requires": [
+      "kcc-design:decompose-design"
+    ],
+    "forbids": []
+  },
+  "mcpServers": {
+    "requires": []
+  }
+}
