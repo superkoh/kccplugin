@@ -127,6 +127,12 @@ Full field vocabulary per facet — see
 
 Authoritative spec: [`references/output-schema.md`](references/output-schema.md).
 
+Every node emits **three markdown tables**, one per facet.
+Columns: `property` (the field name as it appears in the input),
+then one column per supplied label. Rows: one per distinct
+property surfaced across any label. Cells: the value that label
+carries, or `—` if that label is silent on this property.
+
 ```markdown
 # decompose-design — <short run description>
 
@@ -136,42 +142,53 @@ Meta:
 - generated-at: <ISO-8601>
 
 ## Page: <name>
+
 ### attributes
-  - <label>:
-    - <property>: <value>
-    - <property>: <value>
-  - <label>:
-    - <property>: <value>
-    - ...
+| property | <label-A> | <label-B> | ... |
+|----------|-----------|-----------|-----|
+| <prop-1> | <value>   | <value>   | ... |
+| <prop-2> | <value>   | —         | ... |
 
 ### layout
-  - <label>:
-    - <property>: <value>
-    - ...
+| property | <label-A> | <label-B> | ... |
+|----------|-----------|-----------|-----|
+| <prop-1> | <value>   | —         | ... |
 
 ### motion
-  - <label>:
-    - <trigger>: <definition — target, duration, curve, delay, chain, haptic>
+| trigger  | property | <label-A> | <label-B> | ... |
+|----------|----------|-----------|-----------|-----|
+| <trig-1> | <prop-1> | <value>   | —         | ... |
+| <trig-1> | <prop-2> | <value>   | —         | ... |
+| <trig-2> | <prop-1> | —         | <value>   | ... |
 
 ## Section: <name>
-  ... (same) ...
+  ... (same three-table structure) ...
 
 ## Component: <name>
+  ... (same) ...
+
+### Element: <name>   ← only when non-trivial
   ... (same) ...
 ```
 
 **Detail contract.**
 
-- Each label bullet **expands into nested `property: value`
-  sub-bullets**. No single-line summaries.
-- Depth matches input specificity: rich input (code with explicit
-  values) → rich concrete values; vague input (prose) → output
-  still enumerates the property list, but values read
-  `unspecified` or `inferred from context`.
-- **Never invent values.** If the input doesn't state it, don't
-  write it.
-- Silence on a whole facet for a label is explicit:
-  `<label>: —`. Never implicit.
+- Every facet emits one markdown table. Motion's table has an
+  extra leading `trigger` column because each trigger carries
+  multiple sub-properties (`target`, `duration`, `curve`,
+  `delay`, `chain`, `haptic`).
+- Property names come **verbatim from the input's vocabulary**.
+  If `web` uses `background-color` and `ios` uses `tint`, these
+  stay as **separate rows** — never collapsed into a single
+  "color" row (that would be judgement).
+- Depth matches input specificity: rich input → concrete cell
+  values; vague input → cell reads `unspecified` or
+  `inferred from context`. **Never invent values.**
+- Silence on a property for a label: cell reads `—`.
+- Silence on an entire facet for a label: the column still
+  exists but every row's cell for that label reads `—`.
+- When only one artifact is supplied (N=1), the table still
+  renders — one `property` column plus one label column.
 
 ## Platform vocabulary
 
@@ -198,20 +215,27 @@ See [`references/platform-vocabulary.md`](references/platform-vocabulary.md).
 Every one of these must hold, or fix before emitting:
 
 - Tree has `## Page`, `## Section`, `## Component` level-2
-  headers (at least one of them — a decomposition without any
-  component-level node is almost always wrong).
+  headers as appropriate to the input (at least one — a
+  decomposition without any component-level node is almost
+  always wrong).
 - Every node has `### attributes`, `### layout`, `### motion`
-  sub-headers present, each with at least one bullet per
-  supplied label (or explicit `<label>: —` for silence).
-- Each label's bullet expands into **nested `property: value`
-  sub-bullets** — not a single-line summary.
-- Concrete values come straight from the input. Unknowns use
+  sub-headers, each followed by its **markdown table**.
+- Each table has a valid header row (`| property | <label> | ... |`),
+  a separator row (`|---|---|...|`), and at least one data row.
+  Motion tables have an extra leading `trigger` column.
+- Property names appear verbatim from the input — no collapsing
+  across labels (`background-color` and `tint` stay as separate
+  rows).
+- Concrete values come straight from the input. Unknowns read
   `unspecified` or `inferred from context` — never invented.
+- Label silence on a property: cell reads `—`. Not blank, not
+  missing.
 - No classification tokens (`platform-constraint`, `idiom`,
   `unchanged`, `classification:`, etc.) appear anywhere.
 - No `## TODO`, `## Summary`, `## Findings`, `## Gaps`,
   `## Recommend` sections.
-- No code fences (no `\`\`\`swift`, `\`\`\`tsx`, `\`\`\`kotlin`,
-  etc.) — this skill does not emit code.
+- No code fences (triple-backtick fenced code blocks for any
+  target language like swift / tsx / kotlin) — this skill does
+  not emit code.
 - If `writeTo` was passed, the file was written there; otherwise
   the tree lives only in the final message.

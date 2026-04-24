@@ -74,37 +74,39 @@ Typical triggers per platform:
 ## Worked example — LoginScreen
 
 Same login screen decomposed on web and iOS (abbreviated; see
-`output-schema.md` for the full nested SubmitButton detail).
+`output-schema.md` for the full SubmitButton table detail).
 
 ```markdown
 ## Page: LoginScreen
+
 ### attributes
-  - web:
-    - tag: body
-    - background-color: #f5f5f7
-    - font-family: system-ui
-  - ios:
-    - view-type: NavigationStack
-    - background: .background (system)
+| property         | web         | ios                        |
+|------------------|-------------|----------------------------|
+| tag              | body        | —                          |
+| background-color | #f5f5f7     | —                          |
+| font-family      | system-ui   | —                          |
+| view-type        | —           | NavigationStack            |
+| background       | —           | .background (system)       |
 
 ### layout
-  - web:
-    - main-container: flex column, align-items: center
-    - max-width: 420px
-    - margin: 0 auto
-  - ios:
-    - root-container: VStack(spacing: 16)
-    - safe-area: respected (default)
+| property         | web                                  | ios                      |
+|------------------|--------------------------------------|--------------------------|
+| main-container   | flex column, align-items: center     | —                        |
+| max-width        | 420px                                | —                        |
+| margin           | 0 auto                               | —                        |
+| root-container   | —                                    | VStack(spacing: 16)      |
+| safe-area        | —                                    | respected (default)      |
 
 ### motion
-  - web:
-    - page-enter: unspecified
-  - ios:
-    - page-enter: inferred from context — NavigationStack applies a default push transition; timing not stated in input
+| trigger    | property | web         | ios                                                                          |
+|------------|----------|-------------|------------------------------------------------------------------------------|
+| page-enter | target   | unspecified | inferred from context — NavigationStack applies default push transition      |
+| page-enter | timing   | unspecified | not stated in input                                                          |
 
 ## Section: CredentialForm
-  ... (email input, password input, submit button as children) ...
+  ... (email input, password input, submit button as children —
+  each rendered in the same three-table form) ...
 
 ## Component: SubmitButton
-  ... (see output-schema.md worked example for full nested detail) ...
+  ... (see output-schema.md worked example for full table detail) ...
 ```

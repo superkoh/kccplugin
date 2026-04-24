@@ -16,7 +16,7 @@
 # routes reliably: "decompose", "break down", "uniform tree",
 # "per label", "facts only".
 
-name: "kcc-design:decompose-design decomposes 2 artifacts into a nested uniform tree with no judgement"
+name: "kcc-design:decompose-design emits three markdown tables per node with no judgement"
 prompt: |
   Decompose these two UI artifacts into a uniform tree — scope:
   just the submit button component. Report facts only, no
@@ -29,9 +29,10 @@ prompt: |
   Artifact 2 (label: ios, platform: ios): SwiftUI Button labeled
   "Submit", styled .borderedProminent, tint .blue.
 
-  Output: a Component-level node with attributes / layout / motion
-  facets, each expanding nested property: value sub-bullets per
-  label.
+  Output: a Component-level node with three markdown tables — one
+  per facet (attributes, layout, motion). Table columns: property,
+  web, ios. Motion table has an extra leading trigger column. Use
+  `—` for cells where a label is silent on a property.
 model: claude-haiku-4-5-20251001
 maxBudgetUsd: 0.08
 timeoutMs: 120000
@@ -43,10 +44,10 @@ expect:
     subtype: "success"
     is_error: false
     result:
-      # Positive: asserts nested structure — `### attributes` then
-      # a label bullet `- <label>:` then a nested property sub-bullet
-      # `  - <prop>: <value>`. A flat single-line summary fails.
-      matches: '### attributes[\s\S]*?-\s+\w+:\s*[\r\n]+\s+-\s+\w+[: ].+'
+      # Positive: asserts markdown-table structure under `### attributes` —
+      # a `| property |` header row followed eventually by a
+      # `|---|...|` separator row. A nested list or flat summary fails.
+      matches: '### attributes[\s\S]*?\|\s*property[\s\S]*?\|[-\s|:]+\|'
   stdout:
     # Negative: enforces truth-not-judgement. Classification tokens,
     # recommendation sections, and code fences must never appear.
