@@ -100,7 +100,7 @@ Same login screen decomposed on web and iOS (abbreviated; see
   - web:
     - page-enter: unspecified
   - ios:
-    - page-enter: default navigation push animation
+    - page-enter: inferred from context — NavigationStack applies a default push transition; timing not stated in input
 
 ## Section: CredentialForm
   ... (email input, password input, submit button as children) ...

@@ -49,8 +49,8 @@ carrying `property: value` pairs straight from the input.
   handoff instructions.
 - Infer content the caller didn't supply. If a label is silent on
   a facet, the bullet reads `<label>: —`.
-- Generate code. Callers needing code hand off to
-  `frontend-design:frontend-design` or engineers.
+- Generate code. Callers needing code should use a
+  code-generation skill or hand off to engineers.
 - Rewrite user files. Default output is the skill's final message;
   files are written only when the caller passes an explicit
   `writeTo` path.
@@ -69,10 +69,10 @@ Trigger phrases:
 
 ### When NOT to use
 
-- Generating code or frontend mockups — use
-  `frontend-design:frontend-design`.
-- Forward design of a new feature — use
-  `kcc-dev-workflow:plan-feature`.
+- Generating code or frontend mockups — use a
+  code-generation skill instead.
+- Forward design of a new feature — use a feature-planning
+  / spec-authoring workflow instead.
 - Interpreting differences, writing fix-it lists, recommending
   next steps — that is the caller's job after reading this
   skill's output.

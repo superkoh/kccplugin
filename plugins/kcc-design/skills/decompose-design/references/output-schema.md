@@ -86,7 +86,7 @@ Meta:
     - active: box-shadow inset 0 3px 5px rgba(0,0,0,0.125); timing unspecified
     - focus: outline 3px solid rgba(0,123,255,.5); timing unspecified
   - ios:
-    - touch-down: system default state layer (opacity modulation); timing system default
+    - touch-down: inferred from context — .borderedProminent applies system default state-layer behavior; timing not stated in input
     - custom-animation: unspecified in input
 ```
 
