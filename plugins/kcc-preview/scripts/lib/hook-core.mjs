@@ -116,13 +116,15 @@ export function emitSessionEnd() {
 // -- Stop-hook helpers -------------------------------------------------------
 
 // The session's own record of every file-write tool call this session has
-// made, written by the PostToolUse hook. Session-scoped, not turn-scoped:
-// Stop reconciles against the whole history, so an unpushed file from
-// turn 1 will still be flagged on turn 3's Stop if the user never wrote
-// an entry for it. Claude Code's native transcript would be a tempting
-// source, but it's only flushed to disk when session-persistence is on,
-// which breaks --no-session-persistence test runs — and leaves us at the
-// mercy of an undocumented JSONL format we don't own.
+// made, written by the PostToolUse hook. The file is session-scoped, but
+// Stop evaluates it turn-scoped: scanSidecarForPushableFiles(..., {
+// sinceLastTurnStart: true }) only returns writes after the most recent
+// turn_start marker so unpushed files from earlier turns don't re-trigger
+// Stop on every subsequent turn (v0.2.0 regression). Claude Code's native
+// transcript would be a tempting source, but it's only flushed to disk
+// when session-persistence is on, which breaks --no-session-persistence
+// test runs — and leaves us at the mercy of an undocumented JSONL format
+// we don't own.
 export const WRITE_SIDECAR = "tool-writes.jsonl";
 
 // Called by the PostToolUse hook entry for each Write / Edit / MultiEdit.
@@ -145,16 +147,34 @@ export async function appendWriteSidecar(sessionDir, { tool, filePath, cwd }) {
 //   - file currently on disk has ≥ PUSHABLE_MIN_LINES lines
 // The line-count check uses live file state so Edits that shrank a file
 // below threshold are correctly filtered out.
-export async function scanSidecarForPushableFiles(sessionDir, { contentDir } = {}) {
+//
+// `sinceLastTurnStart: true` scopes the scan to writes after the most recent
+// `turn_start` marker — Stop evaluates "did the AI forget to push in THIS
+// turn", not "are there any historical unpushed files". If no marker is
+// present (legacy session, or server died before UserPromptSubmit could write
+// it) the scan silently falls back to the whole sidecar so old sessions
+// still get the v0.2.0 behavior instead of a silent no-op.
+export async function scanSidecarForPushableFiles(sessionDir, { contentDir, sinceLastTurnStart } = {}) {
   if (!sessionDir) return [];
   let raw;
   try { raw = await readFile(path.join(sessionDir, WRITE_SIDECAR), "utf-8"); }
   catch { return []; }
 
+  const lines = raw.split("\n");
+  let startIdx = 0;
+  if (sinceLastTurnStart) {
+    for (let i = lines.length - 1; i >= 0; i--) {
+      if (!lines[i]) continue;
+      let e; try { e = JSON.parse(lines[i]); } catch { continue; }
+      if (e.event === "turn_start") { startIdx = i + 1; break; }
+    }
+  }
+
   const normContent = contentDir ? path.normalize(contentDir) + path.sep : null;
   const seen = new Set();
   const candidates = [];
-  for (const line of raw.split("\n")) {
+  for (let i = startIdx; i < lines.length; i++) {
+    const line = lines[i];
     if (!line) continue;
     let e;
     try { e = JSON.parse(line); } catch { continue; }

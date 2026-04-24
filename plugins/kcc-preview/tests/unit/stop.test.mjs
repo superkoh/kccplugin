@@ -245,6 +245,73 @@ test("CHANGELOG.md, no intent -> NOT block", async (t) => {
   assert.equal(out, "");
 });
 
+test("prior-turn unpushed plan + new turn with no writes -> NOT block (v0.2.1 windowing)", async (t) => {
+  const { root, previewRoot, sessionId, sessionDir } = await scaffold(t);
+  // Turn 1: AI wrote a plan but the user said "ok done, move on". The file
+  // stays on disk unpushed; under v0.2.0 this re-triggered Stop on every
+  // subsequent turn. v0.2.1 scopes to the current turn.
+  const planDir = path.join(root, "docs", "plans");
+  await mkdir(planDir, { recursive: true });
+  const planPath = path.join(planDir, "old.md");
+  await writeFile(planPath, longBody());
+  await seedSidecarWithEvents(sessionDir, [
+    { event: "turn_start" },
+    { event: "write", tool: "Write", file_path: planPath },
+    { event: "turn_start" },   // current turn — AI wrote nothing so far
+  ]);
+
+  const { code, out } = await runHook(
+    { session_id: sessionId, cwd: root, hook_event_name: "Stop" },
+    { KCC_PREVIEW_ROOT: previewRoot },
+  );
+  assert.equal(code, 0);
+  assert.equal(out, "", "a prior-turn unpushed plan must not re-trigger Stop");
+});
+
+test("prior-turn README + this-turn ask_user_question -> NOT block (B window scoped)", async (t) => {
+  const { root, previewRoot, sessionId, sessionDir } = await scaffold(t);
+  // Turn 1 wrote a finished README. Turn 2 asks a clarifying AskUserQuestion
+  // about something unrelated. Under v0.2.0 this would block on the stale
+  // README because B had no turn window on the "unpushed files" side.
+  const readmePath = path.join(root, "README.md");
+  await writeFile(readmePath, longBody());
+  await seedSidecarWithEvents(sessionDir, [
+    { event: "turn_start" },
+    { event: "write", tool: "Write", file_path: readmePath },
+    { event: "turn_start" },
+    { event: "ask_user_question" },   // intent this turn, but the write was prior
+  ]);
+
+  const { code, out } = await runHook(
+    { session_id: sessionId, cwd: root, hook_event_name: "Stop" },
+    { KCC_PREVIEW_ROOT: previewRoot },
+  );
+  assert.equal(code, 0);
+  assert.equal(out, "", "AskUserQuestion must not drag in writes from earlier turns");
+});
+
+test("this-turn spec write + no intent -> C still blocks (windowed scan)", async (t) => {
+  const { root, previewRoot, sessionId, sessionDir } = await scaffold(t);
+  const specDir = path.join(root, "docs", "specs");
+  await mkdir(specDir, { recursive: true });
+  const specPath = path.join(specDir, "new.md");
+  await writeFile(specPath, longBody());
+  await seedSidecarWithEvents(sessionDir, [
+    { event: "turn_start" },
+    { event: "turn_start" },   // explicit current-turn boundary
+    { event: "write", tool: "Write", file_path: specPath },
+  ]);
+
+  const { code, out } = await runHook(
+    { session_id: sessionId, cwd: root, hook_event_name: "Stop" },
+    { KCC_PREVIEW_ROOT: previewRoot },
+  );
+  assert.equal(code, 0);
+  const j = await assertHookOutput("Stop", out);
+  assert.equal(j.decision, "block");
+  assert.match(j.reason, new RegExp(specPath.replace(/[.]/g, "\\.")));
+});
+
 test("multiple unpushed files under /specs/ -> block reason lists all", async (t) => {
   const { root, previewRoot, sessionId, sessionDir } = await scaffold(t);
   const specDir = path.join(root, "docs", "specs");
