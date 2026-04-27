@@ -300,6 +300,38 @@ test("scanSidecarForPushableFiles returns [] when sidecar missing", async (t) =>
   assert.deepEqual(found, []);
 });
 
+test("scanSidecarForPushableFiles({ sinceLastTurnStart: true }) only sees writes after the last turn_start", async (t) => {
+  const { appendTurnStart } = await import("../../scripts/lib/hook-core.mjs");
+  const root = await mkdtemp(path.join(os.tmpdir(), "kcc-scan-win-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const oldPath = path.join(root, "old.md");
+  const newPath = path.join(root, "new.md");
+  await writeFile(oldPath, longBody());
+  await writeFile(newPath, longBody());
+
+  await appendTurnStart(root);
+  await appendWriteSidecar(root, { tool: "Write", filePath: oldPath });
+  await appendTurnStart(root);
+  await appendWriteSidecar(root, { tool: "Write", filePath: newPath });
+
+  const found = await scanSidecarForPushableFiles(root, { contentDir: null, sinceLastTurnStart: true });
+  assert.deepEqual(found, [newPath], "only writes after the last turn_start should appear");
+});
+
+test("scanSidecarForPushableFiles({ sinceLastTurnStart: true }) falls back to whole scan when no turn_start exists", async (t) => {
+  // Legacy session (pre-v0.2.0) or a session where the server died before
+  // UserPromptSubmit wrote its first marker. A silent no-op would hide real
+  // unpushed files, so we degrade to whole-sidecar scanning instead.
+  const root = await mkdtemp(path.join(os.tmpdir(), "kcc-scan-nots-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const a = path.join(root, "a.md");
+  await writeFile(a, longBody());
+  await appendWriteSidecar(root, { tool: "Write", filePath: a });
+
+  const found = await scanSidecarForPushableFiles(root, { contentDir: null, sinceLastTurnStart: true });
+  assert.deepEqual(found, [a], "legacy sidecar without turn_start should still be readable");
+});
+
 test("scanSidecarForPushableFiles skips malformed JSONL lines but keeps valid ones", async (t) => {
   const root = await mkdtemp(path.join(os.tmpdir(), "kcc-sc-"));
   t.after(() => rm(root, { recursive: true, force: true }));
