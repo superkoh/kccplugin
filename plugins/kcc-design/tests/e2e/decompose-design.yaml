@@ -1,0 +1,64 @@
+# L3 end-to-end case for kcc-design:decompose-design.
+#
+# Proves:
+#   1. `claude --bare --plugin-dir <plugin-root>` loads the plugin.
+#   2. A natural-language decomposition request activates the skill
+#      (skills are model-routed via SKILL.md description).
+#   3. Output has the uniform nested structure — at least one
+#      `### attributes` facet followed by a label bullet followed
+#      by a nested property: value sub-bullet. Flat single-line
+#      summaries fail the positive regex.
+#   4. No judgement tokens (classification, TODO, Summary, etc.)
+#      leaked into the output. No code fences. The "truth not
+#      judgement" contract is a test invariant.
+#
+# The prompt mirrors the SKILL.md description triggers so the model
+# routes reliably: "decompose", "break down", "uniform tree",
+# "per label", "facts only".
+
+name: "kcc-design:decompose-design emits three markdown tables per node with no judgement"
+prompt: |
+  Decompose these two UI artifacts into a uniform tree — scope:
+  just the submit button component. Report facts only, no
+  recommendations, no classification.
+
+  Artifact 1 (label: web, platform: web): bootstrap btn-primary
+  Submit button, background-color #007bff, color #ffffff, padding
+  0.375rem 0.75rem, border-radius 0.25rem, font-size 1rem.
+
+  Artifact 2 (label: ios, platform: ios): SwiftUI Button labeled
+  "Submit", styled .borderedProminent, tint .blue.
+
+  Output: a Component-level node with three markdown tables — one
+  per facet (attributes, layout, motion). Table columns: property,
+  web, ios. Motion table has an extra leading trigger column. Use
+  `—` for cells where a label is silent on a property.
+model: claude-haiku-4-5-20251001
+maxBudgetUsd: 0.08
+timeoutMs: 120000
+
+expect:
+  exitCode: 0
+  parsedJson:
+    type: "result"
+    subtype: "success"
+    is_error: false
+    result:
+      # Positive: asserts markdown-table structure under `### attributes` —
+      # a `| property |` header row followed eventually by a
+      # `|---|...|` separator row. A nested list or flat summary fails.
+      matches: '### attributes[\s\S]*?\|\s*property[\s\S]*?\|[-\s|:]+\|'
+  stdout:
+    # Negative: enforces truth-not-judgement. Classification tokens,
+    # recommendation sections, and code fences must never appear.
+    notContains:
+      - "classification:"
+      - "platform-constraint"
+      - "## TODO"
+      - "## Summary"
+      - "## Findings"
+      - "## Gaps"
+      - "## Recommend"
+      - "```swift"
+      - "```tsx"
+      - "```kotlin"
