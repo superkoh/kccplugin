@@ -154,6 +154,21 @@ test("createMultiStore.get returns undefined for unknown sid", () => {
   assert.equal(multi.get("nope", "anything"), undefined);
 });
 
+test("createItemStore honors caller-supplied id (round-trip)", () => {
+  const store = createItemStore();
+  store.add({ id: "my-id", kind: "inline", title: "X", body: "" });
+  const got = store.get("my-id");
+  assert.ok(got, "get('my-id') should not be undefined");
+  assert.equal(got.title, "X");
+});
+
+test("createMultiStore honors caller-supplied id (round-trip)", () => {
+  const multi = createMultiStore();
+  multi.add("sid-a", { id: "a1", kind: "inline", title: "A1", body: "" });
+  const got = multi.get("sid-a", "a1");
+  assert.ok(got, "multi.get('sid-a', 'a1') should not be undefined");
+});
+
 test("createMultiStore.subscribe is iteration-safe when a listener subscribes mid-emit", () => {
   const multi = createMultiStore();
   const calls = [];

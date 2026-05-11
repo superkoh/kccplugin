@@ -57,8 +57,8 @@ export function createItemStore({ cap = 200 } = {}) {
         emit({ type: "updated", item: existing });
         return existing;
       }
-      const id = randomUUID();
-      const item = { id, createdAt: Date.now(), ...entry };
+      const id = entry.id || randomUUID();
+      const item = { ...entry, id, createdAt: Date.now() };
       items.set(id, item);
       order.unshift(id);
       evict();
