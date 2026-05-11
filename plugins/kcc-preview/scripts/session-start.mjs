@@ -9,8 +9,7 @@
 // - Emits hookSpecificOutput.additionalContext with the rules block
 
 import { spawn } from "node:child_process";
-import { mkdir, readFile } from "node:fs/promises";
-import { existsSync } from "node:fs";
+import { mkdir } from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
 import { fileURLToPath } from "node:url";
@@ -18,7 +17,7 @@ import {
   sessionDirFor, sweepStale, writeCcPid, pingHealth,
   buildSessionStartContext, emitSessionStart,
 } from "./lib/hook-core.mjs";
-import { readUrlPointer, writeUrlPointer } from "./lib/url-pointer.mjs";
+import { readUrlPointer } from "./lib/url-pointer.mjs";
 import { tryBindFirstFreePort, resolvePortRange } from "./lib/leader-election.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
