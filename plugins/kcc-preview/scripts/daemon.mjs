@@ -14,7 +14,7 @@ import { createMultiStore } from "./lib/item-store.mjs";
 import { createRootWatcher } from "./lib/root-watcher.mjs";
 import { createIdleReaper } from "./lib/idle-reaper.mjs";
 import { watchContentDir } from "./lib/watcher.mjs";
-import { writeUrlPointer, clearUrlPointer } from "./lib/url-pointer.mjs";
+import { readUrlPointer, writeUrlPointer, clearUrlPointer } from "./lib/url-pointer.mjs";
 import { writeFile, rm as rmFile } from "node:fs/promises";
 
 const ROOT = process.env.KCC_PREVIEW_ROOT || path.join(os.tmpdir(), "kcc-preview");
@@ -53,6 +53,19 @@ const { port, stop, broadcast } = await createServer({
 });
 
 await writeUrlPointer(`http://localhost:${port}`);
+
+// Verify we are still leader. If another daemon wrote a different URL
+// after us, they win — we exit cleanly to prevent shadow-daemon leaks.
+// The 100ms sleep catches the case where a peer wrote a millisecond AFTER us.
+const myUrl = `http://localhost:${port}`;
+await new Promise((r) => setTimeout(r, 100));
+const verified = await readUrlPointer();
+if (verified && verified !== myUrl) {
+  console.error(`[kcc-preview daemon] peer daemon at ${verified} won the election; exiting`);
+  try { await stop(); } catch {}
+  process.exit(0);
+}
+
 try { await writeFile(DAEMON_PID_PATH, String(process.pid)); } catch {}
 
 const stopWatcher = createRootWatcher(ROOT, {

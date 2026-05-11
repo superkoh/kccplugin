@@ -77,6 +77,29 @@ test("session-start emits URL in additionalContext", async (t) => {
   assert.match(env.hookSpecificOutput.additionalContext, /http:\/\/localhost:534\d{2}/);
 });
 
+test("concurrent session-start does not leak shadow daemons", async (t) => {
+  const { root, home } = await setupRoots(t);
+  // Launch two SessionStarts in parallel
+  const [r1, r2] = await Promise.all([
+    runHook(t, { sessionId: "sid-c1", root, home }),
+    runHook(t, { sessionId: "sid-c2", root, home }),
+  ]);
+  assert.equal(r1.code, 0);
+  assert.equal(r2.code, 0);
+  // Wait a bit for the loser to self-exit
+  await new Promise((r) => setTimeout(r, 500));
+  // Both pointed at the same URL
+  const env1 = JSON.parse(r1.out);
+  const env2 = JSON.parse(r2.out);
+  const m1 = env1.hookSpecificOutput.additionalContext.match(/http:\/\/localhost:(\d+)/);
+  const m2 = env2.hookSpecificOutput.additionalContext.match(/http:\/\/localhost:(\d+)/);
+  // Both should have seen a URL
+  assert.ok(m1, "session 1 should have a URL");
+  assert.ok(m2, "session 2 should have a URL");
+  // Both should agree on the URL — exactly one daemon survives
+  assert.equal(m1[1], m2[1], "both sessions should converge on same URL");
+});
+
 test("session-start emits unavailable when range is exhausted", async (t) => {
   const { root, home } = await setupRoots(t);
   const net = await import("node:net");
