@@ -7,7 +7,7 @@
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import { createServer } from "./lib/server.mjs";
-import { createItemStore } from "./lib/item-store.mjs";
+import { createMultiStore } from "./lib/item-store.mjs";
 import { watchContentDir } from "./lib/watcher.mjs";
 
 const SESSION_ID = process.env.SESSION_ID;
@@ -20,13 +20,20 @@ if (!SESSION_ID || !SESSION_DIR) {
 
 const contentDir = path.join(SESSION_DIR, "content");
 const stateDir = path.join(SESSION_DIR, "state");
-const vcEventsPath = path.join(stateDir, "events");
 
-const store = createItemStore();
-const { port, stop } = await createServer({ store, sessionId: SESSION_ID, vcEventsPath });
+// Transitional bridge: this entry point still serves a single CC session.
+// Task 8 will rename this file to daemon.mjs and run a single shared
+// process across all sessions, where each session is added via root-watcher.
+const multiStore = createMultiStore();
+const sessionLabels = new Map([[SESSION_ID, SESSION_ID]]);
+const { port, stop } = await createServer({
+  multiStore,
+  sessionLabels,
+  vcEventsPathFor: () => path.join(stateDir, "events"),
+});
 
 const unwatch = watchContentDir(contentDir, {
-  onEntry: (entry) => store.add(entry),
+  onEntry: (entry) => multiStore.add(SESSION_ID, entry),
   onError: (err) => console.error("[kcc-preview watcher]", err.message),
 });
 

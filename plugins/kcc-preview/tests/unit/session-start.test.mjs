@@ -71,5 +71,10 @@ test("SessionStart creates session dir with server.port, server.pid, and content
   const res = await fetch(`http://127.0.0.1:${port}/health`);
   assert.equal(res.status, 200);
   const j = await res.json();
-  assert.equal(j.sessionId, "sess-xyz");
+  assert.equal(typeof j.uptime, "number");
+
+  // And verify the session is registered with the multi-store-backed server.
+  const sessRes = await fetch(`http://127.0.0.1:${port}/api/sessions`);
+  const sessions = await sessRes.json();
+  assert.ok(sessions.some((s) => s.sid === "sess-xyz"), "session sess-xyz should be registered");
 });
