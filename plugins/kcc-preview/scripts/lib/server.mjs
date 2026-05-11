@@ -165,7 +165,9 @@ export async function createServer({
       req.on("end", async () => {
         let parsed; try { parsed = JSON.parse(body || "{}"); } catch { parsed = {}; }
         const sid = parsed.sid;
-        if (!sid) return json(res, 400, { error: "sid required" });
+        if (!sid || !/^[A-Za-z0-9_-]+$/.test(sid) || !sessionLabels.has(sid)) {
+          return json(res, 400, { error: "sid required" });
+        }
         if (vcEventsPathFor) {
           const evPath = vcEventsPathFor(sid);
           try {

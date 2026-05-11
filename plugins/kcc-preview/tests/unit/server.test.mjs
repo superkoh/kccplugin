@@ -263,3 +263,35 @@ test("GET frame returns 404 for unknown sid even if item id is otherwise valid",
   const res = await fetch(`http://127.0.0.1:${port}/api/sessions/no-such-sid/items/any/frame`);
   assert.equal(res.status, 404);
 });
+
+test("POST /api/vc-event rejects path-traversal sid", async (t) => {
+  const multi = createMultiStore();
+  multi.add("sid-a", { id: "a1", kind: "inline", title: "A1", body: "" });
+  const { port, stop } = await createServer({
+    multiStore: multi,
+    sessionLabels: new Map([["sid-a", "A"]]),
+    vcEventsPathFor: (sid) => path.join("/tmp/should-never-be-written", sid, "events"),
+  });
+  t.after(() => stop());
+  const r = await fetch(`http://127.0.0.1:${port}/api/vc-event`, {
+    method: "POST",
+    body: JSON.stringify({ sid: "../../etc/pwn", event: "click" }),
+  });
+  assert.equal(r.status, 400);
+});
+
+test("POST /api/vc-event rejects unregistered sid", async (t) => {
+  const multi = createMultiStore();
+  multi.add("sid-a", { id: "a1", kind: "inline", title: "A1", body: "" });
+  const { port, stop } = await createServer({
+    multiStore: multi,
+    sessionLabels: new Map([["sid-a", "A"]]),
+    vcEventsPathFor: () => "/tmp/whatever",
+  });
+  t.after(() => stop());
+  const r = await fetch(`http://127.0.0.1:${port}/api/vc-event`, {
+    method: "POST",
+    body: JSON.stringify({ sid: "unknown-sid", event: "click" }),
+  });
+  assert.equal(r.status, 400);
+});
