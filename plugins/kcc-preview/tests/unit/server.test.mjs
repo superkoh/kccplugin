@@ -257,3 +257,9 @@ test("POST /api/vc-event without sid returns 400", async (t) => {
   });
   assert.equal(r.status, 400);
 });
+
+test("GET frame returns 404 for unknown sid even if item id is otherwise valid", async (t) => {
+  const { port } = await startMultiServer(t, { "sid-a": "A" });
+  const res = await fetch(`http://127.0.0.1:${port}/api/sessions/no-such-sid/items/any/frame`);
+  assert.equal(res.status, 404);
+});

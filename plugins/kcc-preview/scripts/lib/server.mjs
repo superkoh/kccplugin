@@ -119,6 +119,7 @@ export async function createServer({
     const mFrame = /^\/api\/sessions\/([A-Za-z0-9_-]+)\/items\/([A-Za-z0-9-]+)\/frame$/.exec(url.pathname);
     if (mFrame) {
       const sid = mFrame[1], id = mFrame[2];
+      if (!sessionLabels.has(sid)) { res.writeHead(404); return res.end("not found"); }
       const it = multiStore.get(sid, id);
       if (!it) { res.writeHead(404); return res.end("not found"); }
       const tpl = await readFile(path.join(FRONTEND_DIR, "vc-frame.html"), "utf-8");
