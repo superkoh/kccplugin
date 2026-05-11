@@ -62,4 +62,8 @@ test("session-end does NOT read server.pid", async (t) => {
   const code = await new Promise((r) => child.on("exit", r));
   assert.equal(code, 0);
   assert.equal(stderr, "");
+  const { readFile: rf } = await import("node:fs/promises");
+  const source = await rf(ENTRY, "utf-8");
+  assert.ok(!/server\.pid/.test(source), "session-end.mjs must not reference server.pid");
+  assert.ok(!/process\.kill\b/.test(source), "session-end.mjs must not call process.kill");
 });
