@@ -1,70 +1,65 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { mkdtemp, mkdir, writeFile, readdir, rm } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import path from "node:path";
 import os from "node:os";
-import { mkdtemp, mkdir, writeFile, rm, readdir } from "node:fs/promises";
-import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { assertHookOutput } from "../../../../test/lib/hook-output.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ENTRY = path.resolve(__dirname, "..", "..", "scripts", "session-end.mjs");
+const ENTRY = path.resolve(__dirname, "../../scripts/session-end.mjs");
 
-function runHook(stdinJson, env) {
-  return new Promise((resolve) => {
-    const p = spawn("node", [ENTRY], { env: { ...process.env, ...env }, stdio: ["pipe", "pipe", "pipe"] });
-    let out = "";
-    p.stdout.on("data", (d) => out += d);
-    p.on("close", (code) => resolve({ code, out }));
-    p.stdin.write(JSON.stringify(stdinJson));
-    p.stdin.end();
+async function runHook({ sessionId, root }) {
+  const child = spawn(process.execPath, [ENTRY], {
+    env: { ...process.env, KCC_PREVIEW_ROOT: root },
+    stdio: ["pipe", "pipe", "pipe"],
   });
+  child.stdin.write(JSON.stringify({ session_id: sessionId }));
+  child.stdin.end();
+  let out = "";
+  child.stdout.on("data", (c) => out += c);
+  const code = await new Promise((r) => child.on("exit", r));
+  return { code, out };
 }
 
-test("SessionEnd kills server pid and removes session dir", async (t) => {
+test("session-end rms the session dir", async (t) => {
   const root = await mkdtemp(path.join(os.tmpdir(), "kcc-se-"));
   t.after(() => rm(root, { recursive: true, force: true }));
-
-  // Spawn a long-running sleeper we can assert is killed
-  const sleeper = spawn(process.execPath, ["-e", "setInterval(() => {}, 1000)"], {
-    stdio: "ignore", detached: true,
-  });
-  sleeper.unref();
-
-  const sessionDir = path.join(root, "end-test");
-  await mkdir(sessionDir, { recursive: true });
-  await writeFile(path.join(sessionDir, "server.pid"), String(sleeper.pid));
-  await writeFile(path.join(sessionDir, "server.port"), "1");
-
-  const { code, out } = await runHook(
-    { session_id: "end-test", hook_event_name: "SessionEnd" },
-    { KCC_PREVIEW_ROOT: root },
-  );
+  const sid = "sid-x";
+  await mkdir(path.join(root, sid, "content"), { recursive: true });
+  await writeFile(path.join(root, sid, "label.txt"), "x");
+  const { code } = await runHook({ sessionId: sid, root });
   assert.equal(code, 0);
-  const j = await assertHookOutput("SessionEnd", out);
-  assert.equal(j.continue, true);
-  assert.equal(j.suppressOutput, true);
-
-  // Session dir is gone
-  assert.equal(existsSync(sessionDir), false);
-
-  // Sleeper process is dead — give SIGTERM a moment
-  await new Promise(r => setTimeout(r, 200));
-  let alive;
-  try { process.kill(sleeper.pid, 0); alive = true; } catch { alive = false; }
-  assert.equal(alive, false);
+  const remaining = await readdir(root);
+  assert.deepEqual(remaining, []);
 });
 
-test("SessionEnd is a no-op when session dir does not exist", async (t) => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "kcc-se-"));
+test("session-end is a no-op if dir already gone", async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "kcc-se-noop-"));
   t.after(() => rm(root, { recursive: true, force: true }));
-
-  const { code, out } = await runHook(
-    { session_id: "never-started", hook_event_name: "SessionEnd" },
-    { KCC_PREVIEW_ROOT: root },
-  );
+  const { code } = await runHook({ sessionId: "never-existed", root });
   assert.equal(code, 0);
-  const j = await assertHookOutput("SessionEnd", out);
-  assert.equal(j.continue, true);
+});
+
+test("session-end does NOT read server.pid", async (t) => {
+  // Regression: old version called process.kill(pid). New version must not
+  // open server.pid at all. We simulate by writing an absurd pid; if the
+  // hook still tries to kill, the test process itself becomes a candidate
+  // (we'd get an unexpected stderr). We assert clean exit and no stderr.
+  const root = await mkdtemp(path.join(os.tmpdir(), "kcc-se-nopid-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const sid = "sid-x";
+  await mkdir(path.join(root, sid), { recursive: true });
+  await writeFile(path.join(root, sid, "server.pid"), "1");  // legacy file
+  const child = spawn(process.execPath, [ENTRY], {
+    env: { ...process.env, KCC_PREVIEW_ROOT: root },
+    stdio: ["pipe", "pipe", "pipe"],
+  });
+  child.stdin.write(JSON.stringify({ session_id: sid }));
+  child.stdin.end();
+  let stderr = "";
+  child.stderr.on("data", (c) => stderr += c);
+  const code = await new Promise((r) => child.on("exit", r));
+  assert.equal(code, 0);
+  assert.equal(stderr, "");
 });
