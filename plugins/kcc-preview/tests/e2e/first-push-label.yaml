@@ -12,8 +12,8 @@ prompt: |
   After pushing, run a Bash command that prints exactly:
     LABEL_BEGIN<the label content>LABEL_END
   using `cat` on the label.txt path the kcc-preview rules gave you. Then stop.
-model: claude-haiku-4-5-20251001
-maxBudgetUsd: 0.15
+model: claude-sonnet-4-6
+maxBudgetUsd: 0.50
 timeoutMs: 180000
 
 allowedTools:
