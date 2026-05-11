@@ -153,3 +153,23 @@ test("createMultiStore.get returns undefined for unknown sid", () => {
   const multi = createMultiStore();
   assert.equal(multi.get("nope", "anything"), undefined);
 });
+
+test("createMultiStore.subscribe is iteration-safe when a listener subscribes mid-emit", () => {
+  const multi = createMultiStore();
+  const calls = [];
+  multi.subscribe((ev) => {
+    calls.push(["outer", ev.sid]);
+    // Register a new listener from inside the callback — must not break this emit
+    multi.subscribe((ev2) => calls.push(["inner", ev2.sid]));
+  });
+  multi.add("sid-x", { id: "i1", kind: "inline", title: "I1", body: "" });
+  // The outer listener should fire exactly once for this emit;
+  // the inner one is registered too late to see this emit.
+  assert.deepEqual(calls, [["outer", "sid-x"]]);
+  // A second emit should now hit both listeners.
+  multi.add("sid-x", { id: "i2", kind: "inline", title: "I2", body: "" });
+  // outer fires again + adds another inner; both existing inners fire (now 2 inners after this emit's outer)
+  // Just assert outer fired again and at least one inner fired with sid-x.
+  assert.ok(calls.some((c) => c[0] === "inner" && c[1] === "sid-x"),
+    "newly registered inner listener should receive the second emit");
+});

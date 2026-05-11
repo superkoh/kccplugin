@@ -84,10 +84,11 @@ export function createMultiStore() {
     let s = perSid.get(sid);
     if (!s) {
       s = createItemStore();
-      // Forward per-sid events with sid annotation
+      // Forward per-sid events with sid annotation. Snapshot listeners before
+      // iteration so subscribing-during-emit is safe (mirrors createItemStore).
       s.subscribe((ev) => {
         const out = { ...ev, sid };
-        for (const fn of listeners) {
+        for (const fn of [...listeners]) {
           try { fn(out); } catch { /* ignore listener errors */ }
         }
       });
