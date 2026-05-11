@@ -76,16 +76,19 @@ Do **not** put artifact bodies into `{{CONTENT_DIR}}/`.
 
 ## When you push, announce in one line
 
-Add ONE line to your reply:
+Every push gets ONE announcement line in your reply, ALWAYS starting with
+`👀 已推送到 preview:`.
 
-- **First push of this session:**
-  `👀 已推送到 preview: <title> · session: <label> — {{URL}}`
-- **Subsequent pushes of this session:**
-  `👀 已推送到 preview: <title> · session: <label>`
+Template:
 
-The `<label>` is what you wrote to `{{LABEL_FILE}}`. Combine multiple
-pushes into a single line by joining titles with `, ` (the session label
-appears once).
+`👀 已推送到 preview: <title> · session: <label> — {{URL}}`
+
+Rules:
+- `<title>` — the title from the entry frontmatter. Combine multiple pushes by joining titles with `, `.
+- `<label>` — what you wrote to `{{LABEL_FILE}}`. ALWAYS include it.
+- `— {{URL}}` — include only on the FIRST push of this session. Drop on later pushes.
+
+If unsure whether it's the first push, include the URL — over-including is harmless; missing the announce entirely is not.
 
 ## Format preferences
 

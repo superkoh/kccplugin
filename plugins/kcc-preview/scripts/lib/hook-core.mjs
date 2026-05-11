@@ -249,6 +249,7 @@ export async function listPushedEntryPaths(contentDir) {
 export function buildStopBlockReason({ missingPaths, contentDir }) {
   const list = missingPaths.map((p, i) => `${i + 1}. ${p}`).join("\n");
   const firstTitle = path.basename(missingPaths[0] || "").replace(/\.[^.]+$/, "") || "generated file";
+  const sessionDir = path.dirname(path.resolve(contentDir));
   return [
     "[kcc-preview] You generated long-form file(s) this turn but did not push them to the preview:",
     "",
@@ -266,8 +267,13 @@ export function buildStopBlockReason({ missingPaths, contentDir }) {
     "---",
     "```",
     "",
-    "Use the Write tool — one entry file per referenced file. Then finish your reply ",
-    "with the single-line push announcement (`👀 已推送到 preview: …`).",
+    "Use the Write tool — one entry file per referenced file.",
+    "",
+    `If this is the FIRST push of this session, also Write a one-line label to ${sessionDir}/label.txt (≤80 chars, e.g. "auth migration spec review").`,
+    "",
+    "Then finish your reply with the single-line push announcement. Format:",
+    "  `👀 已推送到 preview: <title> · session: <label> — <URL>`",
+    "(`<URL>` only on the first push of this session; drop it on later pushes. Keep `· session: <label>` on every push.)",
   ].join("\n");
 }
 

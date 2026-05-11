@@ -8,7 +8,7 @@ prompt: |
   available (look for "kcc-preview @"). Print only that URL on its own line.
   Do not push anything to preview. Do not explain. Then stop.
 model: claude-haiku-4-5-20251001
-maxBudgetUsd: 0.05
+maxBudgetUsd: 0.10
 timeoutMs: 120000
 
 allowedTools: []
