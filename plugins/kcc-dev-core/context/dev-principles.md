@@ -41,6 +41,8 @@ file marks it and gives only the operational delta.
   knobs, feature flags, or extension points for use cases that
   don't yet exist. Add indirection only when a second concrete
   caller appears in the same change — not when one is imagined.
+  Self-check: would a senior engineer skim this and call it
+  overcomplicated? If yes, it is.
 
 - **Trust Internal Code, Validate at Boundaries**. Defensive checks
   belong at system boundaries (user input, network responses, files
@@ -116,6 +118,12 @@ file marks it and gives only the operational delta.
   confirmed. Forbidden: weakening assertions, deleting cases, or
   skipping tests just to turn a run green.
 
+- **Tests Encode Intent**. A test that only pins current behavior is
+  not a real test — it must be capable of failing when the *meaning*
+  of the code changes, not just its surface output. If you cannot
+  articulate the "why" a test guards, the test is wrong, not the
+  system.
+
 - **Verify Before Declaring Done** (**CRITICAL**). kcc-core has the
   general form. Enforcement here: before you tell the user "done,"
   actually run the chain — build, lint, tests, or a real execution.
@@ -182,4 +190,4 @@ workflow**):
   branch name differs from remote). Work on the current branch
   directly.
 
-<!-- kcc-dev-core-sentinel: kcc-dev-core-principles-v1 -->
+<!-- kcc-dev-core-sentinel: kcc-dev-core-principles-v2 -->
