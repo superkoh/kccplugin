@@ -31,8 +31,8 @@
     {
       "name": "kcc-preview",
       "source": "./plugins/kcc-preview",
-      "description": "Mirror preview-worthy content from a Claude Code session to a local browser UI with a session-scoped index.",
-      "version": "0.1.3",
+      "description": "Mirror preview-worthy content from a Claude Code session to a local browser UI with a session-scoped index. Runs silent by default — only surfaces when Claude actively pushes rich content.",
+      "version": "0.3.0",
       "category": "visualization",
       "tags": ["preview", "browser", "mirror"]
     },
