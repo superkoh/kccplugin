@@ -1,7 +1,8 @@
 // Pure helpers used by the SessionStart / UserPromptSubmit / SessionEnd / Stop
 // hook entry scripts. Kept stateless so they are easy to unit-test.
 
-import { appendFile, readFile, readdir, rm, stat } from "node:fs/promises";
+import { appendFile, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
+import http from "node:http";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -25,30 +26,54 @@ function isPidAlive(pid) {
   // POSIX kill(pid, 0) throws ESRCH when the process is truly gone, and
   // EPERM when it exists but is owned by a different uid. Treating EPERM
   // as "dead" would let sweepStale wipe a sibling-uid live session dir.
+  if (!Number.isFinite(pid) || pid <= 0) return false;
   try { process.kill(pid, 0); return true; }
   catch (e) { return e.code === "EPERM"; }
 }
 
+// `cc.pid` is the Claude Code parent process pid, written by SessionStart.
+// Missing file = legacy 0.2.x dir → leave alone (will age out via tmpdir
+// clean / next reboot). Present + alive → leave. Present + dead → rm.
 export async function sweepStale(root, activeIds = new Set()) {
   let entries;
   try { entries = await readdir(root); } catch { return; }
   for (const name of entries) {
     if (activeIds.has(name)) continue;
     const dir = path.join(root, name);
-    let pid = null;
     try {
       const s = await stat(dir);
       if (!s.isDirectory()) continue;
-      pid = Number(await readFile(path.join(dir, "server.pid"), "utf-8").catch(() => ""));
-    } catch { /* fall through */ }
+    } catch { continue; }
 
-    // A sibling Claude Code session's server — leave it alone. The owning
-    // session's own SessionEnd hook will clean it up. Wiping it here would
-    // kill the peer's preview mid-session.
-    if (pid && isPidAlive(pid)) continue;
+    let raw;
+    try { raw = await readFile(path.join(dir, "cc.pid"), "utf-8"); }
+    catch { continue; }  // no cc.pid → unknown, do not delete
 
+    const pid = Number(raw.trim());
+    if (isPidAlive(pid)) continue;
     try { await rm(dir, { recursive: true, force: true }); } catch {}
   }
+}
+
+// Records the Claude Code parent process pid into <sessionDir>/cc.pid.
+// SessionStart calls this once per session so sweepStale can later decide
+// whether the owning CC parent is still alive.
+export async function writeCcPid(sessionDir, pid = process.ppid) {
+  await writeFile(path.join(sessionDir, "cc.pid"), String(pid));
+}
+
+// Probe a local preview server's /health endpoint. Returns true iff the
+// server responds with HTTP 200 within timeoutMs. Used by UserPromptSubmit
+// to detect a dead daemon before re-running leader election.
+export function pingHealth(port, timeoutMs = 300) {
+  return new Promise((resolve) => {
+    const req = http.get(
+      { host: "127.0.0.1", port, path: "/health", timeout: timeoutMs },
+      (res) => { resolve(res.statusCode === 200); res.resume(); },
+    );
+    req.on("error", () => resolve(false));
+    req.on("timeout", () => { req.destroy(); resolve(false); });
+  });
 }
 
 // Check whether superpowers is installed via any marketplace under the user's
