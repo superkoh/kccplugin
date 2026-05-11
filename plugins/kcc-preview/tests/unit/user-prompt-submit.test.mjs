@@ -1,140 +1,99 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { mkdtemp, mkdir, writeFile, rm, readFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
+import http from "node:http";
+import net from "node:net";
 import path from "node:path";
 import os from "node:os";
-import http from "node:http";
-import { mkdtemp, mkdir, writeFile, rm } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
-import { assertHookOutput } from "../../../../test/lib/hook-output.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ENTRY = path.resolve(__dirname, "..", "..", "scripts", "user-prompt-submit.mjs");
+const ENTRY = path.resolve(__dirname, "../../scripts/user-prompt-submit.mjs");
+const TEST_RANGE = "53430-53439";
 
-function runHook(stdinJson, env) {
-  return new Promise((resolve) => {
-    const p = spawn("node", [ENTRY], { env: { ...process.env, ...env }, stdio: ["pipe", "pipe", "pipe"] });
-    let out = "", err = "";
-    p.stdout.on("data", (d) => out += d);
-    p.stderr.on("data", (d) => err += d);
-    p.on("close", (code) => resolve({ code, out, err }));
-    p.stdin.write(JSON.stringify(stdinJson));
-    p.stdin.end();
-  });
-}
-
-function startFakeHealth(payload) {
-  return new Promise((resolve) => {
-    const srv = http.createServer((req, res) => {
-      if (req.url === "/health") {
-        res.writeHead(200, { "Content-Type": "application/json" });
-        res.end(JSON.stringify(payload));
-      } else {
-        res.writeHead(404); res.end();
-      }
-    });
-    srv.listen(0, "127.0.0.1", () => resolve({ srv, port: srv.address().port }));
-  });
-}
-
-test("live server -> reminder emitted", async (t) => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "kcc-ups-"));
-  t.after(() => rm(root, { recursive: true, force: true }));
-  const { srv, port } = await startFakeHealth({ sessionId: "s1", uptime: 1000 });
-  t.after(() => new Promise(r => srv.close(r)));
-
-  const sessionDir = path.join(root, "s1");
-  await mkdir(sessionDir, { recursive: true });
-  await writeFile(path.join(sessionDir, "server.port"), String(port));
-  await writeFile(path.join(sessionDir, "server.pid"), String(srv.address().port));  // any non-zero
-
-  const { code, out } = await runHook(
-    { session_id: "s1", hook_event_name: "UserPromptSubmit", prompt: "hi" },
-    { KCC_PREVIEW_ROOT: root },
-  );
-  assert.equal(code, 0);
-  const j = await assertHookOutput("UserPromptSubmit", out);
-  assert.match(j.hookSpecificOutput.additionalContext, /kcc-preview-reminder/);
-  assert.match(j.hookSpecificOutput.additionalContext, new RegExp(`:${port}`));
-});
-
-test("no session dir -> empty context, exit 0", async (t) => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "kcc-ups-"));
-  t.after(() => rm(root, { recursive: true, force: true }));
-
-  const { code, out } = await runHook(
-    { session_id: "never-started", hook_event_name: "UserPromptSubmit", prompt: "hi" },
-    { KCC_PREVIEW_ROOT: root },
-  );
-  assert.equal(code, 0);
-  const j = await assertHookOutput("UserPromptSubmit", out);
-  assert.equal(j.hookSpecificOutput.additionalContext, "");
-});
-
-test("dead server port -> restart succeeds, reminder emitted with new port", async (t) => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "kcc-ups-"));
-  t.after(() => rm(root, { recursive: true, force: true }));
-  const sessionDir = path.join(root, "s2");
-  await mkdir(path.join(sessionDir, "content"), { recursive: true });
-  await mkdir(path.join(sessionDir, "state"), { recursive: true });
-  // port that's almost certainly not bound + fake pid
-  await writeFile(path.join(sessionDir, "server.port"), "1");
-  await writeFile(path.join(sessionDir, "server.pid"), "99999999");
-
-  const { code, out } = await runHook(
-    { session_id: "s2", hook_event_name: "UserPromptSubmit", prompt: "hi" },
-    { KCC_PREVIEW_ROOT: root },
-  );
-  assert.equal(code, 0);
-  const j = await assertHookOutput("UserPromptSubmit", out);
-  // Either the restart succeeded (new port reminder) OR fell back to unavailable.
-  const ctx = j.hookSpecificOutput.additionalContext;
-  assert.ok(
-    /kcc-preview-reminder/.test(ctx) || /kcc-preview: unavailable/.test(ctx),
-    `unexpected context: ${ctx}`,
-  );
-
-  // If restarted, clean up
+async function killSpawnedDaemon(home) {
   try {
-    const { readFile } = await import("node:fs/promises");
-    const pid = Number(await readFile(path.join(sessionDir, "server.pid"), "utf-8"));
-    if (pid && pid !== 99999999) process.kill(pid, "SIGTERM");
-  } catch {}
+    const raw = await readFile(path.join(home, ".kcc-preview", "daemon.pid"), "utf-8");
+    const pid = Number(raw.trim());
+    if (pid > 0) { try { process.kill(pid, "SIGTERM"); } catch {} }
+  } catch { /* never started */ }
+}
+
+async function setup(t) {
+  const root = await mkdtemp(path.join(os.tmpdir(), "kcc-ups-root-"));
+  const home = await mkdtemp(path.join(os.tmpdir(), "kcc-ups-home-"));
+  t.after(async () => {
+    await killSpawnedDaemon(home);
+    await Promise.all([
+      rm(root, { recursive: true, force: true }),
+      rm(home, { recursive: true, force: true }),
+    ]);
+  });
+  return { root, home };
+}
+
+async function runHook({ sessionId, root, home, range = TEST_RANGE }) {
+  const child = spawn(process.execPath, [ENTRY], {
+    env: {
+      ...process.env,
+      KCC_PREVIEW_ROOT: root,
+      HOME: home,
+      KCC_PREVIEW_PORT_RANGE: range,
+    },
+    stdio: ["pipe", "pipe", "pipe"],
+  });
+  child.stdin.write(JSON.stringify({ session_id: sessionId }));
+  child.stdin.end();
+  let out = "", err = "";
+  child.stdout.on("data", (c) => out += c);
+  child.stderr.on("data", (c) => err += c);
+  const code = await new Promise((r) => child.on("exit", r));
+  return { code, out, err };
+}
+
+test("emits empty additionalContext when session dir is missing", async (t) => {
+  const { root, home } = await setup(t);
+  const r = await runHook({ sessionId: "ghost", root, home });
+  const env = JSON.parse(r.out);
+  assert.equal(env.hookSpecificOutput.additionalContext, "");
 });
 
-test("live server -> also appends turn_start to sidecar", async (t) => {
-  const { WRITE_SIDECAR } = await import("../../scripts/lib/hook-core.mjs");
-  const root = await mkdtemp(path.join(os.tmpdir(), "kcc-ups-ts-"));
-  t.after(() => rm(root, { recursive: true, force: true }));
-  const { srv, port } = await startFakeHealth({ sessionId: "sx", uptime: 1 });
-  t.after(() => new Promise(r => srv.close(r)));
+test("appends turn_start when session dir exists, even if no daemon", async (t) => {
+  const { root, home } = await setup(t);
+  const sid = "sid-tu";
+  await mkdir(path.join(root, sid), { recursive: true });
 
-  const sessionDir = path.join(root, "sx");
-  await mkdir(sessionDir, { recursive: true });
-  await writeFile(path.join(sessionDir, "server.port"), String(port));
-  await writeFile(path.join(sessionDir, "server.pid"), String(process.pid));
+  // Hold the entire test range so reElect cannot spawn a real daemon —
+  // the hook should still append turn_start before bailing out.
+  const blockers = [];
+  for (let port = 53450; port <= 53451; port++) {
+    const srv = net.createServer();
+    await new Promise((r) => srv.listen(port, "127.0.0.1", r));
+    blockers.push(srv);
+  }
+  t.after(() => Promise.all(blockers.map((s) => new Promise((r) => s.close(r)))));
 
-  const { code } = await runHook(
-    { session_id: "sx", hook_event_name: "UserPromptSubmit", prompt: "hi" },
-    { KCC_PREVIEW_ROOT: root },
-  );
-  assert.equal(code, 0);
-  const { readFile } = await import("node:fs/promises");
-  const raw = await readFile(path.join(sessionDir, WRITE_SIDECAR), "utf-8");
-  const line = JSON.parse(raw.trim().split("\n").at(-1));
-  assert.equal(line.event, "turn_start");
+  await runHook({ sessionId: sid, root, home, range: "53450-53451" });
+  const sidecar = await readFile(path.join(root, sid, "tool-writes.jsonl"), "utf-8");
+  assert.match(sidecar, /"event":"turn_start"/);
 });
 
-test("no session dir -> turn_start not written", async (t) => {
-  const { WRITE_SIDECAR } = await import("../../scripts/lib/hook-core.mjs");
-  const root = await mkdtemp(path.join(os.tmpdir(), "kcc-ups-nodir-"));
-  t.after(() => rm(root, { recursive: true, force: true }));
-
-  await runHook(
-    { session_id: "never-started", hook_event_name: "UserPromptSubmit", prompt: "hi" },
-    { KCC_PREVIEW_ROOT: root },
-  );
-  const { stat } = await import("node:fs/promises");
-  await assert.rejects(() =>
-    stat(path.join(root, "never-started", WRITE_SIDECAR)));
+test("emits reminder when daemon is reachable via pointer", async (t) => {
+  const { root, home } = await setup(t);
+  const sid = "sid-live";
+  await mkdir(path.join(root, sid), { recursive: true });
+  // Stand up a fake daemon answering /health
+  const srv = http.createServer((req, res) => {
+    if (req.url === "/health") { res.writeHead(200); res.end("ok"); return; }
+    res.writeHead(404); res.end();
+  });
+  await new Promise((r) => srv.listen(0, "127.0.0.1", r));
+  const { port } = srv.address();
+  t.after(() => new Promise((r) => srv.close(r)));
+  await mkdir(path.join(home, ".kcc-preview"), { recursive: true });
+  await writeFile(path.join(home, ".kcc-preview", "url"), `http://localhost:${port}`);
+  const r = await runHook({ sessionId: sid, root, home });
+  const env = JSON.parse(r.out);
+  assert.match(env.hookSpecificOutput.additionalContext, new RegExp(`http://localhost:${port}`));
 });

@@ -7,8 +7,14 @@ session, available at `{{URL}}`.
 
 ## How to push content
 
-Drop an entry file into `{{CONTENT_DIR}}/` using the Write tool. Three
-supported shapes:
+Drop an entry file into `{{CONTENT_DIR}}/` using the Write tool.
+
+**On the FIRST push of this session, ALSO** Write a one-line file at
+`{{LABEL_FILE}}` containing a short (≤ 80 characters) human-readable
+name describing what this session is about overall. Do not rewrite it on
+subsequent pushes.
+
+Three supported entry shapes:
 
 **kind: inline** — markdown body (most common):
 
@@ -70,13 +76,19 @@ Do **not** put artifact bodies into `{{CONTENT_DIR}}/`.
 
 ## When you push, announce in one line
 
-Add ONE line to your reply:
+Every push gets ONE announcement line in your reply, ALWAYS starting with
+`👀 已推送到 preview:`.
 
-```
-👀 已推送到 preview: <title> — {{URL}}
-```
+Template:
 
-Combine multiple pushes into a single line, listing titles.
+`👀 已推送到 preview: <title> · session: <label> — {{URL}}`
+
+Rules:
+- `<title>` — the title from the entry frontmatter. Combine multiple pushes by joining titles with `, `.
+- `<label>` — what you wrote to `{{LABEL_FILE}}`. ALWAYS include it.
+- `— {{URL}}` — include only on the FIRST push of this session. Drop on later pushes.
+
+If unsure whether it's the first push, include the URL — over-including is harmless; missing the announce entirely is not.
 
 ## Format preferences
 

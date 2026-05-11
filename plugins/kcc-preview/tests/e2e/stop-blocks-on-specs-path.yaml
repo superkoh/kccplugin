@@ -13,8 +13,8 @@ prompt: |
   After writing the file, respond with a single short sentence confirming
   the file was written. Do not talk about previews, browsers, or push.
   Then stop.
-model: claude-haiku-4-5-20251001
-maxBudgetUsd: 0.15
+model: claude-sonnet-4-6
+maxBudgetUsd: 0.50
 timeoutMs: 180000
 
 allowedTools:

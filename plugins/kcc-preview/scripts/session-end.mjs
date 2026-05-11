@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-// SessionEnd hook entry — kill server pid and remove session dir.
+// SessionEnd hook entry — rm the session dir. No pid kill: the daemon
+// is shared and its lifecycle is managed by leader-election + idle-reaper.
 
-import { readFile, rm } from "node:fs/promises";
-import { existsSync } from "node:fs";
+import { rm } from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
 import { emitSessionEnd, sessionDirFor } from "./lib/hook-core.mjs";
@@ -26,19 +26,7 @@ async function main() {
   const input = await readStdin();
   const sessionId = input.session_id;
   if (!sessionId) return emit();
-
-  const dir = sessionDirFor(ROOT, sessionId);
-  if (!existsSync(dir)) return emit();
-
-  // Kill pid if any
-  try {
-    const pid = Number(await readFile(path.join(dir, "server.pid"), "utf-8"));
-    if (pid > 0) {
-      try { process.kill(pid, "SIGTERM"); } catch {}
-    }
-  } catch {}
-
-  await rm(dir, { recursive: true, force: true });
+  await rm(sessionDirFor(ROOT, sessionId), { recursive: true, force: true });
   emit();
 }
 

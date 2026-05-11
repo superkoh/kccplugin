@@ -1,23 +1,25 @@
 #!/usr/bin/env node
 // UserPromptSubmit hook entry.
-// - Reads session_id from stdin
-// - Finds session dir under KCC_PREVIEW_ROOT; if absent, emits empty context
-// - Pings /health with 300ms timeout
-// - On success, emits the reminder block
-// - On failure, tries to respawn the detached server once; on that failure,
-//   emits an "unavailable" marker so Claude stops trying this session.
+// - Always appends a turn_start marker to the session's sidecar (used by
+//   Stop hook to scope "this turn's writes").
+// - Reads URL pointer; on health miss, re-runs claimLeaderOrConnect by
+//   spawning a fresh daemon (no peer is leader → we try to be).
+// - Emits the reminder block (URL only).
 
-import { readFile, stat } from "node:fs/promises";
-import { existsSync } from "node:fs";
 import { spawn } from "node:child_process";
+import { existsSync } from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import http from "node:http";
 import { fileURLToPath } from "node:url";
-import { buildReminderContext, emitUserPromptSubmit, sessionDirFor, appendTurnStart } from "./lib/hook-core.mjs";
+import {
+  buildReminderContext, emitUserPromptSubmit, sessionDirFor,
+  appendTurnStart, pingHealth,
+} from "./lib/hook-core.mjs";
+import { readUrlPointer } from "./lib/url-pointer.mjs";
+import { tryBindFirstFreePort, resolvePortRange } from "./lib/leader-election.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const SERVER_ENTRY = path.join(__dirname, "server.mjs");
+const DAEMON_ENTRY = path.join(__dirname, "daemon.mjs");
 const ROOT = process.env.KCC_PREVIEW_ROOT || path.join(os.tmpdir(), "kcc-preview");
 
 async function readStdin() {
@@ -28,53 +30,33 @@ async function readStdin() {
   try { return JSON.parse(buf); } catch { return {}; }
 }
 
-function pingHealth(port, timeoutMs = 300) {
-  return new Promise((resolve) => {
-    const req = http.get({ host: "127.0.0.1", port, path: "/health", timeout: timeoutMs }, (res) => {
-      resolve(res.statusCode === 200);
-      res.resume();
-    });
-    req.on("error", () => resolve(false));
-    req.on("timeout", () => { req.destroy(); resolve(false); });
-  });
-}
+function portOf(url) { return Number(url?.match(/:(\d+)$/)?.[1] || 0); }
 
 function emit(ctx) {
   process.stdout.write(emitUserPromptSubmit(ctx));
   process.exit(0);
 }
 
-async function respawnServer(sessionDir, sessionId) {
-  // Capture the existing port file's mtime BEFORE spawning so we can
-  // distinguish "old port file from the dead server still on disk" from
-  // "new port file written by the fresh server we just spawned." Without
-  // this baseline we'd happily ping the dead port forever.
-  const portFile = path.join(sessionDir, "server.port");
-  let baselineMtime = 0;
-  try { baselineMtime = (await stat(portFile)).mtimeMs; } catch {}
-
-  const child = spawn(process.execPath, [SERVER_ENTRY], {
+async function reElect() {
+  let bound;
+  try { bound = await tryBindFirstFreePort(resolvePortRange()); }
+  catch { return null; }
+  const port = bound.port;
+  await bound.release();
+  const child = spawn(process.execPath, [DAEMON_ENTRY], {
     detached: true,
     stdio: ["ignore", "ignore", "ignore"],
-    env: { ...process.env, SESSION_ID: sessionId, SESSION_DIR: sessionDir },
+    env: { ...process.env, KCC_PREVIEW_PORT: String(port) },
   });
   child.unref();
-
-  return new Promise((resolve) => {
-    const start = Date.now();
-    const tick = async () => {
-      try {
-        const s = await stat(portFile);
-        if (s.mtimeMs > baselineMtime) {
-          const p = Number(await readFile(portFile, "utf-8"));
-          if (p > 0 && await pingHealth(p, 200)) return resolve(p);
-        }
-      } catch {}
-      if (Date.now() - start > 2500) return resolve(0);
-      setTimeout(tick, 40);
-    };
-    tick();
-  });
+  // Wait briefly for daemon to write the pointer and answer /health
+  const start = Date.now();
+  while (Date.now() - start < 2500) {
+    const u = await readUrlPointer();
+    if (u && portOf(u) === port && await pingHealth(port, 200)) return u;
+    await new Promise((r) => setTimeout(r, 50));
+  }
+  return null;
 }
 
 async function main() {
@@ -83,29 +65,21 @@ async function main() {
   if (!sessionId) return emit("");
 
   const dir = sessionDirFor(ROOT, sessionId);
-  const portFile = path.join(dir, "server.port");
-  if (!existsSync(portFile)) return emit("");
+  if (!existsSync(dir)) return emit("");
 
-  // Turn boundary — write before server health work so even if the server is
-  // dead this turn, Stop still sees the marker.
   await appendTurnStart(dir);
 
-  let port = Number(await readFile(portFile, "utf-8"));
-  let alive = await pingHealth(port);
+  let url = await readUrlPointer();
+  let port = portOf(url);
+  let alive = port && await pingHealth(port);
 
   if (!alive) {
-    const newPort = await respawnServer(dir, sessionId);
-    if (newPort > 0) {
-      port = newPort;
-      alive = true;
-    }
+    url = await reElect();
+    alive = !!url;
   }
-
   if (!alive) return emit(`<!-- kcc-preview: unavailable (server not responding) -->`);
 
-  const url = `http://localhost:${port}`;
-  const ctx = await buildReminderContext({ url });
-  emit(ctx);
+  emit(await buildReminderContext({ url }));
 }
 
 main().catch(() => emit(""));

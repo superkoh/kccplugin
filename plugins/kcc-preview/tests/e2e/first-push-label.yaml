@@ -1,0 +1,33 @@
+# L3: First push of a session must also write a label.txt. Because the L3
+# DSL has no filesystem assert, we ask Claude to push, then read label.txt
+# back via Bash and echo the content with a marker — and we assert the
+# marker plus a non-empty body appears in stdout.
+name: "kcc-preview first push writes label.txt"
+prompt: |
+  Push a kind:inline entry to the kcc-preview content directory with title
+  "L3 first push" and body "hello from L3". As required by the kcc-preview
+  rules, this is the FIRST push of this session — also Write a one-line
+  label.txt to the session dir per the kcc-preview rule (any short label is
+  fine, e.g. "L3 test").
+  After pushing, run a Bash command that prints exactly:
+    LABEL_BEGIN<the label content>LABEL_END
+  using `cat` on the label.txt path the kcc-preview rules gave you. Then stop.
+model: claude-sonnet-4-6
+maxBudgetUsd: 0.50
+timeoutMs: 180000
+
+allowedTools:
+  - Write
+  - Bash
+
+expect:
+  exitCode: 0
+  parsedJson:
+    type: "result"
+    subtype: "success"
+    is_error: false
+  stdout:
+    contains:
+      - "LABEL_BEGIN"
+      - "LABEL_END"
+      - "已推送到 preview"

@@ -1,7 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { mkdtemp, writeFile, mkdir, readdir, readFile, rm } from "node:fs/promises";
-import { spawn } from "node:child_process";
+import { spawn as _spawn2 } from "node:child_process";
+import http from "node:http";
+import net from "node:net";
 import path from "node:path";
 import os from "node:os";
 import {
@@ -10,6 +12,7 @@ import {
   appendWriteSidecar, scanSidecarForPushableFiles,
   listPushedEntryPaths, buildStopBlockReason,
   emitStopBlock, isSuperpowersInstalled,
+  writeCcPid, pingHealth,
   PUSHABLE_MIN_LINES, WRITE_SIDECAR,
 } from "../../scripts/lib/hook-core.mjs";
 
@@ -36,58 +39,11 @@ test("sessionDirFor concatenates session_id under root", async () => {
   assert.equal(sessionDirFor(root, "abc-123"), "/tmp/x/abc-123");
 });
 
-// Regression for the concurrent-session bug: when a second Claude Code
-// session runs SessionStart, sweepStale used to SIGTERM + rm any dir
-// whose id wasn't in activeIds — wiping the peer session's live server.
-// Now it must leave alive siblings alone.
-test("sweepStale leaves alive sibling sessions untouched", async (t) => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "kcc-sweep-alive-"));
-  t.after(() => rm(root, { recursive: true, force: true }));
-
-  const sleeper = spawn(process.execPath, ["-e", "setInterval(() => {}, 1000)"], {
-    stdio: "ignore", detached: true,
-  });
-  sleeper.unref();
-  t.after(() => { try { process.kill(sleeper.pid, "SIGKILL"); } catch {} });
-
-  const siblingDir = path.join(root, "sibling-session");
-  await mkdir(siblingDir, { recursive: true });
-  await writeFile(path.join(siblingDir, "server.pid"), String(sleeper.pid));
-
-  // activeIds contains only the *current* session — the sibling is NOT in it.
-  // Before the fix, this would kill the sleeper and remove siblingDir.
-  await sweepStale(root, new Set(["my-own-session"]));
-
-  const remaining = await readdir(root);
-  assert.ok(remaining.includes("sibling-session"),
-    "alive sibling session dir must survive sweepStale");
-
-  let stillAlive;
-  try { process.kill(sleeper.pid, 0); stillAlive = true; } catch { stillAlive = false; }
-  assert.equal(stillAlive, true,
-    "sweepStale must not SIGTERM an alive sibling session's server");
-});
-
-test("sweepStale removes dirs with dead pids", async (t) => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "kcc-sweep-"));
-  t.after(() => import("node:fs/promises").then(m => m.rm(root, { recursive: true, force: true })));
-
-  // Create a dir with a clearly-dead pid
-  const deadDir = path.join(root, "dead-session");
-  await mkdir(deadDir, { recursive: true });
-  await writeFile(path.join(deadDir, "server.pid"), "99999999");
-
-  // Create a dir belonging to our own process (must be preserved when activeIds includes it)
-  const liveDir = path.join(root, "live-session");
-  await mkdir(liveDir, { recursive: true });
-  await writeFile(path.join(liveDir, "server.pid"), String(process.pid));
-
-  await sweepStale(root, new Set(["live-session"]));
-
-  const remaining = await readdir(root);
-  assert.ok(!remaining.includes("dead-session"));
-  assert.ok(remaining.includes("live-session"));
-});
+// NOTE: Legacy sweepStale tests that asserted on `server.pid` were removed
+// when the helper was rewired to read `cc.pid` instead. Their anti-regression
+// intent (alive sibling pid -> don't delete; dead pid -> delete; activeIds
+// protected) is covered by the four "sweepStale ... cc.pid" cases further
+// down this file.
 
 test("buildSessionStartContext (no superpowers) substitutes URL + CONTENT_DIR and omits appendix", async (t) => {
   const claudeHome = await fakeClaudeHome(t, { superpowers: false });
@@ -481,6 +437,88 @@ test("hasAskUserQuestionThisTurn finds event after last turn_start only", async 
   await appendTurnStart(root);
   await appendAskUserQuestionEvent(root);
   assert.equal(await hasAskUserQuestionThisTurn(root), true);
+});
+
+test("sweepStale removes dirs whose cc.pid is dead", async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "kcc-sweep-cc-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const orphan = path.join(root, "dead-sid");
+  await mkdir(orphan);
+  await writeFile(path.join(orphan, "cc.pid"), "999999");  // unlikely-alive pid
+  await sweepStale(root, new Set());
+  const left = await readdir(root);
+  assert.deepEqual(left, []);
+});
+
+test("sweepStale leaves dirs whose cc.pid is alive", async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "kcc-sweep-cc-alive-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const sleeper = _spawn2(process.execPath, ["-e", "setInterval(()=>{},1000)"], {
+    stdio: "ignore", detached: true,
+  });
+  sleeper.unref();
+  t.after(() => { try { process.kill(sleeper.pid, "SIGKILL"); } catch {} });
+  const live = path.join(root, "live-sid");
+  await mkdir(live);
+  await writeFile(path.join(live, "cc.pid"), String(sleeper.pid));
+  await sweepStale(root, new Set());
+  const left = await readdir(root);
+  assert.deepEqual(left, ["live-sid"]);
+});
+
+test("sweepStale leaves dirs missing cc.pid (legacy 0.2.x upgrade)", async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "kcc-sweep-legacy-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const legacy = path.join(root, "legacy-sid");
+  await mkdir(legacy);
+  // No cc.pid at all
+  await sweepStale(root, new Set());
+  const left = await readdir(root);
+  assert.deepEqual(left, ["legacy-sid"]);
+});
+
+test("sweepStale respects activeIds even with stale cc.pid", async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "kcc-sweep-active-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const dir = path.join(root, "self-sid");
+  await mkdir(dir);
+  await writeFile(path.join(dir, "cc.pid"), "999999");
+  await sweepStale(root, new Set(["self-sid"]));
+  const left = await readdir(root);
+  assert.deepEqual(left, ["self-sid"]);
+});
+
+test("writeCcPid records process.ppid by default", async (t) => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), "kcc-ccpid-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  await writeCcPid(dir);
+  const got = (await readFile(path.join(dir, "cc.pid"), "utf-8")).trim();
+  assert.equal(got, String(process.ppid));
+});
+
+test("writeCcPid accepts explicit pid", async (t) => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), "kcc-ccpid-exp-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  await writeCcPid(dir, 12345);
+  const got = (await readFile(path.join(dir, "cc.pid"), "utf-8")).trim();
+  assert.equal(got, "12345");
+});
+
+test("pingHealth returns true for a 200 OK server", async (t) => {
+  const srv = http.createServer((_, res) => { res.writeHead(200); res.end("ok"); });
+  await new Promise((r) => srv.listen(0, "127.0.0.1", r));
+  const { port } = srv.address();
+  t.after(() => new Promise((r) => srv.close(r)));
+  assert.equal(await pingHealth(port, 300), true);
+});
+
+test("pingHealth returns false for a non-listening port", async () => {
+  // Port chosen unlikely-to-be-bound; verify by attempting bind first
+  const probe = net.createServer();
+  await new Promise((r) => probe.listen(0, "127.0.0.1", r));
+  const { port } = probe.address();
+  await new Promise((r) => probe.close(r));
+  assert.equal(await pingHealth(port, 200), false);
 });
 
 test("hasAskUserQuestionThisTurn without any turn_start -> false", async (t) => {

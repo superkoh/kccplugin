@@ -1,75 +1,119 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { mkdtemp, readFile, writeFile, rm, mkdir, stat } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import path from "node:path";
 import os from "node:os";
-import { mkdtemp, rm, readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
-import { assertHookOutput } from "../../../../test/lib/hook-output.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ENTRY = path.resolve(__dirname, "..", "..", "scripts", "session-start.mjs");
+const ENTRY = path.resolve(__dirname, "../../scripts/session-start.mjs");
 
-function runHook(stdinJson, env = {}) {
-  return new Promise((resolve, reject) => {
-    const p = spawn("node", [ENTRY], {
-      env: { ...process.env, ...env },
-      stdio: ["pipe", "pipe", "pipe"],
-    });
-    let out = "", err = "";
-    p.stdout.on("data", (d) => out += d);
-    p.stderr.on("data", (d) => err += d);
-    p.on("close", (code) => resolve({ code, out, err }));
-    p.on("error", reject);
-    p.stdin.write(JSON.stringify(stdinJson));
-    p.stdin.end();
+// All tests use a high test-only port range to keep the actually-running
+// production daemon (on 51296) untouched, and to avoid colliding with the
+// user's other services.
+const TEST_RANGE = "53400-53409";
+
+async function runHook(t, { sessionId, root, home, range = TEST_RANGE }) {
+  const child = spawn(process.execPath, [ENTRY], {
+    env: {
+      ...process.env,
+      KCC_PREVIEW_ROOT: root,
+      HOME: home,
+      KCC_PREVIEW_PORT_RANGE: range,
+    },
+    stdio: ["pipe", "pipe", "pipe"],
   });
+  child.stdin.write(JSON.stringify({ session_id: sessionId }));
+  child.stdin.end();
+  let out = "", err = "";
+  child.stdout.on("data", (c) => out += c);
+  child.stderr.on("data", (c) => err += c);
+  const code = await new Promise((r) => child.on("exit", r));
+  return { code, out, err };
 }
 
-function killOnAfter(t, pidPath) {
+async function killSpawnedDaemon(home) {
+  // The daemon writes its own pid into <HOME>/.kcc-preview/daemon.pid on
+  // startup; reading it gives us a precise cleanup target instead of grep.
+  try {
+    const raw = await readFile(path.join(home, ".kcc-preview", "daemon.pid"), "utf-8");
+    const pid = Number(raw.trim());
+    if (pid > 0) { try { process.kill(pid, "SIGTERM"); } catch {} }
+  } catch { /* never started or already gone */ }
+}
+
+async function setupRoots(t) {
+  const root = await mkdtemp(path.join(os.tmpdir(), "kcc-ss-root-"));
+  const home = await mkdtemp(path.join(os.tmpdir(), "kcc-ss-home-"));
   t.after(async () => {
-    try {
-      const pid = Number(await readFile(pidPath, "utf-8"));
-      if (pid > 0) process.kill(pid, "SIGTERM");
-    } catch { /* server already gone or pid file missing */ }
+    await killSpawnedDaemon(home);
+    await Promise.all([
+      rm(root, { recursive: true, force: true }),
+      rm(home, { recursive: true, force: true }),
+    ]);
   });
+  return { root, home };
 }
 
-test("SessionStart hook emits JSON with sentinel and URL", async (t) => {
-  const tmpRoot = await mkdtemp(path.join(os.tmpdir(), "kcc-ss-test-"));
-  t.after(() => rm(tmpRoot, { recursive: true, force: true }));
-  killOnAfter(t, path.join(tmpRoot, "abc-123", "server.pid"));
-
-  const { code, out } = await runHook(
-    { session_id: "abc-123", cwd: process.cwd(), hook_event_name: "SessionStart" },
-    { KCC_PREVIEW_ROOT: tmpRoot },
-  );
-  assert.equal(code, 0);
-  const parsed = await assertHookOutput("SessionStart", out);
-  assert.match(parsed.hookSpecificOutput.additionalContext, /<!-- kcc-preview-sentinel: v1 -->/);
-  assert.match(parsed.hookSpecificOutput.additionalContext, /http:\/\/localhost:\d+/);
+test("session-start writes cc.pid", async (t) => {
+  const { root, home } = await setupRoots(t);
+  const sid = "sid-pid";
+  const r = await runHook(t, { sessionId: sid, root, home });
+  assert.equal(r.code, 0);
+  const pidRaw = await readFile(path.join(root, sid, "cc.pid"), "utf-8");
+  // ppid of the spawned child = pid of this test process
+  assert.equal(Number(pidRaw.trim()), process.pid);
+  // url pointer should exist after a successful leader-election
+  const url = (await readFile(path.join(home, ".kcc-preview", "url"), "utf-8")).trim();
+  assert.match(url, /^http:\/\/localhost:534\d{2}$/);
 });
 
-test("SessionStart creates session dir with server.port, server.pid, and content/", async (t) => {
-  const tmpRoot = await mkdtemp(path.join(os.tmpdir(), "kcc-ss-test-"));
-  t.after(() => rm(tmpRoot, { recursive: true, force: true }));
-  killOnAfter(t, path.join(tmpRoot, "sess-xyz", "server.pid"));
+test("session-start emits URL in additionalContext", async (t) => {
+  const { root, home } = await setupRoots(t);
+  const r = await runHook(t, { sessionId: "sid-ctx", root, home });
+  const env = JSON.parse(r.out);
+  assert.equal(env.hookSpecificOutput.hookEventName, "SessionStart");
+  assert.match(env.hookSpecificOutput.additionalContext, /http:\/\/localhost:534\d{2}/);
+});
 
-  const { code, out } = await runHook(
-    { session_id: "sess-xyz", cwd: process.cwd(), hook_event_name: "SessionStart" },
-    { KCC_PREVIEW_ROOT: tmpRoot },
-  );
-  assert.equal(code, 0);
+test("concurrent session-start does not leak shadow daemons", async (t) => {
+  const { root, home } = await setupRoots(t);
+  // Launch two SessionStarts in parallel
+  const [r1, r2] = await Promise.all([
+    runHook(t, { sessionId: "sid-c1", root, home }),
+    runHook(t, { sessionId: "sid-c2", root, home }),
+  ]);
+  assert.equal(r1.code, 0);
+  assert.equal(r2.code, 0);
+  // Wait a bit for the loser to self-exit
+  await new Promise((r) => setTimeout(r, 500));
+  // Both pointed at the same URL
+  const env1 = JSON.parse(r1.out);
+  const env2 = JSON.parse(r2.out);
+  const m1 = env1.hookSpecificOutput.additionalContext.match(/http:\/\/localhost:(\d+)/);
+  const m2 = env2.hookSpecificOutput.additionalContext.match(/http:\/\/localhost:(\d+)/);
+  // Both should have seen a URL
+  assert.ok(m1, "session 1 should have a URL");
+  assert.ok(m2, "session 2 should have a URL");
+  // Both should agree on the URL — exactly one daemon survives
+  assert.equal(m1[1], m2[1], "both sessions should converge on same URL");
+});
 
-  const sessionDir = path.join(tmpRoot, "sess-xyz");
-  const port = Number(await readFile(path.join(sessionDir, "server.port"), "utf-8"));
-  assert.ok(port > 0);
-  const pid = Number(await readFile(path.join(sessionDir, "server.pid"), "utf-8"));
-  assert.ok(pid > 0);
+test("session-start emits unavailable when range is exhausted", async (t) => {
+  const { root, home } = await setupRoots(t);
+  const net = await import("node:net");
+  const blockers = [];
+  for (let port = 53420; port <= 53421; port++) {
+    const srv = net.createServer();
+    await new Promise((r) => srv.listen(port, "127.0.0.1", r));
+    blockers.push(srv);
+  }
+  t.after(() => Promise.all(blockers.map((s) => new Promise((r) => s.close(r)))));
 
-  // Verify server really responds
-  const res = await fetch(`http://127.0.0.1:${port}/health`);
-  assert.equal(res.status, 200);
-  const j = await res.json();
-  assert.equal(j.sessionId, "sess-xyz");
+  const r = await runHook(t, {
+    sessionId: "sid-exhausted", root, home, range: "53420-53421",
+  });
+  const env = JSON.parse(r.out);
+  assert.match(env.hookSpecificOutput.additionalContext, /unavailable/);
 });
