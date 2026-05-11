@@ -7,8 +7,14 @@ session, available at `{{URL}}`.
 
 ## How to push content
 
-Drop an entry file into `{{CONTENT_DIR}}/` using the Write tool. Three
-supported shapes:
+Drop an entry file into `{{CONTENT_DIR}}/` using the Write tool.
+
+**On the FIRST push of this session, ALSO** Write a one-line file at
+`{{LABEL_FILE}}` containing a short (≤ 80 characters) human-readable
+name describing what this session is about overall. Do not rewrite it on
+subsequent pushes.
+
+Three supported entry shapes:
 
 **kind: inline** — markdown body (most common):
 
@@ -72,11 +78,14 @@ Do **not** put artifact bodies into `{{CONTENT_DIR}}/`.
 
 Add ONE line to your reply:
 
-```
-👀 已推送到 preview: <title> — {{URL}}
-```
+- **First push of this session:**
+  `👀 已推送到 preview: <title> · session: <label> — {{URL}}`
+- **Subsequent pushes of this session:**
+  `👀 已推送到 preview: <title> · session: <label>`
 
-Combine multiple pushes into a single line, listing titles.
+The `<label>` is what you wrote to `{{LABEL_FILE}}`. Combine multiple
+pushes into a single line by joining titles with `, ` (the session label
+appears once).
 
 ## Format preferences
 
