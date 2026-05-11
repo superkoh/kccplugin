@@ -9,13 +9,14 @@
 </head>
 <body>
 <div id="app">
+  <header id="topbar">
+    <span class="brand">kcc-preview</span>
+    <span id="status-dot" class="status-dot" title="disconnected"></span>
+    <nav id="tabs" class="tabs" aria-label="sessions"></nav>
+  </header>
   <aside id="sidebar">
-    <header class="sidebar-header">
-      <span class="brand">kcc-preview</span>
-      <span id="status-dot" class="status-dot" title="disconnected"></span>
-    </header>
     <div id="index-list" class="index-list">
-      <div class="empty">Nothing pushed yet. Claude will populate this during the session.</div>
+      <div class="empty">No active sessions — start a Claude Code session.</div>
     </div>
   </aside>
   <main id="viewport">
