@@ -1,0 +1,24 @@
+# L3: SessionStart's context block surfaces a URL inside the 51296-51305
+# range. This is the end-to-end signal that leader-election + url-pointer
+# wiring works end-to-end. Multi-session URL-equality is verified in
+# Task 16 manual smoke (the DSL has no way to sequence two runs).
+name: "kcc-preview SessionStart injects a fixed-range URL"
+prompt: |
+  Print exactly the URL that the kcc-preview block in your context says is
+  available (look for "kcc-preview @"). Print only that URL on its own line.
+  Do not push anything to preview. Do not explain. Then stop.
+model: claude-haiku-4-5-20251001
+maxBudgetUsd: 0.05
+timeoutMs: 120000
+
+allowedTools: []
+
+expect:
+  exitCode: 0
+  parsedJson:
+    type: "result"
+    subtype: "success"
+    is_error: false
+  stdout:
+    contains:
+      - "http://localhost:5"
