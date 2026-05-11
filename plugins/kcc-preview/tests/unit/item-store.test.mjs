@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { createItemStore } from "../../scripts/lib/item-store.mjs";
+import { createItemStore, createMultiStore } from "../../scripts/lib/item-store.mjs";
 
 test("add assigns sequential ids", () => {
   const s = createItemStore();
@@ -120,4 +120,36 @@ test("subscribing during emit does not throw or corrupt iteration", () => {
   s.add({ kind: "inline", title: "B", body: "" });
   // At least the second add's event reached the subscribe-during-emit-added listener.
   assert.ok(seen.includes("B"));
+});
+
+test("createMultiStore isolates items by sid", () => {
+  const multi = createMultiStore();
+  multi.add("sid-a", { id: "a1", kind: "inline", title: "A1", body: "" });
+  multi.add("sid-b", { id: "b1", kind: "inline", title: "B1", body: "" });
+  assert.equal(multi.list("sid-a").length, 1);
+  assert.equal(multi.list("sid-a")[0].title, "A1");
+  assert.equal(multi.list("sid-b").length, 1);
+  assert.equal(multi.list("sid-b")[0].title, "B1");
+});
+
+test("createMultiStore.removeSession drops all items for that sid", () => {
+  const multi = createMultiStore();
+  multi.add("sid-a", { id: "x", kind: "inline", title: "X", body: "" });
+  multi.removeSession("sid-a");
+  assert.equal(multi.list("sid-a").length, 0);
+});
+
+test("createMultiStore.subscribe receives sid on every event", () => {
+  const multi = createMultiStore();
+  const received = [];
+  multi.subscribe((ev) => received.push(ev));
+  multi.add("sid-a", { id: "x", kind: "inline", title: "X", body: "" });
+  assert.equal(received.length, 1);
+  assert.equal(received[0].sid, "sid-a");
+  assert.equal(received[0].type, "added");
+});
+
+test("createMultiStore.get returns undefined for unknown sid", () => {
+  const multi = createMultiStore();
+  assert.equal(multi.get("nope", "anything"), undefined);
 });

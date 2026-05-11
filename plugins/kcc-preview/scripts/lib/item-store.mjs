@@ -75,3 +75,39 @@ export function createItemStore({ cap = 200 } = {}) {
     },
   };
 }
+
+export function createMultiStore() {
+  const perSid = new Map();
+  const listeners = new Set();
+
+  function storeFor(sid) {
+    let s = perSid.get(sid);
+    if (!s) {
+      s = createItemStore();
+      // Forward per-sid events with sid annotation
+      s.subscribe((ev) => {
+        const out = { ...ev, sid };
+        for (const fn of listeners) {
+          try { fn(out); } catch { /* ignore listener errors */ }
+        }
+      });
+      perSid.set(sid, s);
+    }
+    return s;
+  }
+
+  return {
+    add(sid, entry) { return storeFor(sid).add(entry); },
+    get(sid, id) {
+      const s = perSid.get(sid);
+      return s ? s.get(id) : undefined;
+    },
+    list(sid) {
+      const s = perSid.get(sid);
+      return s ? s.list() : [];
+    },
+    listSessions() { return [...perSid.keys()]; },
+    removeSession(sid) { perSid.delete(sid); },
+    subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); },
+  };
+}
