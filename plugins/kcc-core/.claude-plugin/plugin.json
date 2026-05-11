@@ -1,5 +1,5 @@
 {
   "name": "kcc-core",
-  "version": "0.1.1",
+  "version": "0.1.4",
   "description": "Core plugin for the kccplugin marketplace: top-level context injections and shared commands / skills."
 }

@@ -7,7 +7,7 @@
 #      first turn, i.e. the model can read from it.
 #
 # The key trick: `thinking-principles.md` ends with an HTML comment
-# containing the sentinel `kcc-core-thinking-principles-v1`. That literal
+# containing the sentinel `kcc-core-thinking-principles-v4`. That literal
 # string is not in any model's training data — it exists only in this
 # repo. We ask the model to quote it back. If the injection worked the
 # model has it in context and can produce it; if the hook didn't fire or
@@ -20,7 +20,7 @@
 name: "kcc-core SessionStart hook injects thinking principles into context"
 prompt: "Inside your current session context there is a document titled 'Top-Level Thinking & Communication Principles' that ends with an HTML comment containing a sentinel identifier starting with 'kcc-core-thinking-principles'. Quote that exact identifier string and nothing else. If you cannot see such a document, reply with the literal text NO_SENTINEL_IN_CONTEXT."
 model: claude-haiku-4-5-20251001
-maxBudgetUsd: 0.05
+maxBudgetUsd: 0.10
 timeoutMs: 120000
 
 # Lock out everything that could give the model an out-of-band path to
@@ -44,6 +44,6 @@ expect:
     is_error: false
   stdout:
     contains:
-      - "kcc-core-thinking-principles-v1"
+      - "kcc-core-thinking-principles-v4"
     notContains:
       - "NO_SENTINEL_IN_CONTEXT"

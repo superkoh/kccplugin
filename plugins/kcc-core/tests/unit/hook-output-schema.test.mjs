@@ -35,6 +35,6 @@ test("kcc-core SessionStart hook stdout passes the hook-output schema", async (t
   // this file is the schema route above.
   if (j.hookSpecificOutput.additionalContext) {
     const { default: assert } = await import("node:assert/strict");
-    assert.match(j.hookSpecificOutput.additionalContext, /kcc-core-thinking-principles-v1/);
+    assert.match(j.hookSpecificOutput.additionalContext, /kcc-core-thinking-principles-v4/);
   }
 });
