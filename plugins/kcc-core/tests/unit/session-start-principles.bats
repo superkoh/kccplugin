@@ -37,7 +37,7 @@ setup() {
 @test "additionalContext contains the machine sentinel token" {
   run bash "$SCRIPT" </dev/null
   [ "$status" -eq 0 ]
-  echo "$output" | jq -e '.hookSpecificOutput.additionalContext | contains("kcc-core-thinking-principles-v3")'
+  echo "$output" | jq -e '.hookSpecificOutput.additionalContext | contains("kcc-core-thinking-principles-v4")'
 }
 
 @test "graceful degrade when jq is unavailable: script still exits 0" {
