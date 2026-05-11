@@ -1,24 +1,29 @@
 #!/usr/bin/env node
 // SessionStart hook entry.
-// - Reads Claude Code JSON envelope from stdin
-// - Sweeps stale kcc-preview session dirs
-// - Creates a session dir under KCC_PREVIEW_ROOT (defaults to $TMPDIR/kcc-preview)
-// - Spawns the detached server and waits for server.port to appear
+// - Reads Claude Code session_id from stdin
+// - mkdir $TMPDIR/kcc-preview/<sid>/{content,state}
+// - Writes cc.pid (= process.ppid) — used by sweepStale to prove liveness
+// - Runs sweepStale (ignores self via activeIds)
+// - claimLeaderOrConnect: read pointer; if absent or stale, try-bind the
+//   range; if we win, spawn detached daemon with KCC_PREVIEW_PORT set
 // - Emits hookSpecificOutput.additionalContext with the rules block
 
 import { spawn } from "node:child_process";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import { fileURLToPath } from "node:url";
 import {
-  sessionDirFor, sweepStale, buildSessionStartContext, emitSessionStart,
+  sessionDirFor, sweepStale, writeCcPid, pingHealth,
+  buildSessionStartContext, emitSessionStart,
 } from "./lib/hook-core.mjs";
+import { readUrlPointer, writeUrlPointer } from "./lib/url-pointer.mjs";
+import { tryBindFirstFreePort, resolvePortRange } from "./lib/leader-election.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = process.env.KCC_PREVIEW_ROOT || path.join(os.tmpdir(), "kcc-preview");
-const SERVER_ENTRY = path.join(__dirname, "server.mjs");
+const DAEMON_ENTRY = path.join(__dirname, "daemon.mjs");
 
 async function readStdin() {
   const chunks = [];
@@ -28,21 +33,45 @@ async function readStdin() {
   try { return JSON.parse(buf); } catch { return {}; }
 }
 
-// Existence of server.port is intentionally the only "live" signal — no
-// extra GET /health probe here. SessionStart sits on the session-start
-// critical path, so an extra round-trip would add latency on every session;
-// UserPromptSubmit's per-turn /health ping is the backstop that catches a
-// server that crashed between writing port and the first user turn.
-function waitForFile(file, timeoutMs = 2500) {
-  return new Promise((resolve, reject) => {
+function waitForPointerHealth(timeoutMs = 2500) {
+  return new Promise(async (resolve) => {
     const start = Date.now();
-    const tick = () => {
-      if (existsSync(file)) return resolve();
-      if (Date.now() - start > timeoutMs) return reject(new Error("timeout"));
-      setTimeout(tick, 25);
-    };
-    tick();
+    while (Date.now() - start < timeoutMs) {
+      const url = await readUrlPointer();
+      if (url) {
+        const port = Number(url.match(/:(\d+)$/)?.[1]);
+        if (port && await pingHealth(port, 200)) return resolve(url);
+      }
+      await new Promise((r) => setTimeout(r, 50));
+    }
+    resolve(null);
   });
+}
+
+async function claimLeaderOrConnect() {
+  const existing = await readUrlPointer();
+  if (existing) {
+    const port = Number(existing.match(/:(\d+)$/)?.[1]);
+    if (port && await pingHealth(port, 200)) return existing;
+  }
+
+  let bound;
+  try {
+    bound = await tryBindFirstFreePort(resolvePortRange());
+  } catch (err) {
+    return null;  // range exhausted
+  }
+  const port = bound.port;
+  await bound.release();  // free immediately so the daemon can re-bind it
+
+  const child = spawn(process.execPath, [DAEMON_ENTRY], {
+    detached: true,
+    stdio: ["ignore", "ignore", "ignore"],
+    env: { ...process.env, KCC_PREVIEW_PORT: String(port) },
+  });
+  child.unref();
+
+  return waitForPointerHealth(2500);
 }
 
 function emitAndExit(ctx) {
@@ -58,30 +87,27 @@ async function main() {
   }
 
   await mkdir(ROOT, { recursive: true });
-  await sweepStale(ROOT, new Set([sessionId]));
-
   const sessionDir = sessionDirFor(ROOT, sessionId);
   const contentDir = path.join(sessionDir, "content");
   const stateDir = path.join(sessionDir, "state");
   await mkdir(contentDir, { recursive: true });
   await mkdir(stateDir, { recursive: true });
 
-  const child = spawn(process.execPath, [SERVER_ENTRY], {
-    detached: true,
-    stdio: ["ignore", "ignore", "ignore"],
-    env: { ...process.env, SESSION_ID: sessionId, SESSION_DIR: sessionDir },
-  });
-  child.unref();
+  await writeCcPid(sessionDir);
+  await sweepStale(ROOT, new Set([sessionId]));
 
-  try {
-    await waitForFile(path.join(sessionDir, "server.port"));
-  } catch {
-    return emitAndExit(await buildSessionStartContext({ url: null, reason: "server did not start" }));
+  const url = await claimLeaderOrConnect();
+  if (!url) {
+    return emitAndExit(await buildSessionStartContext({
+      url: null,
+      reason: "no free port in 51296-51305",
+    }));
   }
 
-  const port = Number(await readFile(path.join(sessionDir, "server.port"), "utf-8"));
-  const url = `http://localhost:${port}`;
-  const ctx = await buildSessionStartContext({ url, contentDir, vcStateDir: stateDir });
+  const labelFile = path.join(sessionDir, "label.txt");
+  const ctx = await buildSessionStartContext({
+    url, contentDir, vcStateDir: stateDir, labelFile,
+  });
   emitAndExit(ctx);
 }
 

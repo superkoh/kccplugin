@@ -95,7 +95,7 @@ export async function isSuperpowersInstalled({ claudeHome } = {}) {
   return false;
 }
 
-export async function buildSessionStartContext({ url, contentDir, vcStateDir, reason, claudeHome }) {
+export async function buildSessionStartContext({ url, contentDir, vcStateDir, labelFile, reason, claudeHome }) {
   if (!url) {
     return `<!-- kcc-preview: unavailable (${reason || "unknown"}) -->`;
   }
@@ -107,7 +107,8 @@ export async function buildSessionStartContext({ url, contentDir, vcStateDir, re
   return tpl
     .replace(/\{\{URL\}\}/g, url)
     .replace(/\{\{CONTENT_DIR\}\}/g, contentDir)
-    .replace(/\{\{VC_STATE_DIR\}\}/g, vcStateDir);
+    .replace(/\{\{VC_STATE_DIR\}\}/g, vcStateDir)
+    .replace(/\{\{LABEL_FILE\}\}/g, labelFile || "");
 }
 
 export async function buildReminderContext({ url }) {
