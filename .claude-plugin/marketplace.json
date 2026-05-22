@@ -9,14 +9,6 @@
   },
   "plugins": [
     {
-      "name": "hello-world",
-      "source": "./plugins/hello-world",
-      "description": "Minimal starter plugin demonstrating a slash command and a skill",
-      "version": "0.1.0",
-      "category": "example",
-      "tags": ["example", "starter"]
-    },
-    {
       "name": "kcc-core",
       "source": "./plugins/kcc-core",
       "description": "Core plugin: top-level context injections and shared commands / skills.",
@@ -25,8 +17,8 @@
     {
       "name": "kcc-dev-core",
       "source": "./plugins/kcc-dev-core",
-      "description": "Development-focused plugin: conditionally injects code-discipline principles when the session is inside a software project, and hosts shared dev skills / hooks.",
-      "version": "0.1.0"
+      "description": "Development-focused plugin: conditionally injects code-discipline principles when the session is inside a software project, and hosts standalone dev skills (write-spec, write-acceptance-criteria) and hooks.",
+      "version": "0.2.0"
     },
     {
       "name": "kcc-preview",
@@ -43,14 +35,6 @@
       "version": "0.1.0",
       "category": "testing",
       "tags": ["testing", "qa", "manual-testing"]
-    },
-    {
-      "name": "kcc-dev-workflow",
-      "source": "./plugins/kcc-dev-workflow",
-      "description": "Orchestrates brainstorm (incl. user-driven UX visual direction loop producing an approved ui-kickoff.html) → spec → UI/UX → AC → multi-agent review+rewrite (4 personas incl. UX lens auditing HTML faithfulness) → test cases → multi-agent review+rewrite, with resume support. Phase 0 runs step-brainstorm in the main session; a 6-teammate team chains the production steps. Leverages superpowers:brainstorming and kcc-testing when present, self-contained otherwise.",
-      "version": "0.1.4",
-      "category": "workflow",
-      "tags": ["workflow", "spec", "testing", "team", "multi-agent", "resume", "uiux", "visual-direction"]
     },
     {
       "name": "kcc-backlog",
