@@ -1,7 +1,7 @@
 /**
- * L2 smoke test for the kcc-dev-core plugin scaffold. Intentionally
- * minimal: no commands / skills / agents yet, so we only assert that
- * the manifest parses and declares the expected plugin name.
+ * L2 manifest test for kcc-dev-core: the manifest parses and declares
+ * the expected plugin name. Skill-level contracts live in the
+ * write-*-contract.test.mjs files.
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";

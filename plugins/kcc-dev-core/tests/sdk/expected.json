@@ -1,8 +1,8 @@
 {
   "slashCommands": {
     "requires": [
-      "hello-world:hello",
-      "hello-world:greeting"
+      "kcc-dev-core:write-spec",
+      "kcc-dev-core:write-acceptance-criteria"
     ],
     "forbids": []
   },
