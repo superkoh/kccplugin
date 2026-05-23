@@ -5,26 +5,26 @@
   },
   "metadata": {
     "description": "A Claude Code plugin marketplace",
-    "version": "0.1.2"
+    "version": "0.1.3"
   },
   "plugins": [
     {
       "name": "kcc-core",
       "source": "./plugins/kcc-core",
       "description": "Core plugin: top-level context injections and shared commands / skills.",
-      "version": "0.1.1"
+      "version": "0.1.5"
     },
     {
       "name": "kcc-dev-core",
       "source": "./plugins/kcc-dev-core",
       "description": "Development-focused plugin: conditionally injects code-discipline principles when the session is inside a software project, and hosts standalone dev skills (write-spec, write-acceptance-criteria) and hooks.",
-      "version": "0.2.0"
+      "version": "0.2.1"
     },
     {
       "name": "kcc-preview",
       "source": "./plugins/kcc-preview",
       "description": "Mirror preview-worthy content from a Claude Code session to a local browser UI with a session-scoped index. Runs silent by default — only surfaces when Claude actively pushes rich content.",
-      "version": "0.3.0",
+      "version": "0.3.1",
       "category": "visualization",
       "tags": ["preview", "browser", "mirror"]
     },
@@ -32,7 +32,7 @@
       "name": "kcc-testing",
       "source": "./plugins/kcc-testing",
       "description": "LLM-executable manual QA test case authoring — write-test-cases skill turns a PRD into a YAML coverage set.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "testing",
       "tags": ["testing", "qa", "manual-testing"]
     },
@@ -40,7 +40,7 @@
       "name": "kcc-backlog",
       "source": "./plugins/kcc-backlog",
       "description": "Record work items the user wants to defer and recover them later. Silent-by-default.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "workflow",
       "tags": ["backlog", "tasks", "workflow"]
     },
@@ -48,7 +48,7 @@
       "name": "kcc-design",
       "source": "./plugins/kcc-design",
       "description": "Cross-platform UI decomposer. The decompose-design skill breaks 1..N UI artifacts (web / iOS / Android) into a uniform per-facet tree (attributes / layout / motion) with nested property-value detail — facts only, no classification, no recommendations, no code generation.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "design",
       "tags": ["design", "ui", "ux", "cross-platform", "decomposition"]
     }
