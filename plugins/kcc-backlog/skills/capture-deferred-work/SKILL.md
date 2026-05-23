@@ -6,30 +6,28 @@ allowed-tools: Bash, AskUserQuestion, Read, Edit
 
 # capture-deferred-work
 
-This skill fires when the user signals that some piece of work should be recorded for later — not done now. It **replaces** the base system's auto-memory saving behavior for defer-worthy work items when `kcc-backlog` is installed.
+Fires when the user signals that some piece of work should be recorded for later — not done now. Replaces the base system's auto-memory saving for defer-worthy work items while `kcc-backlog` is installed.
 
-## The correct flow (required)
-
-When this skill activates:
+## Flow
 
 1. **State** in one sentence what you would record and why. Example:
    > "你提到 <short summary>，不是现在要做的事 — 记到 backlog 合适吗？"
 
-2. **Ask via AskUserQuestion**, exactly one question, three options:
-   - "是" — description: "加入 .kcc/backlog/"
-   - "否" — description: "不记录，drop it"
-   - "改措辞" — description: "先改 title / body 再记"
+2. **AskUserQuestion**, three options:
+   - "是" — "加入 .kcc/backlog/"
+   - "否" — "不记录，drop it"
+   - "改措辞" — "先改 title / body 再记"
 
-3. On **是**: dedup scan first — do NOT add blindly.
+3. On **是**: dedup scan before adding.
 
-   3a. Run `node "${CLAUDE_PLUGIN_ROOT}/scripts/lib/backlog-io.mjs" list` and scan existing titles for an obvious near-duplicate of your draft title (same intent, near-identical wording, or overlapping topic).
+   3a. Run `node "${CLAUDE_PLUGIN_ROOT}/scripts/lib/backlog-io.mjs" list` and scan titles for an obvious near-duplicate of your draft (same intent, near-identical wording, or overlapping topic).
 
-   3b. **If a near-duplicate exists**: surface it and ask one more AskUserQuestion with three options:
-       - "Merge" — append the new draft into the existing item's body as a `## Appended <YYYY-MM-DD>` section. Use Read to load the existing file at `.kcc/backlog/items/<existing-id>.md`, Edit to append the section to the body (do NOT touch the frontmatter), then run `node ... update --id <existing-id>` to bump updated_at. Report: `✔ 合并到 <existing-id>`. Stop.
-       - "Add anyway" — proceed to 3c and add as a new item.
-       - "Cancel" — reply "好，不记录。" Stop. Do NOT save to memory.
+   3b. **If a near-duplicate exists**: surface it and ask one more AskUserQuestion:
+       - "Merge" — append the draft into the existing item's body as `## Appended <YYYY-MM-DD>`. Use Read on `.kcc/backlog/items/<existing-id>.md`, Edit to append (leave frontmatter alone), then `node ... update --id <existing-id>` to bump updated_at. Report: `✔ 合并到 <existing-id>`. Stop.
+       - "Add anyway" — proceed to 3c.
+       - "Cancel" — reply "好，不记录。" Stop.
 
-   3c. **If no near-duplicate** (or user chose "Add anyway"), add directly:
+   3c. **If no near-duplicate** (or user chose "Add anyway"):
        ```
        node "${CLAUDE_PLUGIN_ROOT}/scripts/lib/backlog-io.mjs" add \
          --title "<short-title>" \
@@ -40,27 +38,20 @@ When this skill activates:
 
        Report on success: `✔ 已加入 backlog: <id>`. Stop.
 
-4. On **否**: reply "好，不记录。" Stop. Do NOT save to memory as a fallback.
+4. On **否**: reply "好，不记录。" Stop — the backlog is the only place to land it; if the user says no, drop it.
 
-5. On **改措辞**: loop once — ask the user for the revised title / body via AskUserQuestion, then go to step 2.
+5. On **改措辞**: ask the user once for the revised title / body via AskUserQuestion, then return to step 2.
 
-## What NOT to do (critical — this is why this skill exists)
+## Override on auto-memory
 
-- **DO NOT** write a user-memory or project-memory file for a defer-worthy work item. The backlog is the authoritative place. Writing to `~/.claude/projects/*/memory/` is WRONG when this skill activates.
-- **DO NOT** reply "已记下 / 好的，记到 memory / Listed N directories, wrote M memories" as a stand-in for the propose flow. That reply shape is explicitly forbidden.
-- **DO NOT** skip the `AskUserQuestion` gate. User consent via the tool is mandatory.
-- **DO NOT** call `/backlog-add` without first confirming via AskUserQuestion.
+When this skill fires on defer language, it takes priority over the base auto-memory save flow. Defer-worthy work goes through the propose chain above, not into `~/.claude/projects/*/memory/`. Don't reply "已记下 / 好的，记到 memory" as a stand-in for the AskUserQuestion gate — that's the failure mode this skill exists to prevent.
 
-The base system's auto-memory instructions tell you to save "what the user is doing, why, or by when". When the user uses defer language, those instructions are **overridden** — this skill's flow wins.
+Other skills that do non-memory work (creating tasks, searching code) can run normally — they aren't in conflict.
 
 ## When this skill does NOT apply
 
-- The user is asking you to work on something right now (no defer signal). Continue normally, no proposal needed.
-- A purely clarifying question ("what's the status of X?"). Answer, don't propose.
-- Something the user is clearly about to do immediately in this session. Just do it.
+- The user wants you to work on something right now (no defer signal) — continue normally.
+- A clarifying question ("what's the status of X?") — answer, don't propose.
+- Something the user is clearly about to do immediately in this session — just do it.
 
-If you are unsure whether the signal is strong enough, prefer proposing. The user can still say 否 and nothing is saved. Being mildly noisy on an ambiguous case is correct; silently auto-saving as memory is incorrect.
-
-## Tie-break with other skills
-
-If multiple skills could apply and this one fires on defer language, **this skill takes priority over any auto-memory save**. Other skills that do non-memory work (e.g. creating tasks, searching code) can run normally — they aren't in conflict with this one.
+On ambiguous signal, prefer proposing. The user can still say 否. Being mildly noisy on a marginal trigger beats silently auto-saving as memory.
