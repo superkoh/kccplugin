@@ -1,6 +1,6 @@
 {
   "name": "kcc-backlog",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Record work items the user wants to defer and recover them later. Default silent — surfaces only on scope-jump detection, slash-command invocation, or skill trigger.",
   "author": { "name": "koh", "email": "koh.718@gmail.com" },
   "homepage": "https://github.com/superkoh/kccplugin",
