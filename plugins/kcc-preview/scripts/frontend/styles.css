@@ -1,21 +1,21 @@
 :root {
-  --bg: #0f1116;
-  --panel: #13161d;
-  --panel-2: #1a1d25;
-  --fg: rgba(255,255,255,0.92);
-  --fg-2: rgba(255,255,255,0.7);
-  --muted: rgba(255,255,255,0.5);
-  --border: rgba(255,255,255,0.08);
+  --bg: #ffffff;
+  --panel: #f6f7f9;
+  --panel-2: #eceef1;
+  --fg: rgba(0,0,0,0.88);
+  --fg-2: rgba(0,0,0,0.65);
+  --muted: rgba(0,0,0,0.45);
+  --border: rgba(0,0,0,0.1);
   --accent: #6366f1;
-  --accent-dim: rgba(99,102,241,0.2);
+  --accent-dim: rgba(99,102,241,0.12);
 }
 
 html, body { background: var(--bg); color: var(--fg); margin: 0; height: 100%; }
 body { font: 14px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
 
-#app { display: grid; grid-template-columns: 280px 1fr; height: 100vh; overflow: hidden; }
+#app { display: grid; grid-template-columns: 280px 1fr; grid-template-rows: 38px 1fr; height: 100vh; overflow: hidden; }
 
-#sidebar { background: var(--panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; min-height: 0; }
+#sidebar { background: var(--panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; min-height: 0; overflow: auto; }
 .sidebar-header {
   display: flex; align-items: center; justify-content: space-between;
   padding: 14px 18px; border-bottom: 1px solid var(--border);
@@ -31,17 +31,17 @@ body { font: 14px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, san
   color: var(--fg-2);
 }
 .index-item:hover { background: var(--panel-2); color: var(--fg); }
-.index-item.active { background: var(--accent-dim); color: white; }
+.index-item.active { background: var(--accent-dim); color: var(--accent); }
 .index-item .pill {
   flex: 0 0 auto; font-size: 10px; padding: 2px 6px; border-radius: 4px;
-  background: rgba(255,255,255,0.06); color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em;
+  background: rgba(0,0,0,0.06); color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em;
 }
-.index-item .pill.md   { background: rgba(59,130,246,0.2);  color: #93c5fd; }
-.index-item .pill.mmd  { background: rgba(236,72,153,0.2);  color: #f9a8d4; }
-.index-item .pill.file { background: rgba(245,158,11,0.2); color: #fcd34d; }
-.index-item .pill.vc   { background: rgba(168,85,247,0.2); color: #d8b4fe; }
-.index-item .pill.html { background: rgba(34,197,94,0.2);  color: #86efac; }
-.index-item .pill.img  { background: rgba(14,165,233,0.2); color: #7dd3fc; }
+.index-item .pill.md   { background: rgba(59,130,246,0.2);  color: #1d4ed8; }
+.index-item .pill.mmd  { background: rgba(236,72,153,0.2);  color: #be185d; }
+.index-item .pill.file { background: rgba(245,158,11,0.2); color: #b45309; }
+.index-item .pill.vc   { background: rgba(168,85,247,0.2); color: #7e22ce; }
+.index-item .pill.html { background: rgba(34,197,94,0.2);  color: #15803d; }
+.index-item .pill.img  { background: rgba(14,165,233,0.2); color: #0369a1; }
 .index-item .title { flex: 1; font-size: 13px; }
 .index-item .age { font-size: 11px; color: var(--muted); }
 
@@ -61,76 +61,21 @@ body { font: 14px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, san
 .content-host th, .content-host td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; }
 .content-host th { background: var(--panel); }
 .content-host blockquote { border-left: 3px solid var(--accent); padding: 4px 16px; color: var(--fg-2); margin: 16px 0; background: var(--panel); }
-.content-host .mermaid { text-align: center; background: var(--panel); padding: 20px; border-radius: 8px; }
+.content-host .mermaid { text-align: center; background: var(--panel); border: 1px solid var(--border); padding: 20px; border-radius: 8px; overflow-x: auto; }
+.content-host .mermaid svg { max-width: 100%; height: auto; }
+.content-host .mermaid-error { text-align: left; background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; padding: 12px 16px; border-radius: 8px; font: 13px/1.5 ui-monospace, "SF Mono", Menlo, monospace; white-space: pre-wrap; }
 
-/* Bundled "dark" theme leaves a few SVG element categories with white fills
- * or invisible text. Force-color them via post-render selectors. CRITICAL:
- * many Mermaid classes (.actor, .note) apply to BOTH <text> and <rect>;
- * use tag.class form so text fills (light) and rect fills (dark) don't
- * collide on the bare class selector. */
-.content-host .mermaid svg { background: transparent; }
-
-/* Text — every <text>/<tspan>/foreignObject label, regardless of class */
-.content-host .mermaid svg text,
-.content-host .mermaid svg tspan,
-.content-host .mermaid svg text.actor,
-.content-host .mermaid svg text.actor-box,
-.content-host .mermaid svg text.messageText,
-.content-host .mermaid svg text.labelText,
-.content-host .mermaid svg text.loopText,
-.content-host .mermaid svg text.noteText,
-.content-host .mermaid svg text.sequenceNumber,
-.content-host .mermaid svg .nodeLabel,
-.content-host .mermaid svg .titleText,
-.content-host .mermaid svg foreignObject div { fill: #f3f4f6 !important; color: #f3f4f6 !important; }
-
-/* Rect / path / polygon backgrounds */
-.content-host .mermaid svg rect.actor,
-.content-host .mermaid svg rect.actor-top,
-.content-host .mermaid svg rect.actor-bottom,
-.content-host .mermaid svg rect.actor-box,
-.content-host .mermaid svg rect.labelBox,
-.content-host .mermaid svg .node rect,
-.content-host .mermaid svg .node circle,
-.content-host .mermaid svg .node ellipse,
-.content-host .mermaid svg .node polygon,
-.content-host .mermaid svg .node path { fill: #1a1d25 !important; stroke: #6366f1 !important; }
-
-/* Note rectangle (Mermaid sometimes emits class="rect" with aliceblue fill,
- * sometimes class="note") */
-.content-host .mermaid svg rect.note,
-.content-host .mermaid svg rect.rect { fill: #374151 !important; stroke: #9ca3af !important; }
-
-/* Activation bars (sequence) */
-.content-host .mermaid svg rect.activation0,
-.content-host .mermaid svg rect.activation1,
-.content-host .mermaid svg rect.activation2 { fill: #1f2937 !important; stroke: #9ca3af !important; }
-
-/* Lines */
-.content-host .mermaid svg line.actor-line { stroke: #6366f1 !important; }
-.content-host .mermaid svg line.loopLine { stroke: #9ca3af !important; }
-.content-host .mermaid svg line.messageLine0,
-.content-host .mermaid svg line.messageLine1,
-.content-host .mermaid svg path.messageLine0,
-.content-host .mermaid svg path.messageLine1 { stroke: #c7d2fe !important; }
-
-/* Edge labels (flowcharts) */
-.content-host .mermaid svg .edgeLabel { background-color: #1a1d25 !important; color: #f3f4f6 !important; }
-.content-host .mermaid svg .edgeLabel rect { fill: #1a1d25 !important; }
-
-#app { display: grid; grid-template-columns: 280px 1fr; grid-template-rows: 38px 1fr; height: 100vh; }
 #topbar { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px;
-  padding: 0 14px; background: #1c1c20; border-bottom: 1px solid #28282c; overflow: hidden; }
-#topbar .brand { font-weight: 700; color: #e8e8ec; font-size: 12.5px; letter-spacing: .3px; }
+  padding: 0 14px; background: var(--panel); border-bottom: 1px solid var(--border); overflow: hidden; }
+#topbar .brand { font-weight: 700; color: var(--fg); font-size: 12.5px; letter-spacing: .3px; }
 .tabs { display: flex; gap: 4px; overflow-x: auto; flex: 1; min-width: 0; }
-.tabs .tab { padding: 4px 12px; border-radius: 6px 6px 0 0; background: #15151a;
-  color: #989aa0; font-size: 12px; border: 1px solid #28282c; border-bottom: none;
+.tabs .tab { padding: 4px 12px; border-radius: 6px 6px 0 0; background: var(--panel-2);
+  color: var(--fg-2); font-size: 12px; border: 1px solid var(--border); border-bottom: none;
   position: relative; top: 1px; white-space: nowrap; cursor: pointer; user-select: none; }
-.tabs .tab.active { background: #0e0e10; color: #e8e8ec; }
+.tabs .tab.active { background: var(--bg); color: var(--fg); }
 .tabs .tab .unread {
   display: inline-block; width: 6px; height: 6px; border-radius: 50%;
   background: #ff6b6b; margin-left: 6px; vertical-align: middle;
 }
 .tabs .tab .unread.hidden { display: none; }
-#sidebar { background: #131317; border-right: 1px solid #2a2a2e; overflow: auto; }
 #viewport { overflow: auto; }

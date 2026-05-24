@@ -2,11 +2,11 @@
  * so bare .html fragments render correctly when the plugin takes over. */
 
 :root {
-  --bg: #0f1116;
-  --panel: #13161d;
-  --fg: rgba(255,255,255,0.88);
-  --muted: rgba(255,255,255,0.55);
-  --border: rgba(255,255,255,0.08);
+  --bg: #ffffff;
+  --panel: #f6f7f9;
+  --fg: rgba(0,0,0,0.88);
+  --muted: rgba(0,0,0,0.5);
+  --border: rgba(0,0,0,0.1);
   --accent: #6366f1;
 }
 
@@ -28,7 +28,7 @@ html, body {
 .option:hover  { border-color: var(--accent); }
 .option.selected { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 15%, var(--panel)); }
 .option .letter{ flex: 0 0 28px; height: 28px; display: grid; place-items: center;
-                 border-radius: 6px; background: rgba(255,255,255,0.05); font-weight: 600; }
+                 border-radius: 6px; background: rgba(0,0,0,0.05); font-weight: 600; }
 .option .content h3 { margin: 0 0 4px; font-size: 15px; }
 .option .content p  { margin: 0; color: var(--muted); }
 
@@ -39,13 +39,13 @@ html, body {
                  overflow: hidden; cursor: pointer; transition: border-color 0.15s; }
 .card:hover    { border-color: var(--accent); }
 .card.selected { border-color: var(--accent); }
-.card .card-image { background: #0a0c10; }
+.card .card-image { background: #e9ebee; }
 .card .card-body  { padding: 14px 16px; }
 .card .card-body h3 { margin: 0 0 4px; font-size: 15px; }
 .card .card-body p  { margin: 0; color: var(--muted); font-size: 13px; }
 
 /* Mockup */
-.mockup        { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: #0a0c10; }
+.mockup        { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: #fafbfc; }
 .mockup-header { padding: 8px 12px; background: var(--panel); border-bottom: 1px solid var(--border); font-size: 12px; color: var(--muted); }
 .mockup-body   { padding: 16px; }
 
@@ -53,8 +53,8 @@ html, body {
 
 .pros-cons     { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .pros, .cons   { background: var(--panel); border-radius: 8px; padding: 12px 16px; }
-.pros h4 { color: #86efac; margin: 0 0 8px; }
-.cons h4 { color: #fca5a5; margin: 0 0 8px; }
+.pros h4 { color: #15803d; margin: 0 0 8px; }
+.cons h4 { color: #b91c1c; margin: 0 0 8px; }
 
 /* Mock elements */
 .mock-nav      { padding: 8px 12px; border-bottom: 1px solid var(--border); color: var(--muted); font-size: 12px; }
@@ -62,7 +62,7 @@ html, body {
 .mock-content  { padding: 16px; flex: 1; }
 .mock-button   { padding: 6px 12px; background: var(--accent); color: white; border: 0; border-radius: 6px; }
 .mock-input    { padding: 6px 10px; background: var(--panel); border: 1px solid var(--border); color: var(--fg); border-radius: 6px; }
-.placeholder   { background: repeating-linear-gradient(45deg, #13161d, #13161d 8px, #0f1116 8px, #0f1116 16px);
+.placeholder   { background: repeating-linear-gradient(45deg, #eef0f3, #eef0f3 8px, #f6f7f9 8px, #f6f7f9 16px);
                  color: var(--muted); padding: 24px; text-align: center; border-radius: 6px; }
 
 /* Selection indicator */

@@ -2,7 +2,7 @@ import { marked } from "https://cdn.jsdelivr.net/npm/marked@13/+esm";
 import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
 import hljs from "https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/+esm";
 
-mermaid.initialize({ startOnLoad: false, theme: "dark", securityLevel: "loose" });
+mermaid.initialize({ startOnLoad: false, theme: "default", securityLevel: "loose" });
 
 const state = {
   sessions: new Map(),       // sid -> { label, items: [], unread: 0, lastTouchedAt: number }
@@ -142,14 +142,21 @@ async function renderMarkdown(src) {
   for (const pre of host.querySelectorAll("pre code")) hljs.highlightElement(pre);
   const mermaidBlocks = host.querySelectorAll("code.language-mermaid");
   for (const block of mermaidBlocks) {
-    const src = block.textContent;
+    const code = block.textContent;
     const div = document.createElement("div");
-    div.className = "mermaid";
     const id = "m" + Math.random().toString(36).slice(2);
     try {
-      const { svg } = await mermaid.render(id, src);
+      if ((await mermaid.parse(code, { suppressErrors: true })) === false) throw new Error("invalid Mermaid syntax");
+      const { svg } = await mermaid.render(id, code);
+      div.className = "mermaid";
       div.innerHTML = svg;
-    } catch (e) { div.textContent = "Mermaid error: " + e.message; }
+    } catch (e) {
+      div.className = "mermaid-error";
+      div.textContent = "Mermaid error: " + (e?.message || e);
+    } finally {
+      document.getElementById(id)?.remove();
+      document.getElementById("d" + id)?.remove();
+    }
     block.closest("pre").replaceWith(div);
   }
   return host.innerHTML;
