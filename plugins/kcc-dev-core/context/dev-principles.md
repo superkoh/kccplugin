@@ -112,6 +112,12 @@ file gives only the operational delta with specific tools.
 
 ## 4. Claude Code Tool Use
 
+- **Parallelize Independent Work**. The built-in prompt already allows
+  this — actually do it. Batch independent reads, greps, and bash into
+  one tool block; launch independent subagents in one message so they
+  run concurrently. Stay sequential only when there's a real dependency:
+  step B consumes A's output, writes to the same file, or ordered Git ops.
+
 - **Subagents use Opus**. When calling the Agent tool, set
   `model: "opus"`. Don't downgrade subagents to sonnet or haiku.
 
@@ -153,4 +159,4 @@ file gives only the operational delta with specific tools.
 - When running `gh pr create`, omit `--head` (unless the local branch
   name differs from remote).
 
-<!-- kcc-dev-core-sentinel: kcc-dev-core-principles-v2 -->
+<!-- kcc-dev-core-sentinel: kcc-dev-core-principles-v3 -->

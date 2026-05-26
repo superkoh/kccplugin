@@ -52,7 +52,7 @@ test("context/dev-principles.md exists and carries the expected markers", async 
   );
   assert.match(
     text,
-    /kcc-dev-core-principles-v2/,
+    /kcc-dev-core-principles-v3/,
     "machine-readable sentinel token must be present"
   );
 });

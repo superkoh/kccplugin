@@ -13,7 +13,7 @@
 #      the first turn, i.e. the model can read from it.
 #
 # The key trick: dev-principles.md ends with an HTML comment containing
-# the sentinel `kcc-dev-core-principles-v2`. That literal string is not
+# the sentinel `kcc-dev-core-principles-v3`. That literal string is not
 # in any model's training data — it exists only in this repo. We ask
 # the model to quote it back. If the injection worked the model has it
 # in context and can produce it; if the hook didn't fire, or the "dev
@@ -50,6 +50,6 @@ expect:
     is_error: false
   stdout:
     contains:
-      - "kcc-dev-core-principles-v2"
+      - "kcc-dev-core-principles-v3"
     notContains:
       - "NO_DEV_SENTINEL_IN_CONTEXT"
