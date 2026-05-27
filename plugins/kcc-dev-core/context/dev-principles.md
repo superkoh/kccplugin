@@ -45,7 +45,7 @@ file gives only the operational delta with specific tools.
 
 ## 2. Research & Assertion Discipline
 
-- **Verify Before Asserting**. kcc-core has the general rule. Operational
+- **Verify Before Asserting (operational form)**. kcc-core has the general rule. Operational
   form: before any factual claim about code, APIs, or library behavior,
   run the tool — Grep / Read / Bash for source, WebSearch for docs. "Should
   be" / "usually" prose isn't a substitute for a real lookup. Exception:
@@ -97,13 +97,13 @@ file gives only the operational delta with specific tools.
   not just its surface output. If you can't articulate the "why" a test
   guards, the test is wrong, not the system.
 
-- **Verify Before Declaring Done**. kcc-core has the general form.
+- **Verify Before Declaring Done (run the chain)**. kcc-core has the general form.
   Enforcement here: before you tell the user "done," run the chain —
   build, lint, tests, or a real execution. If the environment can't
   run it, say "unverified" explicitly. Applies before commits, PRs,
   and any "task complete" message.
 
-- **Failure Escalation Protocol**. Full staircase lives in kcc-core.
+- **Failure Escalation Protocol (operational reinforcement)**. Full staircase lives in kcc-core.
   Operational reinforcement: every retry restarts from fresh
   ground-truth data, not cached memory. The 2nd failure switches
   strategy, not parameters.
@@ -115,11 +115,10 @@ file gives only the operational delta with specific tools.
 - **Subagents use Opus**. When calling the Agent tool, set
   `model: "opus"`. Don't downgrade subagents to sonnet or haiku.
 
-- **Questions use AskUserQuestion**. Any question that requires a user
-  answer goes through the `AskUserQuestion` tool — brainstorming,
-  plan confirmation, requirement clarification, every interactive
-  moment inside a skill. Exception: rhetorical acknowledgement
-  ("continuing now") that doesn't need a real answer.
+- **AskUserQuestion inside skills**. kcc-core's "Ask Structured
+  Questions" applies to every interactive moment inside a skill too —
+  brainstorming, plan confirmation, requirement clarification — not
+  only top-level decisions.
 
 - **Playwright MCP requires handoff**. When driving a browser via
   Playwright MCP, if you hit an action you can't automate (login
