@@ -7,7 +7,7 @@
 #      first turn, i.e. the model can read from it.
 #
 # The key trick: `thinking-principles.md` ends with an HTML comment
-# containing the sentinel `kcc-core-thinking-principles-v4`. That literal
+# containing the sentinel `kcc-core-thinking-principles-v5`. That literal
 # string is not in any model's training data — it exists only in this
 # repo. We ask the model to quote it back. If the injection worked the
 # model has it in context and can produce it; if the hook didn't fire or
@@ -44,6 +44,6 @@ expect:
     is_error: false
   stdout:
     contains:
-      - "kcc-core-thinking-principles-v4"
+      - "kcc-core-thinking-principles-v5"
     notContains:
       - "NO_SENTINEL_IN_CONTEXT"

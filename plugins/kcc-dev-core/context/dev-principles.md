@@ -18,6 +18,8 @@ file gives only the operational delta with specific tools.
   fix doesn't include unrelated cleanup; a feature doesn't include
   speculative refactoring. Drive-by formatting, renames, and comment
   rewrites in files you only opened for the task don't belong.
+  Self-check: every changed line should trace to a specific stated
+  requirement; if it doesn't, revert it.
 
 - **Respect Repo Conventions**. Match the file layout, naming, import
   ordering, error handling, and test structure of the surrounding code.

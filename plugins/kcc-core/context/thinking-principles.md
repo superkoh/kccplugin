@@ -123,4 +123,17 @@ recent or more tested — and state why. Don't silently blend them into a
 compromise. Flag the loser for cleanup so the next reader doesn't have
 to re-litigate.
 
-<!-- kcc-core-sentinel: kcc-core-thinking-principles-v4 -->
+## 12. Don't Guess — Surface Uncertainty
+
+When you don't know, don't quietly pick the most plausible answer and
+proceed. Two acceptable moves:
+
+- **State the assumption explicitly** when proceeding is cheap and
+  reversible — label it `ASSUMPTION:` so the user can correct it cheaply.
+- **Ask via `AskUserQuestion`** when the choice is load-bearing or
+  hard to reverse.
+
+Silent guessing is never acceptable. "I assumed X" after the fact is
+worse than "I'm assuming X, OK?" before.
+
+<!-- kcc-core-sentinel: kcc-core-thinking-principles-v5 -->
