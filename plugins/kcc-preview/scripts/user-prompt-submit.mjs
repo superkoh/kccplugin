@@ -1,7 +1,5 @@
 #!/usr/bin/env node
 // UserPromptSubmit hook entry.
-// - Always appends a turn_start marker to the session's sidecar (used by
-//   Stop hook to scope "this turn's writes").
 // - Reads URL pointer; on health miss, re-runs claimLeaderOrConnect by
 //   spawning a fresh daemon (no peer is leader → we try to be).
 // - Emits the reminder block (URL only).
@@ -13,7 +11,7 @@ import os from "node:os";
 import { fileURLToPath } from "node:url";
 import {
   buildReminderContext, emitUserPromptSubmit, sessionDirFor,
-  appendTurnStart, pingHealth,
+  pingHealth,
 } from "./lib/hook-core.mjs";
 import { readUrlPointer } from "./lib/url-pointer.mjs";
 import { tryBindFirstFreePort, resolvePortRange } from "./lib/leader-election.mjs";
@@ -66,8 +64,6 @@ async function main() {
 
   const dir = sessionDirFor(ROOT, sessionId);
   if (!existsSync(dir)) return emit("");
-
-  await appendTurnStart(dir);
 
   let url = await readUrlPointer();
   let port = portOf(url);
