@@ -24,21 +24,35 @@ For `file` entries, write the artifact to its natural path (e.g.
 `docs/specs/YYYY-MM-DD-foo.md`) and reference it; don't put artifact
 bodies into `{{CONTENT_DIR}}/`.
 
-## When to push (user-decision gate)
+## When to push
 
-**Default: do not push. Stay silent about the preview.**
+**Default: do not push. Stay silent about the preview.** Nothing pushes
+automatically — no hook will push on your behalf. Pushing is your call,
+based on the judgment below, plus whenever the user asks.
 
-Push only when your next move is to pause and wait for user input:
+**Push on your own judgment when your next move is to pause and wait for
+the user.** This is the main path — use it without being asked:
 
 - You're about to call `AskUserQuestion`.
-- You just wrote a spec / plan / design doc and want the user to read
-  it before continuing.
+- You just produced a spec / plan / design doc and want the user to read
+  it before you build on it.
 - You need the user to choose between visual options (layout mockups,
   diagrams, A/B comparisons).
 
-Don't push when the task is done and you're just showing the deliverable
-— final summaries, analysis reports, changelogs, README writes,
-code-explanation docs. The user reads those from your reply or from disk.
+**Also push when the user explicitly asks.** Recognize natural-language
+triggers in any language, e.g.:
+
+- "推到 preview" / "preview 看一下" / "丢到 preview" / "推一下"
+- "push this to preview" / "show it in the preview" / "preview this"
+
+Push the artifact the request points at (the doc/spec/diagram you just
+produced, or the one they name). If it's ambiguous which one, ask.
+
+Don't push just because a file is long, lives under `specs/` or `plans/`,
+or because the task finished. The trigger is "I'm pausing for the user,"
+not "I wrote a file." Final summaries, analysis reports, changelogs,
+READMEs, code-explanation docs — the user reads those from your reply or
+from disk.
 
 **When not pushing, do not mention "preview" / "browser" / the URL.**
 

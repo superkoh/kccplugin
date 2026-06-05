@@ -59,13 +59,15 @@ test("emits empty additionalContext when session dir is missing", async (t) => {
   assert.equal(env.hookSpecificOutput.additionalContext, "");
 });
 
-test("appends turn_start when session dir exists, even if no daemon", async (t) => {
+test("emits unavailable marker when session dir exists but no daemon is reachable", async (t) => {
   const { root, home } = await setup(t);
   const sid = "sid-tu";
   await mkdir(path.join(root, sid), { recursive: true });
 
-  // Hold the entire test range so reElect cannot spawn a real daemon —
-  // the hook should still append turn_start before bailing out.
+  // Hold the entire test range so reElect cannot spawn a real daemon — the
+  // hook should degrade to the "server not responding" marker, not hang or
+  // crash. (No sidecar is written anymore: the Stop hook and its tool-writes
+  // pipeline were removed in v0.4.0.)
   const blockers = [];
   for (let port = 53450; port <= 53451; port++) {
     const srv = net.createServer();
@@ -74,9 +76,13 @@ test("appends turn_start when session dir exists, even if no daemon", async (t) 
   }
   t.after(() => Promise.all(blockers.map((s) => new Promise((r) => s.close(r)))));
 
-  await runHook({ sessionId: sid, root, home, range: "53450-53451" });
-  const sidecar = await readFile(path.join(root, sid, "tool-writes.jsonl"), "utf-8");
-  assert.match(sidecar, /"event":"turn_start"/);
+  const r = await runHook({ sessionId: sid, root, home, range: "53450-53451" });
+  const env = JSON.parse(r.out);
+  assert.match(env.hookSpecificOutput.additionalContext, /unavailable \(server not responding\)/);
+  await assert.rejects(
+    () => readFile(path.join(root, sid, "tool-writes.jsonl"), "utf-8"),
+    "no tool-writes sidecar should be created",
+  );
 });
 
 test("emits reminder when daemon is reachable via pointer", async (t) => {
