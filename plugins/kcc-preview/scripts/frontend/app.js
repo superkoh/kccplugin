@@ -8,11 +8,11 @@ const state = {
   sessions: new Map(),       // sid -> { label, items: [], unread: 0, lastTouchedAt: number }
   selectedSid: null,
   selectedItemId: null,
+  expanded: new Set(),       // sids whose item list is open in the sidebar
 };
 let selectSeq = 0;
 
-const $tabs = document.getElementById("tabs");
-const $sidebar = document.getElementById("index-list");
+const $nav = document.getElementById("index-list");
 const $title = document.getElementById("current-title");
 const $meta = document.getElementById("current-meta");
 const $host = document.getElementById("content-host");
@@ -37,42 +37,62 @@ function escapeHtml(s) {
     .replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 }
 
-function renderTabs() {
-  $tabs.innerHTML = "";
+// Two-level sidebar: each session is a collapsible level-1 group whose pushed
+// items render nested as level-2 rows.
+function renderNav() {
+  $nav.innerHTML = "";
   const sids = [...state.sessions.keys()].sort((a, b) =>
     state.sessions.get(b).lastTouchedAt - state.sessions.get(a).lastTouchedAt
   );
+  if (!sids.length) {
+    $nav.innerHTML = `<div class="empty">No active sessions — start a Claude Code session.</div>`;
+    return;
+  }
   for (const sid of sids) {
     const s = state.sessions.get(sid);
-    const tab = document.createElement("div");
-    tab.className = "tab" + (sid === state.selectedSid ? " active" : "");
-    tab.dataset.sid = sid;
-    tab.innerHTML = `${escapeHtml(s.label || sid)}<span class="unread${s.unread ? "" : " hidden"}"></span>`;
-    tab.addEventListener("click", () => selectSession(sid));
-    $tabs.appendChild(tab);
+    const expanded = state.expanded.has(sid);
+    const group = document.createElement("div");
+    group.className = "session-group" + (expanded ? " expanded" : "");
+
+    const row = document.createElement("div");
+    row.className = "session-row" + (sid === state.selectedSid ? " active" : "");
+    row.dataset.sid = sid;
+    row.innerHTML = `<span class="chevron">▸</span>
+                     <span class="label">${escapeHtml(s.label || sid)}</span>
+                     <span class="unread${s.unread ? "" : " hidden"}"></span>`;
+    row.addEventListener("click", () => toggleSession(sid));
+    group.appendChild(row);
+
+    if (expanded) {
+      const box = document.createElement("div");
+      box.className = "session-items";
+      if (!s.items.length) {
+        box.innerHTML = `<div class="empty sub">Nothing pushed yet.</div>`;
+      } else {
+        for (const it of s.items) {
+          const pill = pillFor(it);
+          const item = document.createElement("div");
+          const active = sid === state.selectedSid && it.id === state.selectedItemId;
+          item.className = "index-item" + (active ? " active" : "");
+          item.dataset.id = it.id;
+          item.innerHTML = `<span class="pill ${pill.cls}">${pill.label}</span>
+                           <span class="title">${escapeHtml(it.title || "(untitled)")}</span>`;
+          item.addEventListener("click", () => selectItem(sid, it.id));
+          box.appendChild(item);
+        }
+      }
+      group.appendChild(box);
+    }
+    $nav.appendChild(group);
   }
 }
 
-function renderSidebar() {
-  const s = state.selectedSid && state.sessions.get(state.selectedSid);
-  if (!s) {
-    $sidebar.innerHTML = `<div class="empty">No active sessions — start a Claude Code session.</div>`;
-    return;
-  }
-  if (!s.items.length) {
-    $sidebar.innerHTML = `<div class="empty">Nothing pushed yet in this session.</div>`;
-    return;
-  }
-  $sidebar.innerHTML = "";
-  for (const it of s.items) {
-    const pill = pillFor(it);
-    const row = document.createElement("div");
-    row.className = "index-item" + (it.id === state.selectedItemId ? " active" : "");
-    row.dataset.id = it.id;
-    row.innerHTML = `<span class="pill ${pill.cls}">${pill.label}</span>
-                     <span class="title">${escapeHtml(it.title || "(untitled)")}</span>`;
-    row.addEventListener("click", () => selectItem(it.id));
-    $sidebar.appendChild(row);
+function toggleSession(sid) {
+  if (state.expanded.has(sid)) {
+    state.expanded.delete(sid);
+    renderNav();
+  } else {
+    selectSession(sid);
   }
 }
 
@@ -80,10 +100,11 @@ async function selectSession(sid) {
   state.selectedSid = sid;
   const s = state.sessions.get(sid);
   if (s) s.unread = 0;
+  state.expanded.add(sid);
   state.selectedItemId = null;
-  renderTabs();
+  renderNav();
   await refreshSessionItems(sid);
-  if (s && s.items[0]) selectItem(s.items[0].id);
+  if (s && s.items[0]) selectItem(sid, s.items[0].id);
   else { $title.textContent = "kcc-preview"; $meta.textContent = ""; $host.innerHTML = ""; }
 }
 
@@ -94,14 +115,20 @@ async function refreshSessionItems(sid) {
   const s = state.sessions.get(sid);
   if (!s) return;
   s.items = items;
-  renderSidebar();
+  renderNav();
 }
 
-async function selectItem(id) {
+async function selectItem(sid, id) {
   const mySeq = ++selectSeq;
+  if (sid !== state.selectedSid) {
+    state.selectedSid = sid;
+    state.expanded.add(sid);
+    const s = state.sessions.get(sid);
+    if (s) s.unread = 0;
+  }
   state.selectedItemId = id;
-  renderSidebar();
-  const res = await fetch(`/api/sessions/${state.selectedSid}/items/${id}`);
+  renderNav();
+  const res = await fetch(`/api/sessions/${sid}/items/${id}`);
   if (mySeq !== selectSeq) return;
   if (!res.ok) { $host.innerHTML = `<div class="muted">Failed to load item.</div>`; return; }
   const item = await res.json();
@@ -174,25 +201,26 @@ function connectSSE() {
     } else {
       const s = state.sessions.get(sid); s.label = label; s.lastTouchedAt = Date.now();
     }
-    renderTabs();
+    renderNav();
     if (!state.selectedSid) selectSession(sid);
     else refreshSessionItems(sid);  // backfill items pushed before label
   });
   es.addEventListener("session-relabeled", (ev) => {
     const { sid, label } = JSON.parse(ev.data);
     const s = state.sessions.get(sid);
-    if (s) { s.label = label; renderTabs(); }
+    if (s) { s.label = label; renderNav(); }
   });
   es.addEventListener("session-removed", (ev) => {
     const { sid } = JSON.parse(ev.data);
     state.sessions.delete(sid);
+    state.expanded.delete(sid);
     if (state.selectedSid === sid) {
       const next = [...state.sessions.keys()].sort((a,b) =>
         state.sessions.get(b).lastTouchedAt - state.sessions.get(a).lastTouchedAt)[0] || null;
       if (next) selectSession(next);
-      else { state.selectedSid = null; state.selectedItemId = null; renderSidebar(); $title.textContent = "kcc-preview"; $meta.textContent = ""; $host.innerHTML = ""; }
+      else { state.selectedSid = null; state.selectedItemId = null; $title.textContent = "kcc-preview"; $meta.textContent = ""; $host.innerHTML = ""; }
     }
-    renderTabs();
+    renderNav();
   });
   es.addEventListener("added", (ev) => {
     const { sid, item } = JSON.parse(ev.data);
@@ -200,8 +228,8 @@ function connectSSE() {
     if (!s) return;  // session not yet labeled — ignore until session-added
     s.items.unshift(item);
     s.lastTouchedAt = Date.now();
-    if (sid === state.selectedSid) renderSidebar();
-    else { s.unread++; renderTabs(); }
+    if (sid !== state.selectedSid) s.unread++;
+    renderNav();
   });
   es.addEventListener("updated", (ev) => {
     const { sid, item } = JSON.parse(ev.data);
@@ -209,14 +237,14 @@ function connectSSE() {
     if (!s) return;
     const idx = s.items.findIndex((i) => i.id === item.id);
     if (idx >= 0) s.items[idx] = item;
-    if (sid === state.selectedSid) renderSidebar();
+    if (state.expanded.has(sid)) renderNav();  // only item rows changed — skip if collapsed
   });
   es.addEventListener("evicted", (ev) => {
     const { sid, id } = JSON.parse(ev.data);
     const s = state.sessions.get(sid);
     if (!s) return;
     s.items = s.items.filter((i) => i.id !== id);
-    if (sid === state.selectedSid) renderSidebar();
+    if (state.expanded.has(sid)) renderNav();  // only item rows changed — skip if collapsed
   });
 }
 
@@ -229,8 +257,7 @@ async function initialLoad() {
     }
     if (list[0]) await selectSession(list[0].sid);
   }
-  renderTabs();
-  renderSidebar();
+  renderNav();
 }
 
 initialLoad().then(connectSSE);
