@@ -1,6 +1,7 @@
 import { marked } from "https://cdn.jsdelivr.net/npm/marked@13/+esm";
 import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
 import hljs from "https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/+esm";
+import { saveSelection, loadSelection, pickSession, pickItem } from "./selection.mjs";
 
 mermaid.initialize({ startOnLoad: false, theme: "default", securityLevel: "loose" });
 
@@ -17,6 +18,15 @@ const $title = document.getElementById("current-title");
 const $meta = document.getElementById("current-meta");
 const $host = document.getElementById("content-host");
 const $dot = document.getElementById("status-dot");
+
+// Accessing window.localStorage — not just calling its methods — throws when a
+// browser blocks storage outright (Firefox "Never remember history", sandboxed
+// frames, some enterprise policies). Resolve it once behind a guard so such a
+// browser degrades to "selection isn't remembered" instead of crashing app
+// init. selection.mjs already tolerates a null/throwing store.
+const selectionStore = (() => {
+  try { return window.localStorage; } catch { return null; }
+})();
 
 function pillFor(item) {
   if (item.kind === "file") {
@@ -96,7 +106,7 @@ function toggleSession(sid) {
   }
 }
 
-async function selectSession(sid) {
+async function selectSession(sid, preferredItemId = null) {
   state.selectedSid = sid;
   const s = state.sessions.get(sid);
   if (s) s.unread = 0;
@@ -104,8 +114,13 @@ async function selectSession(sid) {
   state.selectedItemId = null;
   renderNav();
   await refreshSessionItems(sid);
-  if (s && s.items[0]) selectItem(sid, s.items[0].id);
-  else { $title.textContent = "kcc-preview"; $meta.textContent = ""; $host.innerHTML = ""; }
+  const target = s ? pickItem(preferredItemId, s.items) : null;
+  if (target) selectItem(sid, target);
+  else { persistSelection(); $title.textContent = "kcc-preview"; $meta.textContent = ""; $host.innerHTML = ""; }
+}
+
+function persistSelection() {
+  saveSelection(selectionStore, { sid: state.selectedSid, itemId: state.selectedItemId });
 }
 
 async function refreshSessionItems(sid) {
@@ -127,6 +142,7 @@ async function selectItem(sid, id) {
     if (s) s.unread = 0;
   }
   state.selectedItemId = id;
+  persistSelection();
   renderNav();
   const res = await fetch(`/api/sessions/${sid}/items/${id}`);
   if (mySeq !== selectSeq) return;
@@ -249,13 +265,17 @@ function connectSSE() {
 }
 
 async function initialLoad() {
+  const saved = loadSelection(selectionStore);
   const res = await fetch("/api/sessions");
   if (res.ok) {
     const list = await res.json();
     for (const { sid, label } of list) {
       state.sessions.set(sid, { label, items: [], unread: 0, lastTouchedAt: Date.now() });
     }
-    if (list[0]) await selectSession(list[0].sid);
+    const sid = pickSession(saved, list);
+    // Restore the saved item only when we landed on the saved session;
+    // pickItem falls back to the newest item if it no longer exists.
+    if (sid) await selectSession(sid, sid === saved?.sid ? saved.itemId : null);
   }
   renderNav();
 }
