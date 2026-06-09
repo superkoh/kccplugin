@@ -74,6 +74,7 @@ const stopWatcher = createRootWatcher(ROOT, {
     if (e.type === "session-discovered") {
       const u = watchContentDir(path.join(ROOT, e.sid, "content"), {
         onEntry: (entry) => multiStore.add(e.sid, entry),
+        onRemove: (source) => multiStore.removeBySource(e.sid, source),
         onError: (err) => console.error("[kcc-preview watcher]", err.message),
       });
       contentUnwatch.set(e.sid, u);

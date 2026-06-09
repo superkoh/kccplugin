@@ -67,6 +67,59 @@ v${i}`);
   assert.equal(entries[entries.length - 1].title, "B4");
 });
 
+test("watcher fires onRemove when a tracked entry file is deleted", async (t) => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), "kcc-watch-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+
+  const entries = [], removed = [];
+  const unwatch = watchContentDir(dir, {
+    onEntry: (e) => entries.push(e),
+    onRemove: (name) => removed.push(name),
+    onError: () => {},
+  });
+  t.after(() => unwatch());
+
+  const file = path.join(dir, "gone.md");
+  await writeFile(file, `---
+title: "Gone"
+kind: inline
+---
+bye`);
+  await waitFor(() => entries.length >= 1);
+
+  await rm(file);
+  await waitFor(() => removed.length >= 1);
+  assert.equal(removed[0], "gone.md");
+});
+
+test("watcher does not fire onRemove twice for one deletion", async (t) => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), "kcc-watch-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+
+  const removed = [];
+  const unwatch = watchContentDir(dir, {
+    onEntry: () => {},
+    onRemove: (name) => removed.push(name),
+    onError: () => {},
+    pollIntervalMs: 100,
+  });
+  t.after(() => unwatch());
+
+  const file = path.join(dir, "once.md");
+  await writeFile(file, `---
+title: "Once"
+kind: inline
+---
+hi`);
+  await new Promise((r) => setTimeout(r, 250));
+  await rm(file);
+
+  // Let both the fs.watch event and several poll ticks elapse — onRemove
+  // must still have fired exactly once.
+  await new Promise((r) => setTimeout(r, 400));
+  assert.deepEqual(removed, ["once.md"]);
+});
+
 test("watcher skips files with parse errors but continues", async (t) => {
   const dir = await mkdtemp(path.join(os.tmpdir(), "kcc-watch-"));
   t.after(() => rm(dir, { recursive: true, force: true }));

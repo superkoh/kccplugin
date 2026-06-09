@@ -24,6 +24,16 @@ For `file` entries, write the artifact to its natural path (e.g.
 `docs/specs/YYYY-MM-DD-foo.md`) and reference it; don't put artifact
 bodies into `{{CONTENT_DIR}}/`.
 
+## How to remove a pushed item
+
+To take an item back off the preview, delete its entry file from
+`{{CONTENT_DIR}}/` (e.g. `rm {{CONTENT_DIR}}/<name>.md`). The item
+disappears from every open browser tab. This removes only the preview
+entry — for a `file` kind it leaves the referenced artifact on disk
+untouched. Do this when an item is stale or superseded and you want it
+gone rather than just updated (re-Writing the same filename updates in
+place instead).
+
 ## When to push
 
 **Default: do not push. Stay silent about the preview.** Nothing pushes
