@@ -16,12 +16,13 @@ const ENTRY_EXT = /\.(md|markdown|html?)$/i;
 
 export function watchContentDir(dir, {
   onEntry,
+  onRemove,
   onError,
   debounceMs = 100,
   pollIntervalMs = 500,
 } = {}) {
   const pending = new Map();           // filename -> timer
-  const seen = new Map();              // filename -> mtimeMs already processed
+  const seen = new Set();              // entry filenames scheduled at least once
 
   async function process(filename) {
     pending.delete(filename);
@@ -30,7 +31,15 @@ export function watchContentDir(dir, {
     try {
       text = await readFile(full, "utf-8");
     } catch (err) {
-      if (err.code !== "ENOENT") onError?.(err);
+      // The file was scheduled but is now gone (Claude removed a pushed
+      // entry, or an editor's atomic rename). Treat it as a deletion so the
+      // store can evict the mirrored item. seen.delete guards against firing
+      // twice when the poll races the fs.watch event.
+      if (err.code === "ENOENT") {
+        if (seen.delete(filename)) onRemove?.(filename);
+        return;
+      }
+      onError?.(err);
       return;
     }
     const result = parseEntry(filename, text);
@@ -43,6 +52,7 @@ export function watchContentDir(dir, {
 
   function schedule(filename) {
     if (!ENTRY_EXT.test(filename)) return;
+    seen.add(filename);
     const prev = pending.get(filename);
     if (prev) clearTimeout(prev);
     pending.set(filename, setTimeout(() => process(filename), debounceMs));
@@ -53,19 +63,25 @@ export function watchContentDir(dir, {
   });
   w.on("error", (err) => onError?.(err));
 
-  // Safety poll: stat dir listing, detect new/mtime-bumped files fs.watch
-  // may have missed (editor atomic-rename, filesystem edge cases).
+  // Safety poll: stat dir listing, detect new files fs.watch may have missed
+  // (editor atomic-rename, filesystem edge cases), and detect entry files
+  // that have disappeared so their mirrored items get evicted.
   const poll = setInterval(async () => {
+    let names;
     try {
-      const names = await readdir(dir);
-      for (const n of names) {
-        if (!ENTRY_EXT.test(n)) continue;
-        if (!seen.has(n)) {
-          seen.set(n, 0);
-          schedule(n);
-        }
+      names = await readdir(dir);
+    } catch { return; }  // dir may not exist yet
+    const current = new Set(names.filter((n) => ENTRY_EXT.test(n)));
+    for (const n of current) {
+      if (!seen.has(n)) schedule(n);
+    }
+    for (const n of [...seen]) {
+      // Skip files still mid-debounce — process() will resolve them.
+      if (!current.has(n) && !pending.has(n)) {
+        seen.delete(n);
+        onRemove?.(n);
       }
-    } catch { /* dir may not exist yet */ }
+    }
   }, pollIntervalMs);
 
   return () => {

@@ -66,6 +66,15 @@ export function createItemStore({ cap = 200 } = {}) {
       return item;
     },
     get(id) { return items.get(id); },
+    removeBySource(source) {
+      const it = findBySource(source);
+      if (!it) return false;
+      items.delete(it.id);
+      const idx = order.indexOf(it.id);
+      if (idx >= 0) order.splice(idx, 1);
+      emit({ type: "evicted", id: it.id });
+      return true;
+    },
     list() {
       return order.map(id => items.get(id)).filter(Boolean);
     },
@@ -106,6 +115,10 @@ export function createMultiStore() {
     list(sid) {
       const s = perSid.get(sid);
       return s ? s.list() : [];
+    },
+    removeBySource(sid, source) {
+      const s = perSid.get(sid);
+      return s ? s.removeBySource(source) : false;
     },
     listSessions() { return [...perSid.keys()]; },
     removeSession(sid) { perSid.delete(sid); },

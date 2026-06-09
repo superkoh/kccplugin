@@ -116,7 +116,12 @@ async function selectSession(sid, preferredItemId = null) {
   await refreshSessionItems(sid);
   const target = s ? pickItem(preferredItemId, s.items) : null;
   if (target) selectItem(sid, target);
-  else { persistSelection(); $title.textContent = "kcc-preview"; $meta.textContent = ""; $host.innerHTML = ""; }
+  else { persistSelection(); clearView(); }
+}
+
+// Reset the content pane to its empty state (no item open).
+function clearView() {
+  $title.textContent = "kcc-preview"; $meta.textContent = ""; $host.innerHTML = "";
 }
 
 function persistSelection() {
@@ -234,7 +239,7 @@ function connectSSE() {
       const next = [...state.sessions.keys()].sort((a,b) =>
         state.sessions.get(b).lastTouchedAt - state.sessions.get(a).lastTouchedAt)[0] || null;
       if (next) selectSession(next);
-      else { state.selectedSid = null; state.selectedItemId = null; $title.textContent = "kcc-preview"; $meta.textContent = ""; $host.innerHTML = ""; }
+      else { state.selectedSid = null; state.selectedItemId = null; clearView(); }
     }
     renderNav();
   });
@@ -260,6 +265,19 @@ function connectSSE() {
     const s = state.sessions.get(sid);
     if (!s) return;
     s.items = s.items.filter((i) => i.id !== id);
+    // If the open item is the one that just vanished, fall back to the
+    // newest remaining item in its session, or clear the view entirely.
+    if (sid === state.selectedSid && id === state.selectedItemId) {
+      const next = s.items[0];
+      if (next) selectItem(sid, next.id);
+      else {
+        state.selectedItemId = null;
+        persistSelection();
+        clearView();
+        renderNav();
+      }
+      return;
+    }
     if (state.expanded.has(sid)) renderNav();  // only item rows changed — skip if collapsed
   });
 }

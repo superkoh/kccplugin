@@ -61,6 +61,51 @@ test("different sources stay as separate entries", () => {
   assert.equal(s.list().length, 2);
 });
 
+test("removeBySource drops the item and emits 'evicted'", () => {
+  const s = createItemStore();
+  const a = s.add({ kind: "inline", title: "A", body: "", source: "arch.md" });
+  s.add({ kind: "inline", title: "B", body: "", source: "diff.md" });
+  const seen = [];
+  s.subscribe((ev) => seen.push(ev));
+  assert.equal(s.removeBySource("arch.md"), true);
+  assert.equal(s.get(a.id), undefined);
+  assert.deepEqual(s.list().map((i) => i.title), ["B"]);
+  assert.equal(seen.length, 1);
+  assert.equal(seen[0].type, "evicted");
+  assert.equal(seen[0].id, a.id);
+});
+
+test("removeBySource returns false and is a no-op for unknown source", () => {
+  const s = createItemStore();
+  s.add({ kind: "inline", title: "A", body: "", source: "arch.md" });
+  const seen = [];
+  s.subscribe((ev) => seen.push(ev));
+  assert.equal(s.removeBySource("nope.md"), false);
+  assert.equal(s.list().length, 1);
+  assert.equal(seen.length, 0);
+});
+
+test("removeBySource removes file-kind items by their source filename", () => {
+  const s = createItemStore();
+  s.add({ kind: "file", title: "Plan", path: "/x/plan.md", source: "plan.md" });
+  assert.equal(s.removeBySource("plan.md"), true);
+  assert.equal(s.list().length, 0);
+});
+
+test("createMultiStore.removeBySource is sid-scoped", () => {
+  const multi = createMultiStore();
+  multi.add("sid-a", { kind: "inline", title: "A", body: "", source: "x.md" });
+  multi.add("sid-b", { kind: "inline", title: "B", body: "", source: "x.md" });
+  assert.equal(multi.removeBySource("sid-a", "x.md"), true);
+  assert.equal(multi.list("sid-a").length, 0);
+  assert.equal(multi.list("sid-b").length, 1);
+});
+
+test("createMultiStore.removeBySource returns false for unknown sid", () => {
+  const multi = createMultiStore();
+  assert.equal(multi.removeBySource("nope", "x.md"), false);
+});
+
 test("FIFO cap at 200", () => {
   const s = createItemStore({ cap: 3 });
   s.add({ kind: "inline", title: "1", body: "" });
