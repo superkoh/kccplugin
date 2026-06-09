@@ -1,6 +1,6 @@
 {
   "name": "kcc-preview",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Mirror preview-worthy content from a Claude Code session to a local browser UI with a session-scoped index. Runs silent by default — only surfaces when Claude actively pushes rich content.",
   "author": { "name": "koh", "email": "koh.718@gmail.com" },
   "homepage": "https://github.com/superkoh/kccplugin",
