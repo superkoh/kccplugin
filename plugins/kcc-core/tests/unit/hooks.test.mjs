@@ -54,7 +54,7 @@ test("context/thinking-principles.md exists and carries the expected markers", a
   );
   assert.match(
     text,
-    /kcc-core-thinking-principles-v5/,
+    /kcc-core-thinking-principles-v6/,
     "machine-readable sentinel token must be present"
   );
 });
