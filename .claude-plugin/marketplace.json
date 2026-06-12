@@ -12,21 +12,13 @@
       "name": "kcc-core",
       "source": "./plugins/kcc-core",
       "description": "Core plugin: top-level context injections and shared commands / skills.",
-      "version": "0.1.5"
+      "version": "0.1.7"
     },
     {
       "name": "kcc-dev-core",
       "source": "./plugins/kcc-dev-core",
       "description": "Development-focused plugin: conditionally injects code-discipline principles when the session is inside a software project, and hosts standalone dev skills (write-spec, write-acceptance-criteria) and hooks.",
       "version": "0.2.1"
-    },
-    {
-      "name": "kcc-preview",
-      "source": "./plugins/kcc-preview",
-      "description": "Mirror preview-worthy content from a Claude Code session to a local browser UI with a session-scoped index. Runs silent by default — only surfaces when Claude actively pushes rich content.",
-      "version": "0.3.1",
-      "category": "visualization",
-      "tags": ["preview", "browser", "mirror"]
     },
     {
       "name": "kcc-testing",
