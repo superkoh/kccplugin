@@ -73,19 +73,46 @@ file gives only the operational delta with specific tools.
   searched, what you confirmed, what you corrected.
 
   Applies to plan-mode plans, brainstorming conclusions, spec-level
-  technical decisions, any "I suggest we do X" moment. Exception: user
-  explicitly says "skip the research, just do it."
+  technical decisions, any "I suggest we do X" moment.
+
+  Scale the depth to the risk. Reserve the full two-step verification for
+  load-bearing or unfamiliar territory: a new dependency, an unfamiliar
+  or version-sensitive API, a non-obvious usage, or a decision that's
+  expensive to reverse. For low-risk, familiar, easily-reversible moves —
+  standard-library usage, a local refactor, a convention already
+  established in this repo — a single quick check, or the existing code
+  itself, is enough; say what you verified and move on. Match the cost of
+  checking to the cost of being wrong; uniform maximum verification on
+  every trivial step is its own waste. Exception: user explicitly says
+  "skip the research, just do it."
 
 ---
 
 ## 3. Debugging & Verification Discipline
 
 - **Debug From Ground Truth First**. kcc-core covers the general
-  principle ("Ground Truth Over Memory"). Operational form: step one of
+  principle ("Verify Against Ground Truth"). Operational form: step one of
   any debug is inspecting live data — logs, error output, database
   state, real file contents. Only *then* narrow scope, read code, and
   form hypotheses. Skipping ground truth is the most common way a debug
   session loops.
+
+- **Debug by Hypothesis, Not by Guessing**. Once you have ground truth,
+  run the loop: study the data, form one hypothesis that explains *all* of
+  it, devise the smallest experiment that would confirm or refute it (a
+  print, a breakpoint, an assertion, a focused test), run it, then repeat
+  from the new data. A "fix" applied before you can name the mechanism is
+  a guess. Trigger: once a handful of ad-hoc pokes haven't localized the
+  bug, stop poking and switch to this systematic loop rather than trying
+  more variations.
+
+- **Localize by Bisection**. Debugging is a search — halve the space each
+  step instead of scanning it linearly. Bisect the dataflow: check a value
+  at the midpoint between a known-good input and the bad output to decide
+  which half holds the fault, then recurse into that half. Bisect history
+  the same way — `git bisect` (or a manual checkout halfway back) to pin
+  the commit that introduced a regression. Each check should roughly halve
+  what's left to suspect.
 
 - **Tests Are Ground Truth**. Run relevant tests after every meaningful
   change. "The types check" isn't "the tests pass"; "it looks right"
@@ -108,7 +135,12 @@ file gives only the operational delta with specific tools.
 - **Failure Escalation Protocol (operational reinforcement)**. Full staircase lives in kcc-core.
   Operational reinforcement: every retry restarts from fresh
   ground-truth data, not cached memory. The 2nd failure switches
-  strategy, not parameters.
+  strategy, not parameters. Anchor every reflect-and-retry to a concrete
+  external signal — a failing test, a compiler / linter error, tool
+  output, a fresh log. With no new external signal, re-judging your own
+  reasoning tends to discard correct work; go get a signal (add a test,
+  add logging, run the failing path) before concluding the last attempt
+  was wrong.
 
 ---
 
@@ -160,4 +192,4 @@ file gives only the operational delta with specific tools.
 - When running `gh pr create`, omit `--head` (unless the local branch
   name differs from remote).
 
-<!-- kcc-dev-core-sentinel: kcc-dev-core-principles-v3 -->
+<!-- kcc-dev-core-sentinel: kcc-dev-core-principles-v4 -->
