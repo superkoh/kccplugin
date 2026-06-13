@@ -41,7 +41,7 @@ teardown() {
   echo "$output" | jq -e '.hookSpecificOutput.hookEventName == "SessionStart"'
   echo "$output" | jq -e '.hookSpecificOutput.additionalContext | type == "string"'
   echo "$output" | jq -e '.hookSpecificOutput.additionalContext | length > 0'
-  echo "$output" | jq -e '.hookSpecificOutput.additionalContext | contains("kcc-dev-core-principles-v3")'
+  echo "$output" | jq -e '.hookSpecificOutput.additionalContext | contains("kcc-dev-core-principles-v4")'
   echo "$output" | jq -e '.hookSpecificOutput.additionalContext | contains("Investigate Before Editing")'
 }
 
@@ -68,7 +68,7 @@ teardown() {
   run bash "$SCRIPT" <"$payload"
   rm -f "$payload"
   [ "$status" -eq 0 ]
-  echo "$output" | jq -e '.hookSpecificOutput.additionalContext | contains("kcc-dev-core-principles-v3")'
+  echo "$output" | jq -e '.hookSpecificOutput.additionalContext | contains("kcc-dev-core-principles-v4")'
 }
 
 @test "HIT via \$PWD fallback: empty stdin, repo cwd" {
@@ -77,7 +77,7 @@ teardown() {
   # repo has .git/, so we should see an injection.
   run bash "$SCRIPT" </dev/null
   [ "$status" -eq 0 ]
-  echo "$output" | jq -e '.hookSpecificOutput.additionalContext | contains("kcc-dev-core-principles-v3")'
+  echo "$output" | jq -e '.hookSpecificOutput.additionalContext | contains("kcc-dev-core-principles-v4")'
 }
 
 @test "graceful degrade when jq is unavailable: script still exits 0" {
