@@ -1,0 +1,18 @@
+{
+  "name": "hermes-tweet",
+  "version": "0.1.0",
+  "description": "Hermes Agent workflow guide for safe X/Twitter research, reading, and gated posting through the Hermes Tweet plugin.",
+  "author": {
+    "name": "Xquik"
+  },
+  "homepage": "https://github.com/Xquik-dev/hermes-tweet",
+  "repository": "https://github.com/Xquik-dev/hermes-tweet",
+  "license": "MIT",
+  "keywords": [
+    "hermes-agent",
+    "twitter",
+    "x",
+    "social-media",
+    "automation"
+  ]
+}

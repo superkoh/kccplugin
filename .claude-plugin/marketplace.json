@@ -43,6 +43,14 @@
       "version": "0.1.1",
       "category": "design",
       "tags": ["design", "ui", "ux", "cross-platform", "decomposition"]
+    },
+    {
+      "name": "hermes-tweet",
+      "source": "./plugins/hermes-tweet",
+      "description": "Hermes Agent workflow guide for safe X/Twitter research, reading, and gated posting through the Hermes Tweet plugin.",
+      "version": "0.1.0",
+      "category": "workflow",
+      "tags": ["hermes-agent", "twitter", "x", "social-media", "automation"]
     }
   ]
 }
