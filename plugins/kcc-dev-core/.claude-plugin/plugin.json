@@ -1,5 +1,5 @@
 {
   "name": "kcc-dev-core",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Development-focused plugin: conditionally injects code-discipline principles when the session is inside a software project, and hosts standalone dev skills (write-spec, write-acceptance-criteria) and hooks."
 }
