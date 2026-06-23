@@ -1,5 +1,10 @@
 {
   "name": "kcc-dev-core",
   "version": "0.2.4",
-  "description": "Development-focused plugin: conditionally injects code-discipline principles when the session is inside a software project, and hosts standalone dev skills (write-spec, write-acceptance-criteria) and hooks."
+  "description": "Development-focused plugin: conditionally injects code-discipline principles when the session is inside a software project, and hosts standalone dev skills (write-spec, write-acceptance-criteria) and hooks.",
+  "author": { "name": "koh", "email": "koh.718@gmail.com" },
+  "homepage": "https://github.com/superkoh/kccplugin",
+  "repository": "https://github.com/superkoh/kccplugin.git",
+  "license": "MIT",
+  "keywords": ["dev", "code-discipline", "spec", "acceptance-criteria", "hooks"]
 }

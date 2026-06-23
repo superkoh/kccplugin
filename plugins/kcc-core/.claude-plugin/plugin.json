@@ -1,5 +1,10 @@
 {
   "name": "kcc-core",
   "version": "0.1.9",
-  "description": "Core plugin for the kccplugin marketplace: top-level context injections and shared commands / skills."
+  "description": "Core plugin for the kccplugin marketplace: top-level context injections and shared commands / skills.",
+  "author": { "name": "koh", "email": "koh.718@gmail.com" },
+  "homepage": "https://github.com/superkoh/kccplugin",
+  "repository": "https://github.com/superkoh/kccplugin.git",
+  "license": "MIT",
+  "keywords": ["core", "context", "principles", "thinking"]
 }
