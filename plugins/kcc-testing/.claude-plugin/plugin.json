@@ -1,5 +1,10 @@
 {
   "name": "kcc-testing",
   "version": "0.1.1",
-  "description": "Testing-related tools. Ships write-test-cases, a skill that turns a feature or PRD fragment into a YAML coverage set of LLM-executable manual QA test cases with built-in testability and UI/UX-quantification lint."
+  "description": "Testing-related tools. Ships write-test-cases, a skill that turns a feature or PRD fragment into a YAML coverage set of LLM-executable manual QA test cases with built-in testability and UI/UX-quantification lint.",
+  "author": { "name": "koh", "email": "koh.718@gmail.com" },
+  "homepage": "https://github.com/superkoh/kccplugin",
+  "repository": "https://github.com/superkoh/kccplugin.git",
+  "license": "MIT",
+  "keywords": ["testing", "qa", "manual-testing"]
 }
