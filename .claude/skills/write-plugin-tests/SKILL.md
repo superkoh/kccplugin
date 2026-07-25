@@ -128,7 +128,7 @@ name: "<plugin>:<command-or-skill> smoke"
 prompt: "/<plugin>:<command> <args>"
 
 # Optional fields (defaults shown):
-model: claude-haiku-4-5                 # cheap by default; rarely override
+# model: <full-id-or-alias>             # optional; omit to use DEFAULT_MODEL (test/lib/claude-runner.mjs)
 maxBudgetUsd: 0.05                      # hard per-case cost cap
 timeoutMs: 120000                       # kill case after this long
 # allowedTools: [Read, Glob, Grep]      # lock tools down

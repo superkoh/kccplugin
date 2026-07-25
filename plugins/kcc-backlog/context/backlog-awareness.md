@@ -14,17 +14,14 @@ propose chain. Representative shapes:
   thread, and the user signals they won't do it now
 - A discovery could derail the current task — "record and move on"
 
-Response chain when a trigger fires:
-
-1. State in ONE sentence what you would record and why.
-2. AskUserQuestion: "加入 backlog?" with options [是 (Recommended) / 否 / 改措辞].
-3. On 是 → run `/backlog-add` with the finalized title + body.
-4. On 改措辞 → refine once, re-confirm, then `/backlog-add`.
-5. On 否 → drop it; don't stash it elsewhere.
-
-Run the propose flow even on ambiguous cases — never answer "好的，记下了"
-without the gate. Skip only when the item is clearly in-scope right now, a
-clarifying question, or something the user is about to do immediately.
+Response chain when a trigger fires: state in ONE sentence what you
+would record and why → AskUserQuestion [是 (Recommended) / 否 / 改措辞]
+→ on 是 run `/backlog-add` (canonical add flow, dedup included); on
+改措辞 refine once and re-confirm; on 否 drop it — don't stash it
+elsewhere. Never answer "好的，记下了" without the gate, even on
+ambiguous cases. Skip the propose only when the item is clearly
+in-scope right now, a clarifying question, or about to be done
+immediately.
 
 ## Slash commands
 

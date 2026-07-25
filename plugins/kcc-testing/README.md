@@ -17,8 +17,8 @@ drive the real product UI.
   (WCAG / HIG / Material floors auto-injected).
 
 Trigger phrases:
-- 写测试用例 / 给这个 feature 出用例 / 帮我覆盖这个需求 / 写 QA 用例
-- write test cases / cover this feature with tests / QA cases for this
+- 写测试用例 / 帮我覆盖这个需求 / 写 QA 用例
+- write test cases / cover this feature with tests
 
 See `skills/write-test-cases/SKILL.md` for the full run flow,
 `skills/write-test-cases/examples/` for three platform-diverse example

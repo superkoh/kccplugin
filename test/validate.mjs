@@ -140,7 +140,7 @@ async function validateMarketplace(ajv) {
   return marketplace;
 }
 
-async function validatePluginManifest(ajv, plugin) {
+async function validatePluginManifest(ajv, plugin, marketplace) {
   if (!existsSync(plugin.manifestPath)) {
     record(
       `plugins/${plugin.name}/.claude-plugin/plugin.json`,
@@ -177,6 +177,18 @@ async function validatePluginManifest(ajv, plugin) {
       `manifest.name "${manifest.name}" does not match directory name "${plugin.name}"`
     );
   }
+  // Soft check: when both the marketplace entry and the manifest declare a
+  // version they must agree, or the marketplace advertises a version the
+  // plugin doesn't ship. Both files pass their own schemas either way, so
+  // this cross-file drift is otherwise invisible to L1.
+  const entry = marketplace?.json?.plugins?.find((p) => p.name === plugin.name);
+  if (ok && entry?.version && manifest.version && entry.version !== manifest.version) {
+    record(
+      `plugins/${plugin.name}: version sync`,
+      false,
+      `marketplace.json version "${entry.version}" does not match plugin.json version "${manifest.version}"`
+    );
+  }
   return manifest;
 }
 
@@ -211,8 +223,8 @@ async function validateHooksJson(ajv, hooksPath, label) {
   record(label, ok, ok ? undefined : formatAjvErrors(validate.errors));
 }
 
-async function validatePlugin(ajv, plugin) {
-  await validatePluginManifest(ajv, plugin);
+async function validatePlugin(ajv, plugin, marketplace) {
+  await validatePluginManifest(ajv, plugin, marketplace);
 
   const assets = await inventoryPluginAssets(plugin);
 
@@ -323,7 +335,7 @@ async function main() {
   }
 
   for (const p of plugins) {
-    await validatePlugin(ajv, p);
+    await validatePlugin(ajv, p, marketplace);
   }
 
   await runOfficialValidators(marketplace, plugins);

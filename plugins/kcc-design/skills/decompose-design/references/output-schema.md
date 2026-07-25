@@ -132,10 +132,9 @@ Meta:
 
 The canonical prohibition set (never invent values, no classification
 tokens, no remediation / recommendation, no code fences) lives in
-SKILL.md and applies here in full. Table-specific addition:
-
-- **No cross-label property collapsing.** If two labels use
-  different property names, they are different rows. Period.
+SKILL.md and applies here in full. Table-specific addition: **no
+cross-label property collapsing** — if two labels use different
+property names, they are different rows. Period.
 
 ### Ordering conventions
 

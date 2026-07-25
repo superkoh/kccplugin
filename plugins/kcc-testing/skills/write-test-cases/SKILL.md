@@ -13,9 +13,9 @@ one file per feature.
 
 ## When to use
 
-Trigger phrases: 写测试用例 / 给这个 feature 出用例 / 帮我覆盖这个需求 /
-写 QA 用例 / write test cases / cover this feature with tests / QA cases
-for this.
+Trigger phrases: 写测试用例 / 帮我覆盖这个需求 / 写 QA 用例 /
+write test cases / cover this feature with tests (canonical list: the
+frontmatter description — keep the two in sync).
 
 ### When NOT to use
 

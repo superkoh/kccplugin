@@ -33,7 +33,6 @@ prompt: |
   per facet (attributes, layout, motion). Table columns: property,
   web, ios. Motion table has an extra leading trigger column. Use
   `—` for cells where a label is silent on a property.
-model: claude-haiku-4-5
 maxBudgetUsd: 0.08
 timeoutMs: 120000
 

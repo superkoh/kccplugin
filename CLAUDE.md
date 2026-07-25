@@ -44,12 +44,8 @@ nightly and on manual dispatch — see `.github/workflows/test.yml`.
 
 ## Four-layer test framework
 
-- **L1** `test/validate.mjs` — schemas + `claude plugin validate` (free, offline)
-- **L2** `test/run-unit.mjs` — plugin unit tests: bats / `node --test` / pytest (free, offline)
-- **L3** `test/run-e2e.mjs` — YAML e2e cases driving `claude -p` (real API cost)
-- **L4** `test/run-sdk.mjs` — load-time registration vs `tests/sdk/expected.json` (tiny API cost)
-
-Full layer reference: `test/README.md`.
+Layer semantics are in the npm-script comments above; runners live in
+`test/`. Full layer reference: `test/README.md`.
 
 Shared helpers live in `test/lib/`. `test/lib/discover.mjs` is the **single
 source of truth** for directory conventions — to move or rename a convention,
@@ -97,9 +93,10 @@ for free.
 - **Directory name == manifest name.** If `plugins/foo/.claude-plugin/plugin.json`
   has `"name": "bar"`, L1 fails with `manifest.name "bar" does not match
   directory name "foo"`.
-- **L3 budget discipline.** The L3 runner defaults to
-  `claude-haiku-4-5` (single source: `DEFAULT_MODEL` in
-  `test/lib/claude-runner.mjs`). Cap every YAML case with `maxBudgetUsd`
+- **L3 budget discipline.** The L3 runner's default model is
+  `DEFAULT_MODEL` in `test/lib/claude-runner.mjs` (a dateless Haiku
+  alias — docs intentionally don't restate the literal value). Cap
+  every YAML case with `maxBudgetUsd`
   (0.05 is usually plenty). Don't reach for Opus in regression tests.
 - **Triage offline first.** Run L1+L2+L4 before L3. If any are red, fix
   them first — don't burn L3 money on a known-broken plugin.
@@ -113,13 +110,6 @@ for free.
 
 ## Pointers to existing workflow skills
 
-The repo ships two Claude Code skills in `.claude/skills/` that the harness
-auto-loads; prefer them over re-deriving workflow details:
-
-- `run-plugin-tests` — how to invoke each layer, how to pick `PLUGIN=`, the
-  "which layer for which edit" table, how to read each layer's output, and
-  budget discipline rules.
-- `write-plugin-tests` — L2/L3/L4 templates (bats, `node --test`, pytest,
-  e2e YAML, `expected.json`) and assertion rules of thumb for L3.
-
-Also useful: `test/README.md` for a self-contained tour of the framework.
+The repo ships two auto-loaded skills in `.claude/skills/` —
+`run-plugin-tests` and `write-plugin-tests`; prefer them over
+re-deriving workflow details.

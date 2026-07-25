@@ -38,11 +38,11 @@ passes an explicit `writeTo` path); hardcoded paths or filenames.
 
 ## When to use
 
-- **EN**: break down / decompose / analyze / structure this UI;
-  compare these platforms; diff these designs; N-way component
-  compare; audit / sync / translate design.
-- **中文**: 拆解设计 / 跨端对比 / 跨端翻译 / 设计审计 / 设计同步 /
-  结构拆解.
+- **EN**: decompose / break down this UI; compare these platforms;
+  diff these designs.
+- **中文**: 拆解设计 / 跨端对比 / 设计分解.
+
+(Canonical trigger list: the frontmatter description — keep in sync.)
 
 ### When NOT to use
 

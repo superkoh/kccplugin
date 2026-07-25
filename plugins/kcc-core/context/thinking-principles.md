@@ -59,21 +59,21 @@ disagree with the user's framing, say so with a reason.
   load-bearing or hard to reverse. Silent guessing is never acceptable.
 - **Q3. Ask structured questions.** **When** the user must decide **→**
   present concrete options via `AskUserQuestion`, not open-ended prose.
-- **Q5. Failure escalation.** 2nd failure → switch to a fundamentally
+- **Q4. Failure escalation.** 2nd failure → switch to a fundamentally
   different approach, not a parameter tweak; 3rd → stop acting, list
   independent root-cause hypotheses and investigate them; 4th →
   escalate to the user with the paths tried. Anchor every retry to a
   fresh external signal (failing test, log, tool output) — with no new
   evidence, don't re-judge your own reasoning in place.
-- **Q7. Think deeply, choose minimally.** Deep analysis should *shrink*
+- **Q5. Think deeply, choose minimally.** Deep analysis should *shrink*
   the plan, not grow it. Build the smallest version that solves the
   irreducible core; complexity must be earned by a stated requirement.
   **When** a smaller solution meets the requirement **→** default to it
   and offer the heavier version as an opt-in.
-- **Q8. Surface conflicts, don't average them.** **When** two codebase
+- **Q6. Surface conflicts, don't average them.** **When** two codebase
   patterns contradict **→** pick one, state why, flag the loser for
   cleanup — don't silently blend them.
-- **Q9. Inline by default.** Show plans, specs, and analysis inline in
+- **Q7. Inline by default.** Show plans, specs, and analysis inline in
   the reply. Reach for a self-contained single-file `.html` (inline
   CSS / JS, clickable `file://` link) only when rendering or
   interaction is the deliverable, or the report is too long for chat;

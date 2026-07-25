@@ -226,8 +226,9 @@ Common failures:
 L3 is the only layer with real cost. Rules:
 
 1. **Default to Haiku.** The L3 runner already defaults to
-   `claude-haiku-4-5` (`DEFAULT_MODEL` in `test/lib/claude-runner.mjs`).
-   Don't override unless a test genuinely can't pass on Haiku.
+   `DEFAULT_MODEL` (a Haiku alias; single source:
+   `test/lib/claude-runner.mjs`). Don't override unless a test
+   genuinely can't pass on Haiku.
 2. **Cap every case** with `maxBudgetUsd` in the YAML. 0.05 is usually
    plenty.
 3. **Skip L3 on doc-only edits.** README / docstring changes can't

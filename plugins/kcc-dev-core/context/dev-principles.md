@@ -51,9 +51,12 @@ this repo's Git / worktree conventions. Each rule is a trigger
 - **Subagent model routing**. **When** calling the Agent tool **→**
   implementation tasks (writing code, refactors, mechanical edits,
   writing tests) set `model: "opus"`; judgment tasks (design thinking,
-  discussion, code review, bug hunting, verification) omit `model` and
-  inherit the main session's model. **Never** downgrade a subagent to
-  sonnet / haiku to save money.
+  discussion, code review, bug hunting, verification) omit `model` —
+  note omission uses the invoked agent definition's pinned model first
+  and inherits the main session's model only when the definition pins
+  none, so if the target definition pins a smaller model, set `model`
+  explicitly (e.g. `"fable"`) instead of omitting. **Never** downgrade
+  a subagent to sonnet / haiku to save money.
 - **Delegate actively, verify independently**. **When** independent
   subtasks can run in parallel **→** dispatch subagents and keep
   working while they run. **When** verification is needed **→** use a
