@@ -35,25 +35,21 @@ PLUGIN=hello-world npm run test:l1
 L3 and L4 only skip when **no auth is available at all**. "Auth" means
 any of `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN`,
 `CLAUDE_CODE_OAUTH_TOKEN`, or an existing `claude auth` keychain login.
-**The local dev box this repo is worked on has `CLAUDE_CODE_OAUTH_TOKEN`
-exported and/or OAuth keychain logged in — L3 and L4 run directly.**
-
-Do NOT reflexively reply "L3/L4 skipped because ANTHROPIC_API_KEY is
-unset" — that's only correct in bare CI runners. Locally, run the layer
-and read its output. If the banner says `fallback (user keychain /
-OAuth; --bare dropped)` that's a normal successful run, not a skip.
+Don't infer a skip from a missing env var — run the layer and read its
+output. A banner saying `fallback (user keychain / OAuth; --bare
+dropped)` is a normal successful run, not a skip.
 
 CI runs `test:offline` on every push/PR; the full L3+L4 suite runs
 nightly and on manual dispatch — see `.github/workflows/test.yml`.
 
 ## Four-layer test framework
 
-| Layer | Runner | Proves | Cost | Needs API key |
-|------:|--------|--------|------|:--:|
-| **L1** | `test/validate.mjs` | `marketplace.json`, `plugin.json`, all frontmatter, and `hooks.json` pass strict ajv schemas, and the official `claude plugin validate` accepts each plugin | none | no |
-| **L2** | `test/run-unit.mjs` | Plugin-owned unit tests pass — dispatched by extension: `.bats` → bats, `*.test.mjs` / `*.test.js` → `node --test`, `test_*.py` → `python3 -m pytest` | none | no |
-| **L3** | `test/run-e2e.mjs` | Declarative YAML cases drive `claude -p --bare` and loose matchers on `stdout` / `stderr` / `parsedJson` pass | real API | yes |
-| **L4** | `test/run-sdk.mjs` | CLI loads each plugin with `--plugin-dir`, and every name in `tests/sdk/expected.json` (`slashCommands.requires`, `mcpServers.requires`) appears in the init message before the child is SIGKILL'd | tiny API | yes |
+- **L1** `test/validate.mjs` — schemas + `claude plugin validate` (free, offline)
+- **L2** `test/run-unit.mjs` — plugin unit tests: bats / `node --test` / pytest (free, offline)
+- **L3** `test/run-e2e.mjs` — YAML e2e cases driving `claude -p` (real API cost)
+- **L4** `test/run-sdk.mjs` — load-time registration vs `tests/sdk/expected.json` (tiny API cost)
+
+Full layer reference: `test/README.md`.
 
 Shared helpers live in `test/lib/`. `test/lib/discover.mjs` is the **single
 source of truth** for directory conventions — to move or rename a convention,
@@ -102,7 +98,8 @@ for free.
   has `"name": "bar"`, L1 fails with `manifest.name "bar" does not match
   directory name "foo"`.
 - **L3 budget discipline.** The L3 runner defaults to
-  `claude-haiku-4-5-20251001`. Cap every YAML case with `maxBudgetUsd`
+  `claude-haiku-4-5` (single source: `DEFAULT_MODEL` in
+  `test/lib/claude-runner.mjs`). Cap every YAML case with `maxBudgetUsd`
   (0.05 is usually plenty). Don't reach for Opus in regression tests.
 - **Triage offline first.** Run L1+L2+L4 before L3. If any are red, fix
   them first — don't burn L3 money on a known-broken plugin.

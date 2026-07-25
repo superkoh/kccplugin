@@ -22,12 +22,17 @@
  *
  * - `--max-budget-usd` is a hard cost cap so a runaway test can't burn money.
  *
- * - We do NOT hardcode a model here. Individual e2e cases pick one.
+ * - runClaude() never forces a model; callers pass one per run. The
+ *   framework-wide default lives in DEFAULT_MODEL below — a dateless alias
+ *   so it tracks the current cheapest Haiku without periodic migration.
  *
  * - We never set CLAUDE_CODE_* env flags — those go through CLI args so
  *   every choice is visible in stderr when --debug is on.
  */
 import { spawn } from "node:child_process";
+
+/** Framework-wide default model for API-hitting layers (L3/L4). */
+export const DEFAULT_MODEL = "claude-haiku-4-5";
 
 /**
  * @typedef {Object} RunOptions

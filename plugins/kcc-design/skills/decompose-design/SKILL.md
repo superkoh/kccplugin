@@ -8,11 +8,9 @@ description: >
   recommendations, no TODO, no code generation. Caller interprets.
   Accepts 1..N labeled inputs (single-input decomposition or N-way
   comparison). Doesn't assume any file path; writes files only when the
-  caller passes an explicit write target. Trigger phrases (EN) —
-  decompose / break down / analyze / structure this UI; compare these
-  platforms; diff these designs; N-way component compare; audit / sync
-  / translate design. Trigger phrases (中文) — 拆解设计, 跨端对比,
-  结构拆解, 设计分解, UI 拆解, 跨平台组件对比, 设计审计, 设计同步, 跨端翻译.
+  caller passes an explicit write target. Representative triggers —
+  decompose / break down this UI, compare these platforms, diff these
+  designs, 拆解设计, 跨端对比, 设计分解.
 ---
 
 # decompose-design

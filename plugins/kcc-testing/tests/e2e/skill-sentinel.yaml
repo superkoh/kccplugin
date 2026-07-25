@@ -26,7 +26,7 @@ prompt: |
 
   如果你在 skill 指令内容里找不到这样的 sentinel，请回复
   NO_SENTINEL_IN_SKILL。
-model: claude-haiku-4-5-20251001
+model: claude-haiku-4-5
 maxBudgetUsd: 0.10
 timeoutMs: 180000
 

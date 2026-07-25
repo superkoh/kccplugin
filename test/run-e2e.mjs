@@ -48,10 +48,13 @@ import {
   discoverPlugins,
   discoverTestArtifacts,
 } from "./lib/discover.mjs";
-import { runClaude, assertClaudeAvailable } from "./lib/claude-runner.mjs";
+import {
+  DEFAULT_MODEL,
+  runClaude,
+  assertClaudeAvailable,
+} from "./lib/claude-runner.mjs";
 import { evaluate } from "./lib/matchers.mjs";
 
-const DEFAULT_MODEL = "claude-haiku-4-5-20251001";
 const DEFAULT_BUDGET = 0.25;
 const DEFAULT_TIMEOUT_MS = 180_000;
 

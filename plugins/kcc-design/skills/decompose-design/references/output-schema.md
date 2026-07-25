@@ -130,19 +130,10 @@ Meta:
 
 ### Prohibitions
 
-- **Never invent values.** If input doesn't say `color: #007bff`,
-  the cell doesn't say `color: #007bff`. Unknowns are surfaced,
-  not hidden.
-- **No classification tokens.** Never emit `platform-constraint`,
-  `idiom`, `unchanged`, `classification:`, or equivalents — not
-  as rows, not as columns, not as cell text.
-- **No remediation / recommendation.** Never emit `## TODO`,
-  `## Summary`, `## Findings`, `## Gaps`, `## Recommend`,
-  handoff instructions, or phrases like "should change" /
-  "must change" / "recommend".
-- **No code fences.** No triple-backtick code blocks for target
-  languages (swift / tsx / kotlin etc.). This skill does not
-  emit code.
+The canonical prohibition set (never invent values, no classification
+tokens, no remediation / recommendation, no code fences) lives in
+SKILL.md and applies here in full. Table-specific addition:
+
 - **No cross-label property collapsing.** If two labels use
   different property names, they are different rows. Period.
 

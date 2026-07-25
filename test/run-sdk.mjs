@@ -49,7 +49,7 @@ import {
   discoverPlugins,
   discoverTestArtifacts,
 } from "./lib/discover.mjs";
-import { assertClaudeAvailable } from "./lib/claude-runner.mjs";
+import { DEFAULT_MODEL, assertClaudeAvailable } from "./lib/claude-runner.mjs";
 
 const TINY_PROMPT = "ping";
 const LOAD_BUDGET_USD = 0.02;
@@ -82,7 +82,7 @@ function captureInit(pluginRoot) {
       // Lock the model out of doing anything expensive while we wait for init.
       "--disallowedTools",
       "Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch,Task,Agent",
-      "--model", "claude-haiku-4-5-20251001",
+      "--model", DEFAULT_MODEL,
     ];
 
     const child = spawn("claude", argv, {

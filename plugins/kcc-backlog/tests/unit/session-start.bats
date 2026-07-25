@@ -16,7 +16,7 @@ setup() {
   [ "$status" -eq 0 ]
   # Validate against Claude Code's real hook-output schema.
   node -e "import('$VALIDATOR').then(m => m.assertHookOutput('SessionStart', process.argv[1]))" "$output"
-  [[ "$output" == *"kcc-backlog-awareness-v1"* ]]
+  [[ "$output" == *"kcc-backlog-awareness-v2"* ]]
 }
 
 @test "degrades to empty additionalContext when the text file is missing" {

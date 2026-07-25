@@ -75,7 +75,7 @@ directory at all still gets L1 (schemas) and L4 smoke-check for free.
 # plugins/my-plugin/tests/e2e/greet.yaml
 name: basic greeting
 prompt: "/my-plugin:greet Alice"
-model: claude-haiku-4-5-20251001    # optional; haiku is the default
+model: claude-haiku-4-5             # optional; default is DEFAULT_MODEL in lib/claude-runner.mjs
 maxBudgetUsd: 0.10                  # optional; hard cap per case
 allowedTools: [Read]                # optional
 disallowedTools: [Write, Edit]      # optional

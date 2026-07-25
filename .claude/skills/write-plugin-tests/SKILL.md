@@ -1,6 +1,6 @@
 ---
 name: write-plugin-tests
-description: Author new test cases for a plugin under plugins/ in this kccplugin marketplace. Use when the user asks to add tests, write tests, create test cases, write a test case, cover something with tests, need test coverage, or author regression tests for any plugin. In Chinese also triggers on 加测试, 写测试, 补测试, 写个用例, 写个 test case, 测试覆盖, 给某个 plugin 加测试. Also use proactively after creating a new plugin or after adding a new command / skill / agent / hook / MCP server / hook script to an existing plugin, before reporting the task complete. Writes files into plugins/<name>/tests/ across L2 (unit), L3 (e2e YAML), and L4 (registration), then hands off to run-plugin-tests to verify.
+description: Author new test cases for a plugin under plugins/ in this kccplugin marketplace. Use when the user asks to add tests, write test cases, or wants test coverage (加测试 / 写测试 / 补测试 / 测试覆盖), and proactively after creating a plugin or adding a command / skill / agent / hook to one, before reporting the task complete. Writes files into plugins/<name>/tests/ across L2 (unit), L3 (e2e YAML), and L4 (registration), then hands off to run-plugin-tests to verify.
 ---
 
 # Writing tests for plugins in this marketplace
@@ -128,7 +128,7 @@ name: "<plugin>:<command-or-skill> smoke"
 prompt: "/<plugin>:<command> <args>"
 
 # Optional fields (defaults shown):
-model: claude-haiku-4-5-20251001        # cheap by default; rarely override
+model: claude-haiku-4-5                 # cheap by default; rarely override
 maxBudgetUsd: 0.05                      # hard per-case cost cap
 timeoutMs: 120000                       # kill case after this long
 # allowedTools: [Read, Glob, Grep]      # lock tools down
