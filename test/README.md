@@ -41,7 +41,10 @@ PLUGIN=my-plugin npm test
 PLUGIN=my-plugin npm run test:l1
 ```
 
-L3 and L4 self-skip when no `ANTHROPIC_API_KEY` is set in the environment.
+L3 and L4 self-skip only when **no auth is available at all** — any of
+`ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN`, `CLAUDE_CODE_OAUTH_TOKEN`,
+or an existing `claude auth` keychain login lets them run (without the
+env key they drop `--bare` and use the keychain fallback).
 
 ## How a plugin opts into each layer
 
@@ -75,7 +78,7 @@ directory at all still gets L1 (schemas) and L4 smoke-check for free.
 # plugins/my-plugin/tests/e2e/greet.yaml
 name: basic greeting
 prompt: "/my-plugin:greet Alice"
-model: claude-haiku-4-5-20251001    # optional; haiku is the default
+# model: <full-id-or-alias>         # optional; omit to use DEFAULT_MODEL (lib/claude-runner.mjs)
 maxBudgetUsd: 0.10                  # optional; hard cap per case
 allowedTools: [Read]                # optional
 disallowedTools: [Write, Edit]      # optional
@@ -195,5 +198,5 @@ a new field we like, the fix is to add it to the matching schema in
 
 See `.github/workflows/test.yml`. The default workflow runs
 `npm run test:offline` on every push and PR (fast, no secrets needed).
-L3 and L4 run on a nightly schedule or when the `test-e2e` label is
-applied, guarded by the `ANTHROPIC_API_KEY` secret.
+L3 and L4 run on a nightly schedule or on manual dispatch (the
+`run_e2e` input), guarded by the `ANTHROPIC_API_KEY` secret.

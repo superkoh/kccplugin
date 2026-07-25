@@ -132,21 +132,8 @@ overrides a stricter rule the author wrote.
 
 ## Disposition summary format
 
-The skill's final user-facing report format:
+The ✅ / 📎 / ⚠️ / ❌ user-facing report format is defined in SKILL.md —
+that copy is canonical.
 
-```
-✅ written: <N>
-📎 RTM: <covered>/<total> requirement branches covered
-    uncovered:
-        <branch ref>: <short reason>
-        ...
-⚠️ TODO-visual: <N>
-    TC-<id>: <which visual assertion, why unresolved>
-    ...
-❌ rejected: <N>
-    TC-<id>: <which check failed, short reason, which rule>
-    ...
-```
-
-Rejected cases live **only** in this report — not in the YAML, not in a
+Rejected cases live **only** in that report — not in the YAML, not in a
 sibling `rejected.yaml`.

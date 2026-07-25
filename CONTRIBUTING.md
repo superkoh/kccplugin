@@ -70,7 +70,9 @@ framework.
 
 ## Running the full suite
 
-L3 and L4 need `ANTHROPIC_API_KEY` and cost a small amount of money:
+L3 and L4 need auth (any of `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN`,
+`CLAUDE_CODE_OAUTH_TOKEN`, or a `claude auth` keychain login) and cost a
+small amount of money:
 
 ```bash
 npm run test:l4           # tiny API cost, load-time registration checks
@@ -78,8 +80,8 @@ npm run test:l3           # real API cost, declarative e2e cases
 npm test                  # full L1 → L2 → L4 → L3
 ```
 
-Without `ANTHROPIC_API_KEY`, L3/L4 self-skip. CI runs the full suite
-nightly and on manual dispatch — see `.github/workflows/test.yml`.
+With no auth at all, L3/L4 self-skip. CI runs the full suite nightly
+and on manual dispatch — see `.github/workflows/test.yml`.
 
 ## Reporting issues
 

@@ -1,6 +1,6 @@
 ---
 name: run-plugin-tests
-description: Run the four-layer kccplugin test framework and interpret its results, after editing any file in a plugin under plugins/. Use after modifying a plugin's commands, skills, agents, hooks, manifest, or scripts, and before reporting the task complete. Also use when the user asks to test, verify, check, validate, regression-test, or run tests on a plugin. In Chinese also triggers on 跑测试, 运行测试, 测一下, 验证, 验收, 检查, 回归测试, 跑一下. Honors PLUGIN=<name> to scope to a single plugin.
+description: Run the four-layer kccplugin test framework and interpret its results, after editing any file in a plugin under plugins/ and before reporting the task complete. Also use when the user asks to test, verify, or regression-test a plugin (跑测试 / 验证 / 回归测试 / 测一下). Honors PLUGIN=<name> to scope to a single plugin.
 ---
 
 # Running plugin tests in this marketplace
@@ -226,8 +226,9 @@ Common failures:
 L3 is the only layer with real cost. Rules:
 
 1. **Default to Haiku.** The L3 runner already defaults to
-   `claude-haiku-4-5-20251001`. Don't override unless a test genuinely
-   can't pass on Haiku.
+   `DEFAULT_MODEL` (a Haiku alias; single source:
+   `test/lib/claude-runner.mjs`). Don't override unless a test
+   genuinely can't pass on Haiku.
 2. **Cap every case** with `maxBudgetUsd` in the YAML. 0.05 is usually
    plenty.
 3. **Skip L3 on doc-only edits.** README / docstring changes can't

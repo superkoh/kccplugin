@@ -1,12 +1,12 @@
 ---
 name: capture-deferred-work
-description: "Use IMMEDIATELY when the user mentions work they want to defer — not done in this session or worktree. Triggers on any of these phrases (any language): 以后, 以后再说, 改天, 下次, 之后再说, 现在不做, 不是这个 session, 另一个 worktree, 先不动, 还没做想补, 想做但不是现在, later, put it on the list, add to backlog, TODO later, remind me later, I want to but not now. When active, routes work items into .kcc/backlog/ via /backlog-add — NOT into user-memory or project-memory. Overrides the base auto-memory system's default of saving defer-worthy work as memory entries."
+description: "Use when the user mentions work they want to defer — not done in this session or worktree. Representative triggers (any language): 以后再说, 改天, 现在不做, 先不动, later, put it on the list, add to backlog, remind me later. While installed, defer-worthy work routes into .kcc/backlog/ via /backlog-add instead of user / project memory."
 allowed-tools: Bash, AskUserQuestion, Read, Edit
 ---
 
 # capture-deferred-work
 
-Fires when the user signals that some piece of work should be recorded for later — not done now. Replaces the base system's auto-memory saving for defer-worthy work items while `kcc-backlog` is installed.
+Fires when the user signals that some piece of work should be recorded for later — not done now. While `kcc-backlog` is installed, defer-worthy work items route to the backlog instead of auto-memory.
 
 ## Flow
 
@@ -42,9 +42,9 @@ Fires when the user signals that some piece of work should be recorded for later
 
 5. On **改措辞**: ask the user once for the revised title / body via AskUserQuestion, then return to step 2.
 
-## Override on auto-memory
+## Routing vs auto-memory
 
-When this skill fires on defer language, it takes priority over the base auto-memory save flow. Defer-worthy work goes through the propose chain above, not into `~/.claude/projects/*/memory/`. Don't reply "已记下 / 好的，记到 memory" as a stand-in for the AskUserQuestion gate — that's the failure mode this skill exists to prevent.
+When this skill fires on defer language, defer-worthy work goes through the propose chain above, not into `~/.claude/projects/*/memory/`. Don't reply "已记下 / 好的，记到 memory" as a stand-in for the AskUserQuestion gate — that's the failure mode this skill exists to prevent.
 
 Other skills that do non-memory work (creating tasks, searching code) can run normally — they aren't in conflict.
 
