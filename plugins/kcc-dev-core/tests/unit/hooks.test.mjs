@@ -47,7 +47,7 @@ test("context/dev-principles.md exists and carries the expected markers", async 
   );
   assert.match(
     text,
-    /Investigate Before Editing/,
+    /Development Discipline & Craft Principles/,
     "human-readable signature phrase must be present"
   );
   assert.match(
