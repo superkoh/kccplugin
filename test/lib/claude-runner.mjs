@@ -81,6 +81,8 @@ export function runClaude(opts) {
   argv.push("--permission-mode", "bypassPermissions");
   argv.push("--no-session-persistence");
   argv.push("--output-format", outputFormat);
+  // --print refuses stream-json without --verbose
+  if (outputFormat === "stream-json") argv.push("--verbose");
   argv.push("--max-budget-usd", String(maxBudgetUsd));
 
   if (model) argv.push("--model", model);
