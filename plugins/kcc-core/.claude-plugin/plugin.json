@@ -1,7 +1,7 @@
 {
   "name": "kcc-core",
-  "version": "0.3.0",
-  "description": "Core plugin for the kccplugin marketplace: thinking & communication principles injected at session start.",
+  "version": "0.4.0",
+  "description": "Core plugin for the kccplugin marketplace: thinking & communication principles injected at session start, with a subagent variant injected into every spawned subagent.",
   "author": { "name": "koh", "email": "koh.718@gmail.com" },
   "homepage": "https://github.com/superkoh/kccplugin",
   "repository": "https://github.com/superkoh/kccplugin.git",

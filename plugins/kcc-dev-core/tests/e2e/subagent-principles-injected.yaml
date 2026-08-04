@@ -1,0 +1,45 @@
+# L3 end-to-end case for kcc-dev-core's SubagentStart hook.
+#
+# The main session cannot prove subagent injection by itself — the whole
+# point is that subagent contexts are separate. So the case makes the
+# main agent spawn a general-purpose subagent whose only task is to
+# quote back any sentinel starting with 'kcc-dev-core-subagent-principles'
+# from its own context, then relay that reply verbatim.
+#
+# Same trick as principles-injected.yaml: the sentinel literal exists
+# only in this repo, so the subagent can produce it only if the
+# SubagentStart hook actually injected context/dev-principles-subagent.md
+# into the subagent. Filesystem/exec tools are locked out session-wide
+# so neither agent can cheat by reading the file.
+#
+# The test runner's cwd is the repo root (a dev scene), so the hook's
+# dev-scene detection passes for the subagent.
+
+name: "kcc-dev-core SubagentStart hook injects subagent principles into subagents"
+prompt: "Use the Agent tool to spawn exactly one general-purpose subagent with exactly this task: \"Somewhere in your session context there may be an HTML comment containing a sentinel identifier starting with 'kcc-dev-core-subagent-principles'. Quote that exact identifier and nothing else. Use no tools. If you cannot see such a sentinel, reply with the literal text NO_SUBAGENT_SENTINEL.\" When it replies, output the subagent's reply verbatim prefixed with SUBAGENT_SAID: and nothing else."
+maxBudgetUsd: 0.15
+timeoutMs: 240000
+
+# Lock out every out-of-band path to the sentinel for both agents; the
+# Agent tool itself must stay available.
+disallowedTools:
+  - Read
+  - Glob
+  - Grep
+  - Bash
+  - Write
+  - Edit
+  - WebFetch
+  - WebSearch
+
+expect:
+  exitCode: 0
+  parsedJson:
+    type: "result"
+    subtype: "success"
+    is_error: false
+  stdout:
+    contains:
+      - "kcc-dev-core-subagent-principles-v"
+    notContains:
+      - "NO_SUBAGENT_SENTINEL"
