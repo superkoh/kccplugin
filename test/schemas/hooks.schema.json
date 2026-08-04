@@ -16,6 +16,7 @@
         "UserPromptSubmit": { "$ref": "#/definitions/hookList" },
         "Notification":     { "$ref": "#/definitions/hookList" },
         "Stop":             { "$ref": "#/definitions/hookList" },
+        "SubagentStart":    { "$ref": "#/definitions/hookList" },
         "SubagentStop":     { "$ref": "#/definitions/hookList" },
         "PreCompact":       { "$ref": "#/definitions/hookList" },
         "SessionStart":     { "$ref": "#/definitions/hookList" },
