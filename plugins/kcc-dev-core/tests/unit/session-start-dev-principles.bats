@@ -42,7 +42,7 @@ teardown() {
   echo "$output" | jq -e '.hookSpecificOutput.additionalContext | type == "string"'
   echo "$output" | jq -e '.hookSpecificOutput.additionalContext | length > 0'
   echo "$output" | jq -e '.hookSpecificOutput.additionalContext | contains("kcc-dev-core-principles-v")'
-  echo "$output" | jq -e '.hookSpecificOutput.additionalContext | contains("Investigate Before Editing")'
+  echo "$output" | jq -e '.hookSpecificOutput.additionalContext | contains("Development Discipline & Craft Principles")'
 }
 
 @test "MISS via stdin.cwd: clean tmpdir injects nothing" {
