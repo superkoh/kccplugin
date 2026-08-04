@@ -1,0 +1,45 @@
+# L3 regression: S1 (First-Principles Visibility) fires on an open request.
+#
+# The prompt presupposes an implementation path ("逐行 INSERT 太慢") inside
+# an open-ended optimization ask — exactly the shape S1 exists for. If the
+# injected principles are working, the reply must OPEN with the 🎯 block.
+#
+# Runs on Opus deliberately (owner decision, 2026-08: probes for behavioral
+# regressions must use the model the plugin is actually used with; Haiku
+# compliance doesn't predict Opus compliance). Keep the budget cap tight.
+#
+# A/B-tested 2026-08-04: without the "🎯 is not preamble" precedence line
+# in thinking-principles.md, Opus dropped the block on 3/4 runs of a
+# do-work-then-report probe; with it, 4/6. Planning-shaped prompts like
+# this one measured clean (all B-variant planning probes + this case),
+# but S1 is a behavioral nudge, not a guarantee — if this case ever
+# flakes in nightly, that's the known failure mode, not a new regression.
+#
+# Tools are locked out so the model plans instead of executing — cheaper,
+# faster, and it can't touch the repo the runner happens to cwd into.
+
+name: "kcc-core S1: 🎯 first-principles block opens the reply on an open request"
+prompt: "我们的 Node 服务每天凌晨用一个脚本把前一天的 CSV 报表逐行 INSERT 进 Postgres，现在数据量涨到脚本要跑四个小时，帮我优化一下这个导入流程。"
+model: claude-opus-5
+maxBudgetUsd: 0.50
+timeoutMs: 180000
+
+disallowedTools:
+  - Read
+  - Glob
+  - Grep
+  - Bash
+  - Write
+  - Edit
+  - WebFetch
+  - WebSearch
+
+expect:
+  exitCode: 0
+  parsedJson:
+    type: "result"
+    subtype: "success"
+    is_error: false
+  stdout:
+    contains:
+      - "🎯"
