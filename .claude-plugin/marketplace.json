@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "A Claude Code plugin marketplace",
-    "version": "0.1.8"
+    "version": "0.1.9"
   },
   "plugins": [
     {
@@ -18,7 +18,7 @@
       "name": "kcc-dev-core",
       "source": "./plugins/kcc-dev-core",
       "description": "Development-focused plugin: conditionally injects code-discipline principles when the session is inside a software project (with a subagent variant injected into every spawned subagent), and hosts standalone dev skills (write-spec, write-acceptance-criteria) and hooks.",
-      "version": "0.5.0"
+      "version": "0.6.0"
     },
     {
       "name": "kcc-testing",

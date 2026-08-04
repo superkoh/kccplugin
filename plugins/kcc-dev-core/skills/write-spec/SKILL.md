@@ -6,7 +6,8 @@ description: Use when the user asks to 写 spec / 出个技术方案 / 把这个
 
 Produces **one** `spec.md` from whatever feature description, PRD
 fragment, or design discussion is available in the current session.
-Self-contained: read context → confirm scope → write → self-check.
+Self-contained: read context → confirm scope if ambiguous → ground in
+the codebase → write → self-check.
 
 Output path: `<project-root>/.kcc/specs/<feature-slug>/spec.md`.
 `<feature-slug>` is ASCII-only kebab-case, max 64 chars
@@ -25,23 +26,33 @@ write a spec / turn this into an engineering spec / spec this feature.
 
 ## Process
 
-### 1. Scan context, draft a hypothesis
+### 1. Form a hypothesis
 
-Without asking, read the last ~20 turns for the feature / goals /
-constraints / PRD fragments, plus recently opened or edited files under
-`docs/`, `specs/`, `product/`, `prds/`, and the repo root for a PRD-like
-directory. Emit one sentence: *"I think you want a spec for **X**, based
-on **Y**."*
+From the session plus any PRD-like material in the repo (`docs/`,
+`specs/`, `product/`, `prds/`, …), state in one sentence: *"I think
+you want a spec for **X**, based on **Y**."*
 
-### 2. Confirm scope with `AskUserQuestion`
+### 2. Confirm scope — only if genuinely ambiguous
 
-Single call: the feature scope (your hypothesis as the recommended
-option + up to three other candidates), plus surface any **load-bearing
-assumption** you'd otherwise have to guess (the one or two decisions
-that most change the spec). Anything the user doesn't resolve becomes
-an `ASSUMPTION:` carried into Open Items.
+If the context leaves the feature scope or a load-bearing decision
+(one that materially changes the spec) genuinely open, make **one**
+`AskUserQuestion` call: your hypothesis as the recommended option plus
+up to three candidates, and the one or two decisions you'd otherwise
+have to guess. If the context already pins these down, don't
+manufacture a question — state your reading in one line and proceed.
+Either way, anything left unresolved becomes an `ASSUMPTION:` carried
+into Open Items.
 
-### 3. Write spec.md
+### 3. Ground in the codebase
+
+If the project has a codebase, read the parts this feature touches
+before designing. System Design must anchor to it — real file paths,
+module names, existing signatures; a new component states where it
+lives and which existing code it calls. Architecture prose that could
+apply to any repo is a defect. If there is no codebase yet, design
+freely and note `greenfield` in Architecture.
+
+### 4. Write spec.md
 
 Exactly these seven `##` headers, in order:
 
@@ -55,33 +66,44 @@ Exactly these seven `##` headers, in order:
 ## Open Items
 ```
 
+Count floors below are calibrated to a typical feature — they are
+not quotas. A genuinely small feature may land under one; open that
+section with a one-line reason instead of padding. Inventing
+requirements to hit a floor is scope creep, strictly worse than an
+honest short section.
+
 Section rules:
 
 - **Summary & Scope** — one prose paragraph, then `### In scope` (≥ 2
   bullets) and `### Out of scope` (≥ 2 bullets, each stating what is
   excluded and why).
-- **User Stories** — **≥ 3** in the strict format
+- **User Stories** — ≥ 3 in the strict format
   `US-NN: As a <persona>, I want to <action>, so that <outcome>.`
   Two-digit zero-padded (US-01, US-02, …).
-- **Functional Requirements** — **≥ 5** numbered `FR-NN`. Each atomic
+- **Functional Requirements** — ≥ 5 numbered `FR-NN`. Each atomic
   (one observable behavior), testable, ending with a traceability tag
   `(US-NN, §<source-section>)`.
-- **Non-functional Requirements** — **≥ 3** `NFR-NN` covering at least
+- **Non-functional Requirements** — ≥ 3 `NFR-NN` covering at least
   one of performance / security / accessibility / i18n / reliability,
   each ending with `(§<source>)` or `(derived from US-NN)`.
-- **System Design** — technical architecture, not UI. Four required
-  sub-sections (use `N/A — <reason>` rather than dropping any):
+- **System Design** — technical architecture, not UI, grounded per
+  step 3. Four required sub-sections (use `N/A — <reason>` rather than
+  dropping any):
   - `### Architecture` — components, responsibilities, how they fit.
   - `### Data Model` — entities, fields, relationships.
   - `### API / Interface` — endpoints, signatures, event shapes.
   - `### State Machine` — system-side states. If ≥ 2 observable states,
     give a Mermaid `stateDiagram-v2` or `graph TD`; otherwise
     `N/A — stateless` with a one-line reason.
-- **Edge Cases & Error Handling** — **≥ 5** entries in
+- **Edge Cases & Error Handling** — ≥ 5 entries in
   `when X happens, system does Y` form.
 - **Open Items** — `### Resolved` (each citing the source that answered
   it) and `### Carried forward` (each a `[open|blocked|deferred]` tag +
-  the question). Every `ASSUMPTION:` from step 2 lives here.
+  the question). Before carrying an item forward, if a quick check of
+  official docs or the codebase settles it (an API capability, a
+  version bound), do the check and file it under `### Resolved` with
+  the source; only product decisions and genuinely open questions are
+  carried forward. Every `ASSUMPTION:` from step 2 lives here.
 
 ASSUMPTION discipline: any FR / US depending on an unconfirmed decision
 carries an inline `[ASSUMED: <content>]` marker AND a
@@ -89,18 +111,12 @@ carries an inline `[ASSUMED: <content>]` marker AND a
 source material actually answers it. Inventing features not grounded
 in the input is scope creep — put them in Out of scope or Open Items.
 
-### 4. Structural self-check
+### 5. Self-check & report
 
-Before reporting done: exactly 7 `##` headers in order; System Design
-has all four sub-sections; ≥ 3 US (all in format); ≥ 5 FR (each with a
-trace tag); ≥ 3 NFR (each with a rationale source); ≥ 5 edge cases;
-In/Out scope ≥ 2 bullets each; no bullet is bare `TBD`; every
-`ASSUMPTION:` is paired with a `[ASSUMED: …]` marker and a
-Carried-forward entry. Fix inline before reporting.
+Re-verify every hard rule above — headers and order, sub-sections,
+formats, count floors (or their stated one-line reasons), ASSUMPTION
+pairing — and fix inline. Then report: the output path plus one line
+of counts (US / FR / NFR / edge cases) and how many items were
+carried forward unresolved.
 
-### 5. Report
-
-State the output path and a one-line summary: counts of US / FR / NFR /
-edge cases, and how many items were carried forward unresolved.
-
-<!-- kcc-dev-core-write-spec-sentinel: v1 -->
+<!-- kcc-dev-core-write-spec-sentinel: v2 -->
