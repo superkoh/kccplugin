@@ -5,20 +5,20 @@
   },
   "metadata": {
     "description": "A Claude Code plugin marketplace",
-    "version": "0.1.7"
+    "version": "0.1.8"
   },
   "plugins": [
     {
       "name": "kcc-core",
       "source": "./plugins/kcc-core",
-      "description": "Core plugin: thinking & communication principles injected at session start.",
-      "version": "0.3.0"
+      "description": "Core plugin: thinking & communication principles injected at session start, with a subagent variant injected into every spawned subagent.",
+      "version": "0.4.0"
     },
     {
       "name": "kcc-dev-core",
       "source": "./plugins/kcc-dev-core",
-      "description": "Development-focused plugin: conditionally injects code-discipline principles when the session is inside a software project, and hosts standalone dev skills (write-spec, write-acceptance-criteria) and hooks.",
-      "version": "0.4.0"
+      "description": "Development-focused plugin: conditionally injects code-discipline principles when the session is inside a software project (with a subagent variant injected into every spawned subagent), and hosts standalone dev skills (write-spec, write-acceptance-criteria) and hooks.",
+      "version": "0.5.0"
     },
     {
       "name": "kcc-testing",

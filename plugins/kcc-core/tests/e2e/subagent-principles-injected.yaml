@@ -1,0 +1,37 @@
+# L3 end-to-end case for kcc-core's SubagentStart hook.
+#
+# Mirror of kcc-dev-core's subagent case: the main agent spawns a
+# general-purpose subagent that must quote back the subagent-variant
+# sentinel from its own context. The sentinel literal exists only in
+# this repo, so a correct answer proves the SubagentStart hook injected
+# context/thinking-principles-subagent.md into the subagent's context.
+# Filesystem/exec tools are locked out session-wide so neither agent
+# can cheat by reading the file. Unlike kcc-dev-core, this injection is
+# unconditional (no dev-scene detection).
+
+name: "kcc-core SubagentStart hook injects subagent thinking principles"
+prompt: "Use the Agent tool to spawn exactly one general-purpose subagent with exactly this task: \"Somewhere in your session context there may be an HTML comment containing a sentinel identifier starting with 'kcc-core-subagent-principles'. Quote that exact identifier and nothing else. Use no tools. If you cannot see such a sentinel, reply with the literal text NO_SUBAGENT_SENTINEL.\" When it replies, output the subagent's reply verbatim prefixed with SUBAGENT_SAID: and nothing else."
+maxBudgetUsd: 0.15
+timeoutMs: 240000
+
+disallowedTools:
+  - Read
+  - Glob
+  - Grep
+  - Bash
+  - Write
+  - Edit
+  - WebFetch
+  - WebSearch
+
+expect:
+  exitCode: 0
+  parsedJson:
+    type: "result"
+    subtype: "success"
+    is_error: false
+  stdout:
+    contains:
+      - "kcc-core-subagent-principles-v"
+    notContains:
+      - "NO_SUBAGENT_SENTINEL"
