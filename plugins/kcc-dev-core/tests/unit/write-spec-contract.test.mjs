@@ -61,3 +61,44 @@ test("write-spec SKILL.md is standalone — no orchestrator / teammate language"
   assert.doesNotMatch(body, /TaskUpdate/, "skill must not drive task orchestration");
   assert.doesNotMatch(body, /orchestrator-only/i, "skill must be directly invocable");
 });
+
+test("write-spec SKILL.md gates AskUserQuestion on genuine ambiguity, not unconditionally", async () => {
+  const body = await readSkill();
+  assert.match(body, /only if genuinely ambiguous/i, "scope confirmation must be conditional");
+  assert.match(
+    body,
+    /don't\s+manufacture a question/i,
+    "must forbid manufacturing a question when context already pins scope down"
+  );
+});
+
+test("write-spec SKILL.md requires System Design grounded in the real codebase", async () => {
+  const body = await readSkill();
+  assert.match(body, /Ground in the codebase/i, "grounding step must exist");
+  assert.match(body, /real file paths/i, "must demand real paths / module names");
+  assert.match(
+    body,
+    /could\s+apply to any repo is a defect/i,
+    "must declare generic architecture prose a defect"
+  );
+});
+
+test("write-spec SKILL.md treats count floors as calibration, not quotas", async () => {
+  const body = await readSkill();
+  assert.match(body, /not quotas/i, "floors must be declared non-quotas");
+  assert.match(
+    body,
+    /one-line reason/i,
+    "going under a floor must require a stated one-line reason"
+  );
+  assert.match(
+    body,
+    /Inventing\s+requirements to hit a floor is scope creep/i,
+    "padding to hit a floor must be named as scope creep"
+  );
+});
+
+test("write-spec SKILL.md carries a version sentinel", async () => {
+  const body = await readSkill();
+  assert.match(body, /kcc-dev-core-write-spec-sentinel: v\d+/);
+});
