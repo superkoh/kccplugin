@@ -1,0 +1,36 @@
+# L3 regression: S1's skip clause — no 🎯 block on a single-point query.
+#
+# The inverse guard for target-block-appears.yaml: a pure fact lookup must
+# NOT trigger the first-principles block. Without this case, a regression
+# that widens S1's trigger to "always" would pass every positive probe
+# while making the plugin noisy on every trivial question — the failure
+# mode most likely to make a user disable it.
+#
+# Opus for the same reason as the positive case: skip-clause compliance is
+# a behavioral property of the model actually in use.
+
+name: "kcc-core S1: 🎯 block is skipped on a single-point factual query"
+prompt: "JavaScript 里 Array.isArray([]) 返回什么？"
+model: claude-opus-5
+maxBudgetUsd: 0.15
+timeoutMs: 120000
+
+disallowedTools:
+  - Read
+  - Glob
+  - Grep
+  - Bash
+  - Write
+  - Edit
+  - WebFetch
+  - WebSearch
+
+expect:
+  exitCode: 0
+  parsedJson:
+    type: "result"
+    subtype: "success"
+    is_error: false
+  stdout:
+    notContains:
+      - "🎯"
