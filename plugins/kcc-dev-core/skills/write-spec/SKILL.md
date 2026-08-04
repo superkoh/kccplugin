@@ -21,7 +21,6 @@ write a spec / turn this into an engineering spec / spec this feature.
 
 - Writing acceptance criteria → `kcc-dev-core:write-acceptance-criteria`.
 - Writing QA test cases → `kcc-testing:write-test-cases`.
-- Decomposing an existing UI artifact → `kcc-design:decompose-design`.
 - Pure brainstorming with no committed artifact — stay in conversation.
 
 ## Process

@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "A Claude Code plugin marketplace",
-    "version": "0.1.4"
+    "version": "0.1.5"
   },
   "plugins": [
     {
@@ -27,22 +27,6 @@
       "version": "0.1.2",
       "category": "testing",
       "tags": ["testing", "qa", "manual-testing"]
-    },
-    {
-      "name": "kcc-backlog",
-      "source": "./plugins/kcc-backlog",
-      "description": "Record work items the user wants to defer and recover them later. Silent-by-default.",
-      "version": "0.1.2",
-      "category": "workflow",
-      "tags": ["backlog", "tasks", "workflow"]
-    },
-    {
-      "name": "kcc-design",
-      "source": "./plugins/kcc-design",
-      "description": "Cross-platform UI decomposer. The decompose-design skill breaks 1..N UI artifacts (web / iOS / Android) into a uniform per-facet tree (attributes / layout / motion) with nested property-value detail — facts only, no classification, no recommendations, no code generation.",
-      "version": "0.1.2",
-      "category": "design",
-      "tags": ["design", "ui", "ux", "cross-platform", "decomposition"]
     }
   ]
 }
