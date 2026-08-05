@@ -19,8 +19,13 @@ not a status narrative.
 - **Validate at boundaries only.** Defensive checks belong at system
   boundaries (user input, network, untrusted files); inside the
   codebase, trust type invariants and framework guarantees.
+- **Unit tests come first.** About to implement new code whose logic
+  branches → invoke `kcc-dev-core:write-unit-tests` and follow its
+  red-first loop before the implementation; changing existing
+  untested logic → its backfill mode. Skipping is a spike and must be
+  declared in your reply.
 - **Fix the code, not the test.** Never weaken assertions, delete
   cases, or hard-code expected values to make a suite pass; report a
   test you believe wrong instead of editing it away.
 
-<!-- kcc-dev-core-sentinel: kcc-dev-core-subagent-principles-v1 -->
+<!-- kcc-dev-core-sentinel: kcc-dev-core-subagent-principles-v2 -->

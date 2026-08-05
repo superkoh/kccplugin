@@ -29,6 +29,12 @@ absent.
   docs / real repos) before executing, and say briefly what you
   checked. Low-risk, familiar, easily-reversible moves need no
   research ceremony — the existing code is evidence enough.
+- **Unit tests come first.** **When** about to implement new code
+  whose logic branches (a new function or module — not config or
+  glue) **→** invoke `kcc-dev-core:write-unit-tests` and follow its
+  red-first loop before writing the implementation; **when** changing
+  existing untested logic **→** its backfill mode. Skipping it is a
+  spike and must be declared as such.
 - **When** a test blocks you **→** fix the code, not the test: never
   weaken assertions, delete cases, or hard-code expected values to go
   green. **When** writing a test **→** make it fail when the code's
@@ -71,4 +77,4 @@ instead of bypassing them (`--no-verify`); stage by explicit path, not
   Omit `--head` on `gh pr create` unless local and remote branch names
   differ.
 
-<!-- kcc-dev-core-sentinel: kcc-dev-core-principles-v7 -->
+<!-- kcc-dev-core-sentinel: kcc-dev-core-principles-v8 -->

@@ -54,7 +54,7 @@ black-box tests / write acceptance criteria.
 
 - Writing the spec itself → `kcc-dev-core:write-spec`.
 - Unit tests or any white-box tests — those are written during
-  implementation, against code, and are out of scope here.
+  implementation, against code → `kcc-dev-core:write-unit-tests`.
 - Materializing `Mode: automated` cases into runnable test code →
   `kcc-dev-core:materialize-blackbox-tests`, after the cases here have
   been reviewed.
