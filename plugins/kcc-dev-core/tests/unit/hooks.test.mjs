@@ -63,3 +63,37 @@ test("scripts/session-start-dev-principles.sh is present and executable", async 
     constants.X_OK
   );
 });
+
+test("hooks/hooks.json registers a Stop command hook for the test audit", async () => {
+  const raw = await readFile(
+    path.join(pluginRoot, "hooks", "hooks.json"),
+    "utf-8"
+  );
+  const data = JSON.parse(raw);
+
+  const stop = data.hooks?.Stop;
+  assert.ok(
+    Array.isArray(stop) && stop.length > 0,
+    "hooks.Stop must be a non-empty array"
+  );
+
+  const firstHook = stop[0].hooks?.[0];
+  assert.equal(firstHook.type, "command");
+  assert.match(firstHook.command, /stop-test-audit\.sh/);
+});
+
+test("scripts/stop-test-audit.sh is present, executable, and loop-guarded", async () => {
+  const scriptPath = path.join(pluginRoot, "scripts", "stop-test-audit.sh");
+  await access(scriptPath, constants.X_OK);
+  const body = await readFile(scriptPath, "utf-8");
+  assert.match(
+    body,
+    /stop_hook_active/,
+    "must honor stop_hook_active to prevent block loops"
+  );
+  assert.match(
+    body,
+    /write-unit-tests/,
+    "block reason must route to the write-unit-tests skill"
+  );
+});
