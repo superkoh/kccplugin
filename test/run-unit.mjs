@@ -2,7 +2,8 @@
 /**
  * L2 — Unit test dispatcher.
  *
- * For each plugin we scan `plugins/<name>/tests/unit/` and dispatch:
+ * For each plugin we scan `plugins/<name>/tests/unit/`, plus `test/unit/` for
+ * marketplace-scope tooling that belongs to no single plugin, and dispatch:
  *
  *   *.bats            → bats-core
  *   *.test.mjs / .js  → node --test (built into Node 18+)
@@ -30,8 +31,17 @@ import { spawn } from "node:child_process";
 import {
   PluginFilterError,
   discoverPlugins,
+  discoverRepoUnitTests,
   discoverTestArtifacts,
 } from "./lib/discover.mjs";
+
+/**
+ * Label used for marketplace-scope suites under `test/unit/` — tooling that
+ * belongs to the repo rather than to any plugin (install.sh). Scoping a run
+ * with PLUGIN=<name> deliberately skips them: the filter means "this plugin
+ * only", and a repo-level suite is not part of any plugin.
+ */
+const REPO_SCOPE = { name: "(marketplace)" };
 
 const results = []; // [{ plugin, runner, ok, output, skipped, reason }]
 
@@ -149,6 +159,13 @@ async function main() {
     await runNodeTest(plugin, art.unit.nodeTest);
     await runBats(plugin, art.unit.bats);
     await runPytest(plugin, art.unit.pytest);
+  }
+
+  if (!process.env.PLUGIN) {
+    const repo = await discoverRepoUnitTests();
+    await runNodeTest(REPO_SCOPE, repo.nodeTest);
+    await runBats(REPO_SCOPE, repo.bats);
+    await runPytest(REPO_SCOPE, repo.pytest);
   }
   const failed = printReport();
   process.exit(failed > 0 ? 1 : 0);

@@ -15,6 +15,9 @@
  *     tests/sdk/expected.json                           -- L4 SDK expectations
  *
  *   <repo>/.claude-plugin/marketplace.json              -- marketplace manifest
+ *   <repo>/test/unit/**                                -- L2 unit tests for
+ *                                                         marketplace-scope
+ *                                                         tooling (install.sh)
  *
  * New plugins "just work" by dropping into plugins/<name>/. Nothing in the
  * framework needs to change.
@@ -32,6 +35,16 @@ export const MARKETPLACE_PATH = path.join(
   ".claude-plugin",
   "marketplace.json"
 );
+/** Repo-level L2 tests, for tooling that belongs to no single plugin. */
+export const REPO_UNIT_DIR = path.join(REPO_ROOT, "test", "unit");
+
+/**
+ * Component directories that must sit at the plugin root (never inside
+ * `.claude-plugin/`). Doubles as the floor for what `install.sh` vendors into
+ * a project — shipping a plugin without one of these would silently drop a
+ * feature, so `test/unit/install.test.mjs` asserts the installer covers them.
+ */
+export const PLUGIN_COMPONENT_DIRS = ["agents", "commands", "hooks", "skills"];
 
 /** @returns {Promise<boolean>} */
 async function isDir(p) {
@@ -161,17 +174,52 @@ export async function inventoryPluginAssets(plugin) {
   // Common misplacements we want to yell about loudly. These are catastrophic
   // (plugin silently won't work) so we expose them so the validator can fail.
   out.misplaced = [];
-  const wrongLocations = [
-    path.join(root, ".claude-plugin", "commands"),
-    path.join(root, ".claude-plugin", "agents"),
-    path.join(root, ".claude-plugin", "skills"),
-    path.join(root, ".claude-plugin", "hooks"),
-  ];
+  const wrongLocations = PLUGIN_COMPONENT_DIRS.map((d) =>
+    path.join(root, ".claude-plugin", d)
+  );
   for (const wrong of wrongLocations) {
     if (await isDir(wrong)) out.misplaced.push(wrong);
   }
 
   return out;
+}
+
+/**
+ * Sort every file under `unitDir` into its L2 runner bucket.
+ *
+ *   *.bats            → bats-core
+ *   *.test.mjs / .js  → node --test
+ *   test_*.py         → pytest
+ */
+async function collectUnitFiles(unitDir) {
+  const out = { bats: [], nodeTest: [], pytest: [] };
+  if (!(await isDir(unitDir))) return out;
+  const walk = async (dir) => {
+    const entries = await readdir(dir, { withFileTypes: true });
+    for (const e of entries) {
+      const full = path.join(dir, e.name);
+      if (e.isDirectory()) {
+        await walk(full);
+      } else if (e.isFile()) {
+        if (e.name.endsWith(".bats")) out.bats.push(full);
+        else if (e.name.endsWith(".test.mjs") || e.name.endsWith(".test.js"))
+          out.nodeTest.push(full);
+        else if (e.name.startsWith("test_") && e.name.endsWith(".py"))
+          out.pytest.push(full);
+      }
+    }
+  };
+  await walk(unitDir);
+  return out;
+}
+
+/**
+ * L2 tests for marketplace-scope tooling — things that belong to the repo
+ * rather than to any one plugin (today: `install.sh`). Same buckets, same
+ * runners as a plugin's `tests/unit/`; only the location differs.
+ */
+export async function discoverRepoUnitTests() {
+  return collectUnitFiles(REPO_UNIT_DIR);
 }
 
 /**
@@ -188,25 +236,7 @@ export async function discoverTestArtifacts(plugin) {
   if (!(await isDir(testsDir))) return out;
 
   // L2 unit
-  const unitDir = path.join(testsDir, "unit");
-  if (await isDir(unitDir)) {
-    const walk = async (dir) => {
-      const entries = await readdir(dir, { withFileTypes: true });
-      for (const e of entries) {
-        const full = path.join(dir, e.name);
-        if (e.isDirectory()) {
-          await walk(full);
-        } else if (e.isFile()) {
-          if (e.name.endsWith(".bats")) out.unit.bats.push(full);
-          else if (e.name.endsWith(".test.mjs") || e.name.endsWith(".test.js"))
-            out.unit.nodeTest.push(full);
-          else if (e.name.startsWith("test_") && e.name.endsWith(".py"))
-            out.unit.pytest.push(full);
-        }
-      }
-    };
-    await walk(unitDir);
-  }
+  out.unit = await collectUnitFiles(path.join(testsDir, "unit"));
 
   // L3 e2e
   const e2eDir = path.join(testsDir, "e2e");

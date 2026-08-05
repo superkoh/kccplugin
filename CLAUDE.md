@@ -9,6 +9,13 @@ four-layer automated test framework. Plugins live under `plugins/<name>/` and
 are auto-discovered — the framework hardcodes no plugin names. The marketplace
 manifest is `.claude-plugin/marketplace.json`.
 
+Plugins ship two ways. The marketplace (`.claude-plugin/marketplace.json`)
+follows a *user* across projects. `install.sh` vendors a plugin into a
+*project* — it copies `plugins/<name>/` into the target's
+`.claude/skills/<name>/`, which Claude Code loads natively as
+`<name>@skills-dir`. See README.md for the user-facing story; the
+constraints that shaped it are under "Gotchas" below.
+
 ## Common commands
 
 All tests are run from the repo root via `npm`. Requires Node ≥ 20.
@@ -50,6 +57,12 @@ Layer semantics are in the npm-script comments above; runners live in
 Shared helpers live in `test/lib/`. `test/lib/discover.mjs` is the **single
 source of truth** for directory conventions — to move or rename a convention,
 edit that file and nothing else needs to change.
+
+L2 has a second location: `test/unit/**` holds unit tests for
+marketplace-scope tooling that belongs to no single plugin (today
+`install.sh`). Same runners, same file-name conventions as a plugin's
+`tests/unit/`. `PLUGIN=<name>` deliberately skips it — the filter means
+"this plugin only".
 
 Strict schemas in `test/schemas/*.json` use `additionalProperties: false` by
 design, so typos in manifests fail loudly at L1 rather than silently
@@ -107,6 +120,15 @@ for free.
 - **Frontmatter `description` is required** on commands, skills, and
   agents — missing it both fails L1 frontmatter schemas and prevents the
   plugin from registering at L4.
+- **Vendored plugins need workspace trust.** A project-scope plugin under
+  `.claude/skills/` is *not loaded* until the workspace trust dialog is
+  accepted — `claude plugin list` says so explicitly. Never diagnose this
+  as an `install.sh` bug.
+- **`install.sh` vendors a whitelist, not the whole tree.** `COMPONENT_DIRS`
+  inside the script decides what ships; `tests/` is excluded on purpose.
+  Add a new component directory to a plugin and you must add it there too —
+  `test/unit/install.test.mjs` fails if the whitelist drops anything listed
+  in `PLUGIN_COMPONENT_DIRS` (`test/lib/discover.mjs`).
 
 ## Pointers to existing workflow skills
 
