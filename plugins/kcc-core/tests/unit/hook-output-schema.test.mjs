@@ -1,10 +1,14 @@
 // L2 schema-coverage test for kcc-core's SessionStart hook.
 //
-// bats already covers shell-specific concerns (jq-missing degrade, PATH
-// stripping, exit code). This companion runs the script under node and
-// routes its stdout through the shared hook-output schema validator, so
-// any future drift of the emitted JSON shape fails loudly here before
-// reaching Claude Code's runtime validator.
+// bats already covers shell-specific concerns (PATH stripping, exit code).
+// This companion runs the script under node and routes its stdout through
+// the shared hook-output schema validator, so any future drift of the
+// emitted JSON shape fails loudly here before reaching Claude Code's
+// runtime validator.
+//
+// The repo-level test/unit/hook-scripts.test.mjs covers the same ground for
+// *every* plugin's hooks, plus byte-exactness and the no-external-commands
+// policy; this file stays as kcc-core's own local guard.
 
 import { test } from "node:test";
 import { spawn } from "node:child_process";
@@ -26,15 +30,13 @@ function runScript() {
   });
 }
 
-test("kcc-core SessionStart hook stdout passes the hook-output schema", async (t) => {
+test("kcc-core SessionStart hook stdout passes the hook-output schema", async () => {
   const { code, out, err } = await runScript();
-  if (code !== 0 && /jq.*not found/i.test(err)) t.skip("jq not on PATH");
+  const { default: assert } = await import("node:assert/strict");
+  assert.equal(code, 0, `hook exited ${code}; stderr: ${err}`);
   const j = await assertHookOutput("SessionStart", out);
   // Sanity: the script is supposed to emit the thinking-principles sentinel.
-  // If the sentinel goes missing we want to know, but the real purpose of
-  // this file is the schema route above.
-  if (j.hookSpecificOutput.additionalContext) {
-    const { default: assert } = await import("node:assert/strict");
-    assert.match(j.hookSpecificOutput.additionalContext, /kcc-core-thinking-principles-v\d+/);
-  }
+  // Unconditional now — there is no dependency left that could legitimately
+  // turn this into an empty injection.
+  assert.match(j.hookSpecificOutput.additionalContext, /kcc-core-thinking-principles-v\d+/);
 });

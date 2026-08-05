@@ -80,28 +80,45 @@ teardown() {
   echo "$output" | jq -e '.hookSpecificOutput.additionalContext | contains("kcc-dev-core-principles-v")'
 }
 
-@test "graceful degrade when jq is unavailable: script still exits 0" {
-  # Strip PATH entirely so the `command -v jq` checks inside the script
-  # return non-zero. Invoke bash via an absolute path (/bin/bash) so we
-  # don't need a working PATH to locate the shell itself. The script is
-  # written to use only bash builtins for self-location, so it reaches
-  # the second jq check at the injection step and takes the
-  # graceful-degrade path instead of crashing.
+@test "no external dependencies: full injection with PATH stripped" {
+  # Strip PATH entirely, so no external binary is reachable. Every step
+  # this script takes — reading stdin, pulling .cwd out of it, walking for
+  # dev signals, JSON-encoding the file — is a bash builtin, so a stripped
+  # PATH must change nothing.
   #
-  # Before that second check the script has already resolved $cwd via
-  # the $PWD fallback (the first jq check fails silently, skipping
-  # stdin parsing), and is_dev_scene runs fine without jq. On a repo
-  # cwd is_dev_scene returns 0, and then the jq-missing injection check
-  # kicks in and emits an empty additionalContext plus a stderr
-  # warning.
-  #
-  # `run --separate-stderr` keeps $output as stdout-only, so the
-  # stderr warning doesn't pollute the JSON we feed to jq below. We
-  # also assert the warning appeared on stderr, confirming we really
-  # took the degrade branch.
+  # This used to assert the opposite: a missing jq degraded to an empty
+  # additionalContext plus a stderr warning. That degrade is gone; see the
+  # rationale at the top of scripts/hook-lib.sh.
   run --separate-stderr env -i HOME="$HOME" PATH="" /bin/bash "$SCRIPT" </dev/null
   [ "$status" -eq 0 ]
-  [[ "$stderr" == *"jq not found"* ]]
+  [ -z "$stderr" ]
   echo "$output" | jq -e '.hookSpecificOutput.hookEventName == "SessionStart"'
+  echo "$output" | jq -e '.hookSpecificOutput.additionalContext | contains("kcc-dev-core-principles-v")'
+}
+
+@test "no external dependencies: stdin .cwd is honored with PATH stripped" {
+  # The .cwd extraction used to be a `jq -r` call. Prove the builtin
+  # replacement still routes a stdin-supplied cwd to the right verdict:
+  # a directory with .git/ is a HIT even though $PWD (the repo) would
+  # also be one — so this asserts the parse, not the fallback.
+  mkdir -p "$TMPROOT/.git"
+  payload=$(mktemp)
+  printf '{"session_id":"abc","cwd":"%s"}' "$TMPROOT" >"$payload"
+  run --separate-stderr env -i HOME="$HOME" PATH="" /bin/bash "$SCRIPT" <"$payload"
+  rm -f "$payload"
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  echo "$output" | jq -e '.hookSpecificOutput.additionalContext | contains("kcc-dev-core-principles-v")'
+}
+
+@test "no external dependencies: stdin .cwd MISS is honored with PATH stripped" {
+  # The mirror of the case above, and the one that actually proves the
+  # parse happened: $PWD is the repo (a dev scene), so falling back would
+  # inject. A clean tmpdir from stdin must produce an empty injection.
+  payload=$(mktemp)
+  printf '{"cwd":"%s"}' "$TMPROOT" >"$payload"
+  run --separate-stderr env -i HOME="$HOME" PATH="" /bin/bash "$SCRIPT" <"$payload"
+  rm -f "$payload"
+  [ "$status" -eq 0 ]
   echo "$output" | jq -e '.hookSpecificOutput.additionalContext == ""'
 }

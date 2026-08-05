@@ -10,14 +10,13 @@
 #
 # Design notes:
 #   - Self-location uses bash parameter expansion only (no `dirname`), so
-#     the script can run even when PATH has been stripped — this matters
-#     for the L2 bats test that proves graceful degrade when jq is absent.
-#   - The script is intentionally tolerant: missing file or missing jq
-#     both degrade to exit 0 with an empty additionalContext, so a
-#     broken hook never prevents the user's session from starting.
-#   - jq -Rs reads the file as a single raw string and JSON-encodes it,
-#     which is the only safe way to escape UTF-8 + newlines + quotes +
-#     backticks in one step.
+#     the script can run even when PATH has been stripped.
+#   - No external commands at all — JSON encoding lives in hook-lib.sh and
+#     uses builtins. See the rationale at the top of that file: a vendored
+#     plugin runs on machines that never installed anything for it.
+#   - A missing context file degrades to exit 0 with an empty
+#     additionalContext, so a broken hook never prevents a subagent from
+#     starting.
 
 set -euo pipefail
 
@@ -32,23 +31,8 @@ else
 fi
 script_dir="${script_path%/*}"
 plugin_root="${script_dir%/*}"
-text_file="$plugin_root/context/thinking-principles-subagent.md"
 
-emit_empty() {
-  printf '%s\n' \
-    '{"hookSpecificOutput":{"hookEventName":"SubagentStart","additionalContext":""}}'
-}
+# shellcheck source=./hook-lib.sh
+. "$script_dir/hook-lib.sh"
 
-if [[ ! -f "$text_file" ]]; then
-  emit_empty
-  exit 0
-fi
-
-if ! command -v jq >/dev/null 2>&1; then
-  echo "kcc-core subagent-start hook: jq not found on PATH, skipping injection" >&2
-  emit_empty
-  exit 0
-fi
-
-jq -Rs '{hookSpecificOutput: {hookEventName: "SubagentStart", additionalContext: .}}' \
-  <"$text_file"
+kcc_emit_file "SubagentStart" "$plugin_root/context/thinking-principles-subagent.md"

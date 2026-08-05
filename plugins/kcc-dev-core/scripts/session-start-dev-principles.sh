@@ -11,10 +11,13 @@
 #
 # Design notes:
 #   - Self-location uses bash parameter expansion only (no `dirname`), so
-#     the script can run even when PATH has been stripped — this matters
-#     for the L2 bats test that proves graceful degrade when jq is absent.
+#     the script can run even when PATH has been stripped.
+#   - No external commands at all — stdin parsing and JSON encoding live in
+#     hook-lib.sh and use builtins. See the rationale at the top of that
+#     file: a vendored plugin runs on machines that never installed
+#     anything for it.
 #   - The script is intentionally tolerant: missing cwd, missing dev
-#     signals, missing file, and missing jq all degrade to exit 0 with
+#     signals, and a missing context file all degrade to exit 0 with
 #     an empty additionalContext, so a broken hook never prevents the
 #     user's session from starting.
 #   - Detection is intentionally LOOSE: the presence of any one of many
@@ -27,9 +30,6 @@
 #     SessionStart hook's stdin JSON, then fall back to $PWD. Either path
 #     keeps the hook working whether or not Claude Code's stdin schema
 #     lands with that field.
-#   - jq -Rs reads the file as a single raw string and JSON-encodes it,
-#     which is the only safe way to escape UTF-8 + newlines + quotes +
-#     backticks in one step.
 
 set -euo pipefail
 shopt -s nullglob
@@ -47,29 +47,20 @@ script_dir="${script_path%/*}"
 plugin_root="${script_dir%/*}"
 text_file="$plugin_root/context/dev-principles.md"
 
-emit_empty() {
-  printf '%s\n' \
-    '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":""}}'
-}
+# shellcheck source=./hook-lib.sh
+. "$script_dir/hook-lib.sh"
 
 # ---------------------------------------------------------------------
 # Step A: resolve cwd. Prefer the `.cwd` field from the hook's stdin
 # JSON; fall back to $PWD. Either one alone is enough.
 # ---------------------------------------------------------------------
-cwd=""
-if command -v jq >/dev/null 2>&1; then
-  # `cat` blocks until stdin closes. Claude Code closes the hook's
-  # stdin after sending the payload, so this does not hang.
-  stdin_raw=$(cat 2>/dev/null || true)
-  if [[ -n "$stdin_raw" ]]; then
-    cwd=$(printf '%s' "$stdin_raw" | jq -r '.cwd // empty' 2>/dev/null || true)
-  fi
-fi
+stdin_raw="$(kcc_read_stdin)"
+cwd="$(kcc_json_string_field "$stdin_raw" cwd)"
 if [[ -z "$cwd" ]]; then
   cwd="${PWD:-}"
 fi
 if [[ -z "$cwd" ]] || [[ ! -d "$cwd" ]]; then
-  emit_empty
+  kcc_emit_empty "SessionStart"
   exit 0
 fi
 
@@ -165,23 +156,11 @@ is_dev_scene() {
 }
 
 if ! is_dev_scene "$cwd"; then
-  emit_empty
+  kcc_emit_empty "SessionStart"
   exit 0
 fi
 
 # ---------------------------------------------------------------------
 # Step C: read the principles file and inject.
 # ---------------------------------------------------------------------
-if [[ ! -f "$text_file" ]]; then
-  emit_empty
-  exit 0
-fi
-
-if ! command -v jq >/dev/null 2>&1; then
-  echo "kcc-dev-core session-start hook: jq not found on PATH, skipping injection" >&2
-  emit_empty
-  exit 0
-fi
-
-jq -Rs '{hookSpecificOutput: {hookEventName: "SessionStart", additionalContext: .}}' \
-  <"$text_file"
+kcc_emit_file "SessionStart" "$text_file"

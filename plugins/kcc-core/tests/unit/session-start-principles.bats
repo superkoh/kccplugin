@@ -40,20 +40,23 @@ setup() {
   echo "$output" | jq -e '.hookSpecificOutput.additionalContext | contains("kcc-core-thinking-principles-v")'
 }
 
-@test "graceful degrade when jq is unavailable: script still exits 0" {
-  # Strip PATH entirely so the `command -v jq` check inside the script
-  # returns non-zero. Invoke bash via an absolute path (/bin/bash) so we
-  # don't need a working PATH to locate the shell itself. The script is
-  # written to use only bash builtins for self-location, so it reaches
-  # the jq check and takes the graceful-degrade path instead of crashing.
+@test "no external dependencies: full injection with PATH stripped" {
+  # Strip PATH entirely, so no external binary — jq, sed, cat, anything —
+  # is reachable. Invoke bash via an absolute path (/bin/bash) since we no
+  # longer have a PATH to locate the shell itself.
   #
-  # `run --separate-stderr` keeps $output as stdout-only, so the
-  # "jq not found" warning the script emits on stderr doesn't pollute
-  # the JSON we feed to jq below. We also assert that the warning did
-  # appear on stderr, confirming we really took the degrade branch.
+  # This used to assert the opposite: that a missing jq degraded to an
+  # empty additionalContext plus a stderr warning. That degrade is gone.
+  # A vendored copy of this plugin (see install.sh) runs on machines that
+  # never installed anything for it, and "injects nothing, quietly" is
+  # indistinguishable there from "the plugin isn't installed" — the worst
+  # possible failure for a hook whose whole job is injecting context.
+  #
+  # `run --separate-stderr` keeps $output as stdout-only; we assert stderr
+  # is empty, which is what proves nothing external was even attempted.
   run --separate-stderr env -i HOME="$HOME" PATH="" /bin/bash "$SCRIPT" </dev/null
   [ "$status" -eq 0 ]
-  [[ "$stderr" == *"jq not found"* ]]
+  [ -z "$stderr" ]
   echo "$output" | jq -e '.hookSpecificOutput.hookEventName == "SessionStart"'
-  echo "$output" | jq -e '.hookSpecificOutput.additionalContext == ""'
+  echo "$output" | jq -e '.hookSpecificOutput.additionalContext | contains("kcc-core-thinking-principles-v")'
 }

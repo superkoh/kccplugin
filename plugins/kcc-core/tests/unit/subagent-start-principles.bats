@@ -41,12 +41,12 @@ setup() {
   echo "$output" | jq -e '.hookSpecificOutput.additionalContext | contains("kcc-core-subagent-principles-v")'
 }
 
-@test "graceful degrade when jq is unavailable: script still exits 0" {
-  # Same degrade contract as the SessionStart script: builtins-only
-  # self-location, empty additionalContext, warning on stderr.
+@test "no external dependencies: full injection with PATH stripped" {
+  # Same contract as the SessionStart script: builtins only, so a stripped
+  # PATH changes nothing — full injection, silent stderr.
   run --separate-stderr env -i HOME="$HOME" PATH="" /bin/bash "$SCRIPT" </dev/null
   [ "$status" -eq 0 ]
-  [[ "$stderr" == *"jq not found"* ]]
+  [ -z "$stderr" ]
   echo "$output" | jq -e '.hookSpecificOutput.hookEventName == "SubagentStart"'
-  echo "$output" | jq -e '.hookSpecificOutput.additionalContext == ""'
+  echo "$output" | jq -e '.hookSpecificOutput.additionalContext | contains("kcc-core-subagent-principles-v")'
 }
