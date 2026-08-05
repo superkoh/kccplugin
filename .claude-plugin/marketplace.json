@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "A Claude Code plugin marketplace",
-    "version": "0.1.9"
+    "version": "0.2.0"
   },
   "plugins": [
     {
@@ -17,16 +17,8 @@
     {
       "name": "kcc-dev-core",
       "source": "./plugins/kcc-dev-core",
-      "description": "Development-focused plugin: conditionally injects code-discipline principles when the session is inside a software project (with a subagent variant injected into every spawned subagent), and hosts standalone dev skills (write-spec, write-acceptance-criteria) and hooks.",
-      "version": "0.6.0"
-    },
-    {
-      "name": "kcc-testing",
-      "source": "./plugins/kcc-testing",
-      "description": "LLM-executable manual QA test case authoring — write-test-cases skill turns a PRD into a YAML coverage set.",
-      "version": "0.1.2",
-      "category": "testing",
-      "tags": ["testing", "qa", "manual-testing"]
+      "description": "Development-focused plugin: conditionally injects code-discipline principles when the session is inside a software project (with a subagent variant injected into every spawned subagent), and hosts standalone dev skills (write-spec, write-blackbox-tests, materialize-blackbox-tests) and hooks.",
+      "version": "0.7.0"
     }
   ]
 }

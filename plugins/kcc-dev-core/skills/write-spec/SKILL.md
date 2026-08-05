@@ -20,8 +20,7 @@ write a spec / turn this into an engineering spec / spec this feature.
 
 ### When NOT to use
 
-- Writing acceptance criteria → `kcc-dev-core:write-acceptance-criteria`.
-- Writing QA test cases → `kcc-testing:write-test-cases`.
+- Writing black-box test cases → `kcc-dev-core:write-blackbox-tests`.
 - Pure brainstorming with no committed artifact — stay in conversation.
 
 ## Process
