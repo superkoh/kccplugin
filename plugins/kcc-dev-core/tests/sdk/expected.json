@@ -3,7 +3,8 @@
     "requires": [
       "kcc-dev-core:write-spec",
       "kcc-dev-core:write-blackbox-tests",
-      "kcc-dev-core:materialize-blackbox-tests"
+      "kcc-dev-core:materialize-blackbox-tests",
+      "kcc-dev-core:write-unit-tests"
     ],
     "forbids": []
   },

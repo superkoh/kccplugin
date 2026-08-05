@@ -69,6 +69,23 @@ kcc_json_string_field() {
   fi
 }
 
+# Extract a boolean field from a hook's stdin payload.
+#
+# Prints "true" only for a literal JSON `true`; absent, false, or anything
+# non-boolean reports "false". Every caller so far wants the conservative
+# reading (don't act on a field you couldn't confirm), so that default is
+# baked in rather than left to each caller.
+kcc_json_bool_field() {
+  local payload="$1"
+  local field="$2"
+  local re="\"$field\"[[:space:]]*:[[:space:]]*true([^[:alnum:]_]|$)"
+  if [[ "$payload" =~ $re ]]; then
+    printf 'true'
+  else
+    printf 'false'
+  fi
+}
+
 # Read this hook's entire stdin payload using only builtins. Claude Code
 # closes the hook's stdin after sending it, so this does not hang.
 kcc_read_stdin() {

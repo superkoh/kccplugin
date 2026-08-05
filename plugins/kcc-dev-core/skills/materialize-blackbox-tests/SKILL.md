@@ -25,8 +25,8 @@ materialize black-box tests / turn blackbox.md into test code.
 
 - Writing or revising the cases themselves →
   `kcc-dev-core:write-blackbox-tests`.
-- Unit tests or any white-box tests — written during implementation,
-  out of scope.
+- Unit tests or any white-box tests — written during implementation
+  → `kcc-dev-core:write-unit-tests`.
 - Executing `Mode: llm-driven` cases — a runtime activity, not code
   generation.
 

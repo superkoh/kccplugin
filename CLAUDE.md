@@ -120,14 +120,18 @@ for free.
 - **Frontmatter `description` is required** on commands, skills, and
   agents — missing it both fails L1 frontmatter schemas and prevents the
   plugin from registering at L4.
-- **Hook scripts may not depend on anything outside bash.** No `jq`, no
-  `python3`, not even `sed` or `cat` — JSON encoding and stdin parsing live
-  in each plugin's `scripts/hook-lib.sh` and use builtins only. A vendored
-  plugin runs on machines that never installed anything for it, and a
-  dependency-missing degrade is indistinguishable from "not installed".
-  `test/unit/hook-scripts.test.mjs` enforces this by re-running every hook
-  with `PATH=""` and demanding byte-identical output. `hook-lib.sh` is
-  duplicated per plugin on purpose (plugins must be independently
+- **A hook may not lose its function to a dependency it doesn't
+  intrinsically need.** JSON encoding and stdin parsing are never intrinsic
+  — they live in each plugin's `scripts/hook-lib.sh` and use builtins only,
+  so no hook may reach for `jq` or `python`. A vendored plugin runs on
+  machines that never installed anything for it, and a dependency-missing
+  degrade is indistinguishable from "not installed". `git` in
+  kcc-dev-core's Stop audit *is* intrinsic (auditing the tree is the
+  feature) and is allowed. `test/unit/hook-scripts.test.mjs` enforces both
+  halves: a static no-JSON-tool check over every `scripts/**/*.sh`, plus a
+  `PATH=""` byte-identical re-run for the context-injecting hooks, which
+  are the ones that must work with nothing installed at all. `hook-lib.sh`
+  is duplicated per plugin on purpose (plugins must be independently
   installable); the same file asserts the copies never drift.
 - **Vendored plugins need workspace trust.** A project-scope plugin under
   `.claude/skills/` is *not loaded* until the workspace trust dialog is

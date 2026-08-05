@@ -1,0 +1,120 @@
+#!/usr/bin/env bash
+# kcc-dev-core Stop hook: post-turn test audit.
+#
+# When the turn ends with uncommitted source-code changes but zero
+# touched test files, block the stop ONCE and hand the model a reason
+# pointing at kcc-dev-core:write-unit-tests (backfill mode). The model
+# either backfills tests or states why unit tests don't apply, then
+# stops again — `stop_hook_active` guarantees the second stop passes,
+# so no infinite loop is possible.
+#
+# Contract (from Claude Code hooks reference):
+#   stdin  — JSON payload; fields used: .stop_hook_active, .cwd
+#   stdout — either nothing (allow stop) or
+#            {"decision":"block","reason":"<text>"} to continue the turn
+#   exit 0 always; a broken audit must never wedge the session.
+#
+# Design notes:
+#   - Stateless by design: "changed" means `git diff HEAD` + untracked
+#     files, i.e. the uncommitted state — not strictly "this turn".
+#     In a long uncommitted session the audit re-fires each turn that
+#     ends test-less; that is accepted nagging, not a bug. Committing
+#     or touching a test file clears it.
+#   - Classification is path-based and deliberately simple: a file is
+#     a TEST when a path segment is test/tests/__tests__/spec or its
+#     basename matches *.test.* / *.spec.* / *_test.* / test_* / *.bats;
+#     a file is SOURCE when its extension is in the code list below and
+#     it is not a test. Docs, config, JSON, YAML, lockfiles never fire.
+#   - Everything degrades to "allow stop" (exit 0, no output): not a
+#     git repo, git missing, empty diff.
+#   - `git` is the one external tool this hook needs, and it needs it
+#     intrinsically: auditing the working tree IS the feature, so a
+#     missing git means there is genuinely nothing to audit. Reading and
+#     writing JSON is NOT intrinsic, so that goes through hook-lib.sh's
+#     builtins rather than jq — see the rationale at the top of that file
+#     for why a vendored plugin cannot afford incidental dependencies.
+
+set -uo pipefail
+
+# Resolve script path with builtins only so hook-lib.sh can be sourced
+# before the `cd` below moves us into the audited project.
+if [[ "$0" = /* ]]; then
+  script_path="$0"
+else
+  script_path="${PWD:-.}/$0"
+fi
+script_dir="${script_path%/*}"
+
+# shellcheck source=./hook-lib.sh
+. "$script_dir/hook-lib.sh"
+
+# --- loop guard: never block a stop that a stop hook already caused ---
+stdin_raw="$(kcc_read_stdin)"
+active="$(kcc_json_bool_field "$stdin_raw" stop_hook_active)"
+cwd="$(kcc_json_string_field "$stdin_raw" cwd)"
+[[ "$active" == "true" ]] && exit 0
+
+[[ -z "$cwd" || ! -d "$cwd" ]] && cwd="${PWD:-}"
+[[ -z "$cwd" || ! -d "$cwd" ]] && exit 0
+cd "$cwd" 2>/dev/null || exit 0
+
+command -v git >/dev/null 2>&1 || exit 0
+git rev-parse --is-inside-work-tree >/dev/null 2>&1 || exit 0
+
+# Uncommitted changes: tracked (vs HEAD when it exists) + untracked.
+if git rev-parse --verify HEAD >/dev/null 2>&1; then
+  tracked=$(git diff --name-only HEAD 2>/dev/null || true)
+else
+  tracked=""
+fi
+untracked=$(git ls-files --others --exclude-standard 2>/dev/null || true)
+changed=$(printf '%s\n%s\n' "$tracked" "$untracked" | sed '/^$/d' | sort -u)
+[[ -z "$changed" ]] && exit 0
+
+is_test_file() {
+  local p="$1" base="${1##*/}"
+  case "/$p/" in
+    */test/*|*/tests/*|*/__tests__/*|*/spec/*) return 0 ;;
+  esac
+  case "$base" in
+    *.test.*|*.spec.*|*_test.*|test_*|*.bats) return 0 ;;
+  esac
+  return 1
+}
+
+is_source_file() {
+  local base="${1##*/}"
+  case "$base" in
+    *.js|*.mjs|*.cjs|*.ts|*.tsx|*.jsx|*.py|*.go|*.rs|*.java|*.kt|*.kts|\
+    *.rb|*.php|*.swift|*.c|*.cc|*.cpp|*.h|*.hpp|*.m|*.mm|*.cs|*.scala|\
+    *.ex|*.exs|*.sh) return 0 ;;
+  esac
+  return 1
+}
+
+sources=()
+tests=0
+while IFS= read -r f; do
+  [[ -z "$f" ]] && continue
+  if is_test_file "$f"; then
+    tests=$((tests + 1))
+  elif is_source_file "$f"; then
+    sources+=("$f")
+  fi
+done <<<"$changed"
+
+(( ${#sources[@]} == 0 )) && exit 0
+(( tests > 0 )) && exit 0
+
+# Blocking reason: name up to 5 offending files, keep it one paragraph.
+sample=""
+for ((i = 0; i < ${#sources[@]} && i < 5; i++)); do
+  sample+="${sources[$i]}, "
+done
+sample="${sample%, }"
+(( ${#sources[@]} > 5 )) && sample+=", …"
+
+reason="kcc-dev-core stop audit: this turn ends with uncommitted source changes (${sample}) and no test file touched. If logic changed, enter kcc-dev-core:write-unit-tests (backfill mode) to cover it; if unit tests genuinely don't apply (pure glue/config, docs-only refactor, or user explicitly deferred tests), state that in one line and finish. This audit will not re-block this stop."
+
+printf '{"decision":"block","reason":"%s"}\n' "$(kcc_json_escape "$reason")"
+exit 0

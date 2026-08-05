@@ -82,10 +82,13 @@ option list (`--source-dir`, `--repo`, `--project-dir`).
   ```
 
 - **Add `*.kcc.bak` to `.gitignore`** if you customize vendored files.
-- **The plugins themselves need nothing installed.** Their hooks are pure
-  bash builtins — no `jq`, no `python3`, not even `sed`. A teammate who
-  clones the repo gets working hooks whatever their machine looks like. (The
-  installer needs `python3`/`curl`/`tar`; the plugins it installs do not.)
+- **The plugins themselves need nothing installed.** The context-injecting
+  hooks are pure bash builtins — no `jq`, no `python3`, not even `sed` — so
+  a teammate who clones the repo gets working hooks whatever their machine
+  looks like. The one exception is kcc-dev-core's Stop hook, which audits
+  the git working tree and therefore needs `git`; without it there is simply
+  nothing to audit and the stop is allowed. (The installer needs
+  `python3`/`curl`/`tar`; the plugins it installs do not.)
 - **No name collisions.** A vendored plugin's skills are namespaced
   `<plugin>:<skill>`, so they coexist with a project's own plain skill of the
   same name. Nothing needs a manual prefix.

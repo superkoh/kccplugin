@@ -6,7 +6,8 @@
  * each plugin's hooks.json rather than naming scripts. A new plugin with
  * hooks is covered the moment it lands.
  *
- * The rule: **a hook script may not depend on anything outside bash.**
+ * The rule: **a hook may not lose its function to a dependency it does not
+ * intrinsically need.**
  *
  * These plugins used to shell out to `jq` and, when it was missing, emit an
  * empty additionalContext plus a stderr warning. On the machine of someone
@@ -15,9 +16,22 @@
  * on teammates' and CI machines that never opted into anything — and a
  * silent no-op there is indistinguishable from "the plugin isn't installed",
  * which is the worst possible failure for a plugin whose entire job is to
- * inject context. So the dependency is gone, and this file is what keeps it
- * gone: every hook is executed a second time with PATH="" and must produce
- * byte-identical output.
+ * inject context.
+ *
+ * "Intrinsically" is the load-bearing word, and it is why this is not the
+ * blunter rule "no external commands, ever". Reading and writing JSON is
+ * never intrinsic — bash can do it, so nothing here may reach for jq or
+ * python. But kcc-dev-core's Stop hook audits a git working tree: `git` is
+ * the feature, not an implementation detail, and no git means there is
+ * genuinely nothing to audit. So the enforcement splits in two:
+ *
+ *   - every hook script (and the helpers it sources) is checked for a JSON
+ *     tool invocation, statically;
+ *   - context-injecting hooks — the SessionStart / SubagentStart family,
+ *     whose whole contract is `additionalContext` — are additionally run
+ *     with PATH="" and must produce byte-identical output. That runtime
+ *     check is the strong one, and it is only meaningful for hooks that
+ *     have no intrinsic external dependency at all.
  */
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
@@ -78,8 +92,17 @@ function runHook(script, { bare = false, stdin = "", cwd = REPO_ROOT } = {}) {
   });
 }
 
+/**
+ * Events whose hook contract is `additionalContext`. Only these can be held
+ * to the "byte-identical with PATH stripped" bar — a hook that intrinsically
+ * shells out (kcc-dev-core's git-based Stop audit) would pass that check
+ * vacuously, by degrading to silence in both runs.
+ */
+const INJECTION_EVENTS = new Set(["SessionStart", "SubagentStart"]);
+
 const plugins = await discoverPlugins();
 const hooks = allHookScripts(plugins);
+const injectionHooks = hooks.filter((h) => INJECTION_EVENTS.has(h.event));
 
 test("every plugin's hooks.json points at a real, resolvable script", () => {
   assert.ok(hooks.length > 0, "expected at least one command hook to exist");
@@ -91,7 +114,37 @@ test("every plugin's hooks.json points at a real, resolvable script", () => {
   }
 });
 
-for (const h of hooks) {
+test("no shell script under any plugin's scripts/ reaches for a JSON tool", () => {
+  // Covers sourced helpers too, not just the entry points named in
+  // hooks.json — a dependency smuggled into hook-lib.sh would be just as
+  // fatal on a machine that never installed it.
+  const offenders = [];
+  for (const plugin of plugins) {
+    const scriptsDir = path.join(plugin.root, "scripts");
+    let files;
+    try {
+      files = readdirSync(scriptsDir).filter((f) => f.endsWith(".sh"));
+    } catch {
+      continue;
+    }
+    for (const f of files) {
+      const source = readFileSync(path.join(scriptsDir, f), "utf-8")
+        .split("\n")
+        .filter((line) => !/^\s*#/.test(line)) // prose may name them freely
+        .join("\n");
+      const hit = source.match(/\b(jq|python3?)\b/);
+      if (hit) offenders.push(`${plugin.name}/scripts/${f} invokes ${hit[1]}`);
+    }
+  }
+  assert.deepEqual(
+    offenders,
+    [],
+    `JSON encoding/parsing is never an intrinsic dependency — use the ` +
+      `builtins in hook-lib.sh instead`
+  );
+});
+
+for (const h of injectionHooks) {
   const label = `${h.plugin} ${h.event}`;
 
   test(`${label}: stdout satisfies the hook-output schema`, async () => {
