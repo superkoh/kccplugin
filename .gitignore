@@ -19,6 +19,9 @@ npm-debug.log*
 test/.artifacts/
 coverage/
 
+# A/B probe campaign output (raw transcripts + per-run records)
+.probe-runs/
+
 # Superpowers brainstorming artifacts (visual companion session dirs)
 .superpowers/
 

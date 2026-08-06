@@ -12,7 +12,7 @@
       "name": "kcc-core",
       "source": "./plugins/kcc-core",
       "description": "Core plugin: thinking & communication principles injected at session start, with a subagent variant injected into every spawned subagent.",
-      "version": "0.4.0"
+      "version": "0.7.0"
     },
     {
       "name": "kcc-dev-core",
