@@ -1,19 +1,19 @@
 ---
-description: Use when the user asks to 写单测 / 写单元测试 / 补单测 / 加单元测试 / 用 TDD 实现 / write unit tests / add unit tests / cover this code with unit tests — and proactively before implementing new code whose logic branches enough to be worth protecting. Writes contract-first unit tests during implementation — new-code mode goes red-first against a stub with real failure output; backfill mode targets existing code and proves test power with a temporary mutation probe; a bug fix starts from a failing reproduction test. Anti-tautology throughout — expectations traced to requirements, observable behavior only, tests frozen while implementing. Requirement-side black-box cases are kcc-dev-core:write-blackbox-tests, not this skill. Standalone capability — no workflow, no orchestration, no team.
+description: Use when the user asks to 写单测 / 写单元测试 / 补单测 / 加单元测试 / 用 TDD 实现 / write unit tests / add unit tests / cover this code with unit tests — and proactively before implementing new code whose logic branches — which of those units actually earn a test is this skill's own per-unit call, so don't pre-decide it before entering. Writes contract-first unit tests during implementation — new-code mode goes red-first against a stub with real failure output; backfill mode targets existing code and proves test power with a temporary mutation probe; a bug fix starts from a failing reproduction test. Anti-tautology throughout — expectations traced to requirements, observable behavior only, tests frozen while implementing. Requirement-side black-box cases are kcc-dev-core:write-blackbox-tests, not this skill. Standalone capability — no workflow, no orchestration, no team.
 ---
 
 # Writing unit tests
 
-Writes unit tests **during implementation**, one unit at a time,
-contract-first: every test binds to the unit's signature and behavior
-contract, never to its implementation internals. There is no
+Writes unit tests **during implementation**, one contract group at a
+time, contract-first: every test binds to the unit's signature and
+behavior contract, never to its implementation internals. There is no
 intermediate case document — unlike the black-box family, the test
 code *is* the case. The enemy throughout is the **tautological test**:
 a test derived from the implementation it is supposed to check, which
 stays green no matter how wrong the logic is. Every rule below exists
 to keep tests able to fail.
 
-Three modes, chosen per unit in step 2: **new-code** (the unit does
+Three modes, chosen per group in step 2: **new-code** (the unit does
 not exist yet — full red-first loop), **backfill** (the unit already
 works — a mutation probe replaces the red gate), **bug-fix**
 (backfill, except the reproduction test must fail on the unfixed
@@ -39,8 +39,8 @@ Every test must satisfy all of these:
   and calls to declared dependencies. Never private methods, internal
   fields, or intermediate state — those assertions break on
   refactors, not on bugs.
-- **Every test can provably fail.** New code: the suite must be seen
-  red before implementing, and the failure must be assertion-level
+- **Every test can provably fail.** New code: the group's tests must
+  be seen red before implementing, and the failure must be assertion-level
   (`expected 42.5, received undefined`) — an ImportError, a syntax
   error, or `0 tests collected` is a false red, and a test green
   against the stub has no power. Backfill: the mutation probe
@@ -58,8 +58,9 @@ Every test must satisfy all of these:
 
 Trigger phrases: 写单测 / 写单元测试 / 补单测 / 用 TDD 实现 / write
 unit tests / add unit tests / cover this with unit tests. Also enter
-proactively when about to implement new code with branching logic
-that clears step 1's bar.
+proactively when about to implement code that branches — step 1, not
+the caller, decides which of its units clear the bar, and an empty
+selection is a legitimate result rather than a reason not to enter.
 
 ### When NOT to use
 
@@ -74,39 +75,55 @@ that clears step 1's bar.
 
 ### 1. Scope the units
 
-Work through
-[`references/what-to-test.md`](references/what-to-test.md): pick the
-units whose failure would be invisible or undiagnosable from
-higher-level tests; skip the low-value catalog (glue, config, thin
-wrappers, boilerplate). State the selection and the skips in one or
-two lines — don't test everything to look thorough; tests written to
-occupy coverage are where tautologies breed. Frontend code first
-routes through
-[`references/frontend-testing.md`](references/frontend-testing.md)
-to pick the layer.
+Decide **one unit at a time** — whether a unit earns a test is a
+per-function verdict, not reachable for the change as a whole, which
+is why this step exists and why the caller must not pre-decide it.
+Two gates, in order:
 
-### 2. Pick the mode per unit
+1. **Hard skip — no weighing.** CLI entry points and argument
+   parsing, wiring and forwarding, config and constant exports, thin
+   wrappers over third-party libraries, DTOs and boilerplate are out.
+   Sitting next to interesting logic does not pull them back in.
+   Frontend code first routes through
+   [`references/frontend-testing.md`](references/frontend-testing.md)
+   to pick the layer.
+2. **Name the blind spot.** A surviving unit is selected only if you
+   can say in one clause why an existing higher-level test would miss
+   its bug or fail to localise it — the return-null heuristic in
+   [`references/what-to-test.md`](references/what-to-test.md). No
+   such clause, no selection: tests written to occupy coverage are
+   where tautologies breed.
 
-- Unit doesn't exist yet → **new-code**: steps 3–6 in order.
-- Unit exists and works → **backfill**: steps 3–4, then the mutation
+State each selection with its clause and each skip with its reason,
+in one or two lines total. **An empty selection is a finished run**:
+report the skips and stop, steps 2–7 don't apply.
+
+### 2. Group the units and pick the mode
+
+- Units don't exist yet → **new-code**: steps 3–6 in order.
+- Units exist and work → **backfill**: steps 3–4, then the mutation
   probe in step 5.
 - Fixing a bug → **bug-fix**: steps 3–4 for the reproduction test,
   which must fail on the unfixed code (step 5), then fix to green
   (step 6).
 
-Granularity is one unit — one function or one behavior — per loop.
-Don't batch (all stubs, then all tests, then all implementation):
-distance between writing a test and implementing against it is where
-"adjust the test to pass" creeps in.
+Granularity is a **contract group**: units sharing one requirement
+source — one spec entry, one module's public surface — run through
+steps 3–6 together, with one contract block, one red gate and one
+green run. Cap a group at roughly 5 units or a single file; unrelated
+units are separate loops. What keeps "adjust the test to pass" out is
+the freeze rule, not loop size — once implementation starts, every
+test in the group is frozen.
 
 ### 3. Pin the contract
 
-Write down, before any test: signature, preconditions,
-postconditions, error cases, declared dependency interfaces, and 2–5
-example input → output rows hand-derived from the requirement. Put it
-where the project keeps such things (doc comment on the stub, spec
-file, or the conversation). If a `.kcc/specs/<slug>/spec.md` covers
-this unit, derive from it. New-code mode: create the stub now —
+Write down, before any test, for every unit in the group: signature,
+preconditions, postconditions, error cases, declared dependency
+interfaces, and 2–5 example input → output rows hand-derived from the
+requirement. Put it where the project keeps such things (doc comment
+on the stub, spec file, or the conversation). If a
+`.kcc/specs/<slug>/spec.md` covers this unit, derive from it.
+New-code mode: create the stub now —
 correct signature, body throws not-implemented or returns a dummy —
 so tests compile against a real symbol. Backfill mode: the contract
 comes from requirements and call sites; the implementation is
@@ -129,31 +146,41 @@ consulted only to enumerate branches.
 
 ### 5. Gate: prove the tests can fail
 
-- **New-code — red gate.** Run the suite; paste the real output.
-  Every failure must be assertion-level. ImportError / syntax error /
-  `0 tests collected` → fix the harness and rerun. Any test green
-  against the stub has no power; fix it before implementing.
-- **Backfill — mutation probe.** Run the suite: it should be green
-  against the existing implementation (a red here is either a real
-  bug just found — report it — or a broken test). Then probe:
-  temporarily break the implementation 1–2 ways per unit (invert a
-  condition, change a constant, drop a call), confirm at least one
-  test fails each time, and revert. A mutation that survives means an
-  assertion with no power; strengthen it and re-probe.
+Every run in this step and the next is **scoped to the group** (by
+path or test-name pattern). A single-group change is finished when
+that scoped run is green — for it, the scoped run *is* the suite run,
+so don't add another. Only when two or more groups ran does the full
+suite run once at the end, to catch cross-group breakage.
+
+- **New-code — red gate.** Run the group's tests; paste the real
+  output. Every failure must be assertion-level. ImportError / syntax
+  error / `0 tests collected` → fix the harness and rerun. Any test
+  green against the stub has no power; fix it before implementing.
+- **Backfill — mutation probe.** Run the group's tests: they should
+  be green against the existing implementation (a red here is either
+  a real bug just found — report it — or a broken test). Then probe:
+  temporarily break the implementation **once per unit**, on the
+  branch whose assertion you trust least (invert a condition, change
+  a constant, drop a call), confirm at least one test fails, and
+  revert. A mutation that survives means an assertion with no power;
+  strengthen it and re-probe.
 - **Bug-fix.** The reproduction test fails on the unfixed code, with
   the failure output pasted.
 
 ### 6. Implement to green
 
-New-code and bug-fix: write the implementation; tests are frozen (see
-contract). Run to green and paste the output. A test you believe is
-wrong → stop, `AskUserQuestion`, with the requirement-level reason.
+New-code and bug-fix: write the implementation for the whole group;
+tests are frozen (see contract). Run the group's tests to green and
+paste the output. A test you believe is wrong → stop,
+`AskUserQuestion`, with the requirement-level reason.
 
 ### 7. Report
 
-Per unit: mode, gate evidence (red→green outputs, probe results, or
+Per group: mode, gate evidence (red→green outputs, probe results, or
 repro failure), skips with reasons, spikes declared, frozen-test
-conflicts raised, and any contract gaps handed back to the user.
+conflicts raised, and any contract gaps handed back to the user. A
+run that selected no units reports only step 1's skips and their
+reasons — that is the whole report, not a truncated one.
 
 ## References
 
@@ -164,4 +191,4 @@ conflicts raised, and any contract gaps handed back to the user.
   — layer strategy for frontend code, behavior-not-implementation
   querying, and the four classic pitfalls.
 
-<!-- kcc-dev-core-write-unit-tests-sentinel: v1 -->
+<!-- kcc-dev-core-write-unit-tests-sentinel: v2 -->

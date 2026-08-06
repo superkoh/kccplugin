@@ -8,8 +8,8 @@ Turns the `Mode: automated` cases of a reviewed `blackbox.md` into
 runnable test code, **before any implementation exists**, and proves
 the suite red for the right reasons. `Mode: llm-driven` cases are not
 materialized — they stay in `blackbox.md` for an LLM executor.
-Self-contained: read → confirm → scaffold → write → lint → review →
-red-run → report.
+Self-contained: read → confirm → scaffold → write → lint → review
+(when the batch earns it) → red-run → report.
 
 The test code inherits the black-box contract from
 `kcc-dev-core:write-blackbox-tests`: zero dependency on implementation
@@ -37,18 +37,27 @@ materialize black-box tests / turn blackbox.md into test code.
 Find `.kcc/specs/<slug>/blackbox.md` — the slug under discussion, or
 the most recently written one. Read it in full, plus the sibling
 `spec.md` for the surface contracts when it exists; without a spec,
-each case's `Surface:` text is the contract. Split cases by `Mode:`,
-skipping `## Pending cases` entries (they are not cases). `llm-driven`
+each case's `Surface:` text is the contract. Note its `Depth:` line —
+`focused` relaxes steps 3 and 6 below; a file with no `Depth:` line
+counts as `full`. Split cases by `Mode:`, skipping `## Pending cases`
+entries (they are not cases). `llm-driven`
 cases appear in the final report as not-materialized — executing them
 is an LLM agent's or a human's job; this plugin ships no executor. If
 no `automated` case remains, skip steps 3–7 and just report.
 
 ### 2. Confirm with `AskUserQuestion`
 
-- **Review gate** — has a human read and signed off on the cases? The
-  gap sweep inside `write-blackbox-tests` does not count. If not, stop
-  and recommend review first: unreviewed cases materialized into code
-  turn case bugs into sunk cost.
+- **Case review** — asked every run, because it is a property of
+  these cases, not of the repo. Has a human read them? The gap sweep inside
+  `write-blackbox-tests` does not count. Unreviewed cases
+  materialized into code turn case bugs into sunk cost, so ask — but
+  "not yet" is not a stop: note it in the report and continue. Only
+  unresolved `## Pending cases` or `[ASSUMED: …]` markers stop the
+  run, because those are known-wrong inputs rather than unreviewed
+  ones.
+The two below are asked only on the first run in a repo; once a test
+project and harness exist, both answers are settled — skip them.
+
 - **Test project location** — propose 1–3 locations derived from this
   repo's conventions (existing test layout, language, build tooling),
   your recommendation first. Wherever it lands, one constraint is
@@ -63,7 +72,10 @@ no `automated` case remains, skip steps 3–7 and just report.
 First time in a repo: create the project at the confirmed location —
 own dependency manifest, own lockfile, no path or module references
 into implementation source. Afterwards: extend it, one file group per
-feature slug.
+feature slug. A suite the repo already has that meets the isolation
+constraint *is* that project — extend it instead of standing up a
+second one, and at `focused` depth prefer that reuse over any new
+scaffold.
 
 ### 4. Write the tests
 
@@ -87,12 +99,16 @@ feature slug.
 - Every automated BB-ID has exactly one test; no orphan tests without
   a BB-ID.
 
-### 6. Conformance review
+### 6. Conformance review — when the batch earns it
 
-Spawn one fresh-context reviewer subagent with `blackbox.md` and the
-test code, asking per test: does it assert exactly its case's
-**Then**, prepare exactly its **Given** / `Setup:`, tear down exactly
-its `Cleanup:`, and nothing more or less? Fix findings before running.
+Required when the batch exceeds ~10 tests, when depth is `full`, or
+when any case involves concurrency, money, or permissions: spawn one
+fresh-context reviewer subagent with `blackbox.md` and the test code,
+asking per test: does it assert exactly its case's **Then**, prepare
+exactly its **Given** / `Setup:`, tear down exactly its `Cleanup:`,
+and nothing more or less? Fix findings before running. Below that
+bar, run the same check yourself and record in the report that the
+reviewer was skipped.
 
 ### 7. Red run
 
@@ -117,4 +133,4 @@ Then report the table, the not-materialized `llm-driven` list,
 deferred red-runs, and every lint / conformance / unexpected-green
 exception. State the test project path.
 
-<!-- kcc-dev-core-materialize-blackbox-tests-sentinel: v1 -->
+<!-- kcc-dev-core-materialize-blackbox-tests-sentinel: v2 -->
