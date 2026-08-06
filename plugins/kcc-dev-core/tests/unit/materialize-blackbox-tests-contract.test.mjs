@@ -21,10 +21,31 @@ test("materialize-blackbox-tests SKILL.md scopes to automated cases only", async
   assert.match(body, /no `automated` case remains/);
 });
 
-test("materialize-blackbox-tests SKILL.md gates on human case review", async () => {
+test("materialize-blackbox-tests SKILL.md asks about case review without stopping on it", async () => {
   const body = await readSkill();
-  assert.match(body, /\*\*Review gate\*\*/);
+  assert.match(body, /\*\*Case review\*\*/);
   assert.match(body, /does not count/);
+  assert.match(body, /"not yet" is not a stop/);
+  // Only known-wrong inputs still halt the run.
+  assert.match(body, /Only\s+unresolved `## Pending cases` or `\[ASSUMED: …\]` markers stop the\s+run/);
+});
+
+test("materialize-blackbox-tests SKILL.md inherits the depth tier from blackbox.md", async () => {
+  const body = await readSkill();
+  assert.match(body, /Note its `Depth:` line/);
+  assert.match(body, /no `Depth:` line\s+counts as `full`/);
+});
+
+test("materialize-blackbox-tests SKILL.md spawns the conformance reviewer only when the batch earns it", async () => {
+  const body = await readSkill();
+  assert.match(body, /Conformance review — when the batch earns it/);
+  assert.match(body, /exceeds ~10 tests/);
+  assert.match(body, /reviewer was skipped/);
+});
+
+test("materialize-blackbox-tests SKILL.md reuses an existing isolated suite instead of scaffolding twice", async () => {
+  const body = await readSkill();
+  assert.match(body, /extend it instead of standing up a\s+second one/);
 });
 
 test("materialize-blackbox-tests SKILL.md derives the project location from repo conventions", async () => {

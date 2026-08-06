@@ -85,6 +85,40 @@ test("write-blackbox-tests SKILL.md closes with the adversarial gap sweep", asyn
   assert.match(body, /Adversarial gap sweep/);
 });
 
+test("write-blackbox-tests SKILL.md offers a focused depth tier that narrows the case search", async () => {
+  const body = await readSkill();
+  assert.match(body, /\*\*Focused\*\* when the change touches a single surface/);
+  assert.match(body, /\*\*Full\*\*\s+otherwise/);
+  assert.match(body, /skip the angle sweep below/);
+});
+
+test("write-blackbox-tests SKILL.md runs the gap sweep at both depths", async () => {
+  const body = await readSkill();
+  // Measured: focused-qualifying specs still hid reproducible
+  // requirement gaps, so the tier must not gate this step.
+  assert.match(body, /Both tiers run this/);
+  assert.match(body, /it never skips step 6/);
+  assert.doesNotMatch(body, /full depth only/);
+});
+
+test("write-blackbox-tests SKILL.md records the depth tier in blackbox.md", async () => {
+  const body = await readSkill();
+  // Angle brackets mark it as a placeholder, like <feature-name> above
+  // it — a bare "focused | full" invites copying the menu verbatim.
+  assert.match(body, /^Depth: <focused\|full>$/m);
+  assert.match(body, /`materialize-blackbox-tests` reads it/);
+});
+
+test("write-blackbox-tests SKILL.md judges coverage per requirement, never by case count", async () => {
+  const body = await readSkill();
+  assert.doesNotMatch(
+    body,
+    /Total cases ≥/,
+    "a case-count floor manufactures low-value cases — see references/what-to-test.md"
+  );
+  assert.match(body, /Coverage is judged per requirement, never per count/);
+});
+
 test("write-blackbox-tests SKILL.md hands code materialization to the sibling skill", async () => {
   const body = await readSkill();
   assert.match(body, /materialize-blackbox-tests/);

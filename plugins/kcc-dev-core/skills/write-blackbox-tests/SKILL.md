@@ -9,7 +9,8 @@ any implementation exists**, that doubles as the task's Definition of
 Done: implementation is complete when every case passes. Reads whatever
 requirements are available in the session — preferring an existing
 `spec.md`, otherwise deriving from the feature description.
-Self-contained: read → confirm scope → write → self-check → gap sweep.
+Self-contained: read → confirm scope → pick depth → write → self-check
+→ gap sweep.
 
 Output path: `<project-root>/.kcc/specs/<feature-slug>/blackbox.md`. If a
 `spec.md` already lives in `.kcc/specs/<feature-slug>/`, write
@@ -85,9 +86,18 @@ or surface — that materially changes coverage. If the context already
 pins these down, don't manufacture a question — state your reading in
 one line and proceed.
 
-### 3. Enumerate cases
+### 3. Pick the depth, then enumerate cases
 
-Work through the angle catalog in
+**Focused** when the change touches a single surface, adds no new
+persistence, and carries no concurrency, money, or permission logic:
+cover the main flow plus the corner cases the requirements already
+name, and skip the angle sweep below. **Full** otherwise. State the
+tier and what triggered it in one line; when in doubt, full. The tier
+governs only how wide to search for cases; it never skips step 6,
+because what that step finds is ambiguity in the requirements, and a
+simple surface predicts nothing about that.
+
+Full depth works through the angle catalog in
 [`references/coverage-angles.md`](references/coverage-angles.md): main
 flow first, then every angle whose applicability test matches the
 feature. Business-scenario pitfalls — idempotency, concurrency and
@@ -98,6 +108,8 @@ bugs black-box-first exists to catch.
 
 ```markdown
 # Black-box Test Cases — <feature-name>
+
+Depth: <focused|full>
 
 ## Main Flow
 
@@ -135,6 +147,8 @@ bugs black-box-first exists to catch.
 
 Rules:
 
+- The `Depth:` line records step 3's tier;
+  `materialize-blackbox-tests` reads it.
 - Numbering is two-digit zero-padded **per group**: `BB-M01`, `BB-C01`,
   `BB-N01`.
 - Every case has the seven fields in order: `Traces to:`, `Priority:`,
@@ -180,8 +194,9 @@ Before reporting done, verify against the source:
   `P0` end-to-end case.
 - Every `NFR-NN` is referenced by ≥ 1 `BB-N*`.
 - Every edge-case entry is referenced by ≥ 1 case (usually `BB-C*`).
-- Total cases ≥ `#FR + #NFR + #edge-cases` (a single FR often needs a
-  happy-path AND a guard / reverse case).
+- Coverage is judged per requirement, never per count. No case exists
+  to raise a total; an FR earns a second case when its guard /
+  reverse path carries real risk, and only then.
 - All three group headers present; every case has all seven fields;
   numbering correct; every `Mode:` / `Surface:` valid; no bare `TBD`;
   `[ASSUMED: …]` markers propagated; Pending section present iff open
@@ -189,7 +204,9 @@ Before reporting done, verify against the source:
 
 ### 6. Adversarial gap sweep
 
-After the self-check passes, spawn one fresh-context reviewer subagent
+Both tiers run this — one subagent is cheap next to a requirement gap
+that reaches implementation. After the self-check passes, spawn one
+fresh-context reviewer subagent
 carrying only the requirement source and the drafted `blackbox.md`,
 with a single question: **"What user-visible behavior could break
 without any of these cases going red?"** Each finding becomes a new
@@ -199,9 +216,10 @@ is the default; use 2–3 only when the user asks for thorough coverage.
 
 ### 7. Report
 
-State the output path and a one-line coverage summary: case count per
-group, whether every requirement is covered (or which aren't, and why),
+State the output path, the depth tier and what triggered it, and a
+one-line coverage summary: case count per group, whether every
+requirement is covered (or which aren't, and why),
 gap-sweep findings adopted, and any surface gaps or external-setup
 exceptions flagged back to the spec.
 
-<!-- kcc-dev-core-write-blackbox-tests-sentinel: v2 -->
+<!-- kcc-dev-core-write-blackbox-tests-sentinel: v3 -->

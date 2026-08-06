@@ -55,10 +55,54 @@ test("write-unit-tests SKILL.md gates test-assertion changes behind AskUserQuest
   assert.match(body, /AskUserQuestion/);
 });
 
-test("write-unit-tests SKILL.md enforces single-unit loop granularity", async () => {
+test("write-unit-tests SKILL.md keeps the earns-a-test verdict per unit", async () => {
   const body = await readSkill();
-  assert.match(body, /one unit — one function or one behavior — per loop/);
-  assert.match(body, /Don't batch/);
+  assert.match(body, /\*\*one unit at a time\*\*/);
+  assert.match(body, /not reachable for the change as a whole/);
+  assert.match(body, /the caller must not pre-decide it/);
+});
+
+test("write-unit-tests SKILL.md hard-skips glue by category, not by judgment", async () => {
+  const body = await readSkill();
+  assert.match(body, /\*\*Hard skip — no weighing\.\*\*/);
+  assert.match(body, /CLI entry points and argument\s+parsing/);
+  assert.match(body, /Sitting next to interesting logic does not pull them back in/);
+});
+
+test("write-unit-tests SKILL.md requires a named blind spot per selected unit", async () => {
+  const body = await readSkill();
+  assert.match(body, /\*\*Name the blind spot\.\*\*/);
+  assert.match(body, /why an existing higher-level test would miss/);
+  assert.match(body, /No\s+such clause, no selection/);
+});
+
+test("write-unit-tests SKILL.md exits in one line when no unit earns a test", async () => {
+  const body = await readSkill();
+  assert.match(body, /\*\*An empty selection is\s+a finished run\*\*/);
+  assert.match(body, /steps 2–7 don't apply/);
+});
+
+test("write-unit-tests SKILL.md batches the loop by contract group", async () => {
+  const body = await readSkill();
+  assert.match(body, /Granularity is a \*\*contract group\*\*/);
+  assert.match(body, /one contract block, one red gate and one\s+green run/);
+  assert.match(body, /roughly 5 units or a single file/);
+});
+
+test("write-unit-tests SKILL.md keeps the freeze rule as the anti-cheat, not loop size", async () => {
+  const body = await readSkill();
+  assert.match(body, /freeze rule, not loop size/);
+  assert.match(body, /every\s+test in the group is frozen/);
+});
+
+test("write-unit-tests SKILL.md scopes gate and green runs to the group", async () => {
+  const body = await readSkill();
+  assert.match(body, /scoped to the group/);
+  assert.match(body, /once per unit/);
+  // A single-group change must not pay for a redundant full-suite run:
+  // the scoped run already covers everything that changed.
+  assert.match(body, /the scoped run \*is\* the suite run,\s+so don't add another/);
+  assert.match(body, /two or more groups ran does the full\s+suite run once/);
 });
 
 test("write-unit-tests ships and links both references", async () => {

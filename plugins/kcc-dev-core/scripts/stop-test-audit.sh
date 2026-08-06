@@ -15,11 +15,14 @@
 #   exit 0 always; a broken audit must never wedge the session.
 #
 # Design notes:
-#   - Stateless by design: "changed" means `git diff HEAD` + untracked
-#     files, i.e. the uncommitted state — not strictly "this turn".
-#     In a long uncommitted session the audit re-fires each turn that
-#     ends test-less; that is accepted nagging, not a bug. Committing
-#     or touching a test file clears it.
+#   - "changed" means `git diff HEAD` + untracked files, i.e. the
+#     uncommitted state — not strictly "this turn". To keep that from
+#     re-firing every turn, audited source paths are recorded in a
+#     marker under the git dir; the audit only blocks when a source
+#     file appears that is not already in it, and names just those.
+#     The marker is pruned to the currently-changed set on every run,
+#     so committing a file makes it audit-worthy again next time it
+#     changes. No marker (unusual git layout) → every turn fires.
 #   - Classification is path-based and deliberately simple: a file is
 #     a TEST when a path segment is test/tests/__tests__/spec or its
 #     basename matches *.test.* / *.spec.* / *_test.* / test_* / *.bats;
@@ -51,6 +54,10 @@ cd "$cwd" 2>/dev/null || exit 0
 command -v git >/dev/null 2>&1 || exit 0
 git rev-parse --is-inside-work-tree >/dev/null 2>&1 || exit 0
 
+marker=""
+git_dir=$(git rev-parse --absolute-git-dir 2>/dev/null || true)
+[[ -n "$git_dir" && -d "$git_dir" ]] && marker="$git_dir/kcc-dev-core-audited-sources"
+
 # Uncommitted changes: tracked (vs HEAD when it exists) + untracked.
 if git rev-parse --verify HEAD >/dev/null 2>&1; then
   tracked=$(git diff --name-only HEAD 2>/dev/null || true)
@@ -59,7 +66,10 @@ else
 fi
 untracked=$(git ls-files --others --exclude-standard 2>/dev/null || true)
 changed=$(printf '%s\n%s\n' "$tracked" "$untracked" | sed '/^$/d' | sort -u)
-[[ -z "$changed" ]] && exit 0
+if [[ -z "$changed" ]]; then
+  [[ -n "$marker" ]] && rm -f "$marker" 2>/dev/null
+  exit 0
+fi
 
 is_test_file() {
   local p="$1" base="${1##*/}"
@@ -93,18 +103,54 @@ while IFS= read -r f; do
   fi
 done <<<"$changed"
 
-(( ${#sources[@]} == 0 )) && exit 0
-(( tests > 0 )) && exit 0
+# Keep only marker entries still present in the current source set.
+prune_marker() {
+  [[ -n "$marker" && -f "$marker" ]] || return 0
+  if (( ${#sources[@]} == 0 )); then
+    rm -f "$marker" 2>/dev/null || true
+    return 0
+  fi
+  local kept="" line s
+  while IFS= read -r line; do
+    for s in "${sources[@]}"; do
+      if [[ "$line" == "$s" ]]; then
+        kept+="$line"$'\n'
+        break
+      fi
+    done
+  done <"$marker"
+  printf '%s' "$kept" >"$marker" 2>/dev/null || true
+}
+
+if (( ${#sources[@]} == 0 )) || (( tests > 0 )); then
+  prune_marker
+  exit 0
+fi
+
+# Only source files not audited yet are worth blocking over.
+audited=""
+[[ -n "$marker" && -f "$marker" ]] && audited=$(cat "$marker" 2>/dev/null || true)
+fresh=()
+for s in "${sources[@]}"; do
+  printf '%s\n' "$audited" | grep -qxF -- "$s" || fresh+=("$s")
+done
+
+if (( ${#fresh[@]} == 0 )); then
+  prune_marker
+  exit 0
+fi
+
+[[ -n "$marker" ]] && printf '%s\n' "${sources[@]}" >"$marker" 2>/dev/null
 
 # Blocking reason: name up to 5 offending files, keep it one paragraph.
 sample=""
-for ((i = 0; i < ${#sources[@]} && i < 5; i++)); do
-  sample+="${sources[$i]}, "
+for ((i = 0; i < ${#fresh[@]} && i < 5; i++)); do
+  sample+="${fresh[$i]}, "
 done
 sample="${sample%, }"
-(( ${#sources[@]} > 5 )) && sample+=", …"
+(( ${#fresh[@]} > 5 )) && sample+=", …"
 
-reason="kcc-dev-core stop audit: this turn ends with uncommitted source changes (${sample}) and no test file touched. If logic changed, enter kcc-dev-core:write-unit-tests (backfill mode) to cover it; if unit tests genuinely don't apply (pure glue/config, docs-only refactor, or user explicitly deferred tests), state that in one line and finish. This audit will not re-block this stop."
+reason="kcc-dev-core stop audit: this turn ends with uncommitted source changes (${sample}) and no test file touched. If any of that code branches, enter kcc-dev-core:write-unit-tests (backfill mode) — its step 1 decides per unit which ones earn a test, and selecting none is a valid one-line finish, so don't rule it out from the outside. Only a docs-only change or tests the user explicitly deferred skip it outright. This audit will not re-block this stop."
 
 if command -v jq >/dev/null 2>&1; then
   jq -n --arg r "$reason" '{decision: "block", reason: $r}'

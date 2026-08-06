@@ -11,6 +11,9 @@
 #   5. ALLOW: loop guard — stop_hook_active true
 #   6. ALLOW: clean tree
 #   7. ALLOW: not a git repo
+#   8. ALLOW: an already-audited source set on the next stop
+#   9. BLOCK: a source file that appeared after the last audit
+#  10. marker pruning — a committed file re-audits when changed again
 
 PLUGIN_ROOT="$BATS_TEST_DIRNAME/../.."
 SCRIPT="$PLUGIN_ROOT/scripts/stop-test-audit.sh"
@@ -88,4 +91,46 @@ run_hook() {
   run_hook
   [ "$status" -eq 0 ]
   [ -z "$output" ]
+}
+
+@test "ALLOW: an already-audited source set on the next stop" {
+  mkdir -p "$TMPROOT/src"
+  echo 'export const x = 1;' >"$TMPROOT/src/logic.mjs"
+  run_hook
+  echo "$output" | jq -e '.decision == "block"'
+  run_hook
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "BLOCK: a source file that appeared after the last audit" {
+  mkdir -p "$TMPROOT/src"
+  echo 'export const x = 1;' >"$TMPROOT/src/logic.mjs"
+  run_hook
+  echo "$output" | jq -e '.decision == "block"'
+  echo 'export const y = 2;' >"$TMPROOT/src/other.mjs"
+  run_hook
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.decision == "block"'
+  echo "$output" | jq -e '.reason | contains("src/other.mjs")'
+  # already-audited files must not be re-listed — the reason names only
+  # what appeared since the last audit.
+  ! echo "$output" | jq -e '.reason | contains("src/logic.mjs")'
+}
+
+@test "marker prunes committed files so they re-audit when changed again" {
+  mkdir -p "$TMPROOT/src"
+  echo 'export const x = 1;' >"$TMPROOT/src/logic.mjs"
+  run_hook
+  echo "$output" | jq -e '.decision == "block"'
+
+  git -C "$TMPROOT" add src/logic.mjs
+  git -C "$TMPROOT" -c user.email=t@t -c user.name=t commit -q -m feat
+  run_hook
+  [ -z "$output" ]
+
+  echo 'export const x = 2;' >"$TMPROOT/src/logic.mjs"
+  run_hook
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.decision == "block"'
 }
