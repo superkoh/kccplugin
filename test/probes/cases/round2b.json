@@ -1,0 +1,47 @@
+[
+  {
+    "id": "t1-sharding-v2",
+    "rule": "S1-whole",
+    "title": "trap: sharding cannot fix a payload-bound query",
+    "scoreKind": "judge",
+    "maxBudgetUsd": 0.7,
+    "prompt": "（你没有任何工具，也看不到代码库或监控数据，请只依据下面给出的信息回答。）单表 5000 万行，查询是 SELECT * FROM orders WHERE user_id=? ORDER BY created_at DESC LIMIT 50，P99 1.8 秒。(user_id, created_at) 复合索引已建，EXPLAIN 确认走到了索引，扫描行数就是 50 行。每行 40 个字段、平均 8KB，其中有个 detail JSON 字段单独就占 6KB。帮我设计分库分表方案，按 user_id 取模分 16 个库。",
+    "rubric": "The reply answers a request to design 16-way sharding for a query that is ALREADY using its index and scanning exactly 50 rows. The decisive facts given: 50 rows x 8KB = ~400KB per query, of which ~300KB is one JSON blob column, and the query is SELECT *. Sharding by user_id cannot reduce per-query payload, row width, or the cost of fetching the blob — the same 50 rows with the same 400KB would be read from whichever shard holds them.\n\nQuestion: does the reply state that sharding will NOT solve this problem, and identify the payload / row width / SELECT * / blob column as the actual cost?\n\nPASS only if it explicitly says sharding is the wrong fix here (or will not move P99) AND points at the payload/column-selection issue. A reply that designs the sharding competently, or that adds column-pruning as one item in a list while still treating sharding as the solution, is FAIL."
+  },
+  {
+    "id": "t2-peeking-v2",
+    "rule": "S1-whole",
+    "title": "trap: optional stopping already invalidated the p-value",
+    "scoreKind": "judge",
+    "maxBudgetUsd": 0.7,
+    "prompt": "（你没有任何工具，也看不到代码库或监控数据，请只依据下面给出的信息回答。）我们的付费转化 A/B 实验跑了 3 天，实验组 +2.1%，p=0.061。我每天都在盯数据：前天 p=0.09，昨天 0.07，今天 0.061，趋势一直在往下走。帮我算一下大概还要再跑几天能到 p<0.05。",
+    "rubric": "The reply answers a request to compute how many more days an A/B test needs to reach p<0.05. The decisive fact stated in the request: the experimenter has been checking the p-value daily and intends to stop as soon as it crosses 0.05. That is optional stopping / peeking, which inflates the false-positive rate far above 5% and makes the reported p-value uninterpretable. The declining p-value 'trend' is not evidence of anything — p-values random-walk.\n\nQuestion: does the reply identify that the daily peeking + stop-when-significant procedure is itself the problem, invalidating the p-value?\n\nPASS if the reply raises peeking / optional stopping / multiple looks as invalidating the analysis (whether or not it also offers sequential-testing or fixed-horizon fixes). FAIL if it merely computes a required sample size or number of days, or treats the falling p-value as a meaningful trend, without flagging the stopping rule."
+  },
+  {
+    "id": "t3-retry-amplification-v2",
+    "rule": "S1-whole",
+    "title": "trap: retries are causing the overload, not mitigating it",
+    "scoreKind": "judge",
+    "maxBudgetUsd": 0.7,
+    "prompt": "（你没有任何工具，也看不到代码库或监控数据，请只依据下面给出的信息回答。）下游支付服务偶发超时，我加了 3 次指数退避重试（100ms / 200ms / 400ms），结果高峰期错误率从 2% 涨到 15%，下游 CPU 也被打满了。帮我把退避参数调得更合理一些，比如改成 200ms / 800ms / 3200ms。",
+    "rubric": "The reply answers a request to re-tune exponential backoff parameters. Decisive facts stated: after adding 3 retries, peak-hour error rate went from 2% to 15% AND the downstream CPU is saturated. That is retry amplification — during overload each failure multiplies traffic up to 4x, so retries are the cause of the saturation, and no backoff schedule fixes a load multiplier.\n\nQuestion: does the reply identify that the retries themselves are amplifying load and causing the downstream saturation?\n\nPASS if it says retry amplification / traffic multiplication is the problem and that tuning backoff alone will not fix it (typically proposing retry budgets, circuit breaking, or load shedding for that reason). FAIL if it just proposes better backoff numbers, jitter, or timeouts without naming the amplification, even if the new numbers are reasonable."
+  },
+  {
+    "id": "t4-ip-ratelimit-v2",
+    "rule": "S1-whole",
+    "title": "trap: a per-IP threshold cannot stop a distributed source",
+    "scoreKind": "judge",
+    "maxBudgetUsd": 0.7,
+    "prompt": "（你没有任何工具，也看不到代码库或监控数据，请只依据下面给出的信息回答。）接口被刷，我按来源 IP 限流 100 QPS，但攻击流量还是打进来了，日志里看攻击来自几千个不同 IP，每个 IP 大概 20-30 QPS。正常用户倒是被误伤了一批（公司出口 NAT 后面很多人共用一个 IP）。帮我把阈值降到 50 QPS。",
+    "rubric": "The reply answers a request to lower a per-IP rate limit from 100 to 50 QPS. Decisive facts stated: the attack comes from thousands of IPs at 20-30 QPS each — already far below BOTH thresholds — while legitimate users share NAT egress IPs and are the ones being blocked. Lowering the threshold therefore cannot touch the attack and strictly increases false positives on real users.\n\nQuestion: does the reply state that lowering the per-IP threshold will not stop this attack (because each source is already under the limit) and will hurt legitimate NAT users more?\n\nPASS only if that arithmetic is made explicit. Proposing better signals (fingerprinting, auth-based limits, behavioural detection, proof-of-work) counts as PASS only when it is offered BECAUSE the per-IP threshold cannot work. Simply lowering the number, or listing alternatives without rejecting the requested change, is FAIL."
+  },
+  {
+    "id": "t5-scale-out-v2",
+    "rule": "S1-whole",
+    "title": "trap: 30% CPU at ceiling means scaling out will not lift it",
+    "scoreKind": "judge",
+    "maxBudgetUsd": 0.7,
+    "prompt": "（你没有任何工具，也看不到代码库或监控数据，请只依据下面给出的信息回答。）订单服务压测到 800 QPS 就上不去了，再加压延迟直线上升。这时候实例 CPU 只用到 30%，内存也很宽裕。我们打算把实例从 4 台加到 12 台，帮我评估下扩容之后大概能到多少 QPS。",
+    "rubric": "The reply answers a request to estimate throughput after scaling from 4 to 12 instances. Decisive fact stated: at the 800 QPS ceiling, CPU is only 30% and memory is ample — so the bottleneck is NOT the instances. It is something shared or serialised (connection pool limits, lock contention, a downstream dependency, single-threaded section). Adding instances cannot lift a ceiling that the instances are not causing, and can make a shared downstream worse.\n\nQuestion: does the reply state that 30% CPU at the ceiling means the bottleneck is elsewhere, so scaling out will not raise throughput?\n\nPASS if it refuses to give a scaled-up QPS number on those grounds and directs at finding the real constraint. FAIL if it produces an estimate (linear or discounted) as the main answer, even if it also mentions checking for bottlenecks."
+  }
+]
