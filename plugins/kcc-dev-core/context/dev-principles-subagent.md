@@ -12,8 +12,6 @@ not a status narrative.
 - **Reuse before reimplementing.** Search for an existing utility or
   pattern first; extending prior art beats a parallel implementation
   that drifts from it.
-- **Match the surrounding code.** Layout, naming, error handling, and
-  test structure follow the nearest analogous file, not your habits.
 - **Comments.** Default to none; comment only a non-obvious *why*.
   Never narrate what the code does or reference the current task.
 - **Validate at boundaries only.** Defensive checks belong at system
@@ -31,4 +29,4 @@ not a status narrative.
   cases, or hard-code expected values to make a suite pass; report a
   test you believe wrong instead of editing it away.
 
-<!-- kcc-dev-core-sentinel: kcc-dev-core-subagent-principles-v3 -->
+<!-- kcc-dev-core-sentinel: kcc-dev-core-subagent-principles-v4 -->
