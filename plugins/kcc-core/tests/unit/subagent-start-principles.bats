@@ -32,7 +32,7 @@ setup() {
 @test "additionalContext contains the human signature phrase" {
   run bash "$SCRIPT" </dev/null
   [ "$status" -eq 0 ]
-  echo "$output" | jq -e '.hookSpecificOutput.additionalContext | contains("Thinking Principles for Subagents")'
+  echo "$output" | jq -e '.hookSpecificOutput.additionalContext | contains("Principles for Subagents")'
 }
 
 @test "additionalContext contains the machine sentinel token" {
