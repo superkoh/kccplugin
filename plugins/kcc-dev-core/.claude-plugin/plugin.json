@@ -1,6 +1,6 @@
 {
   "name": "kcc-dev-core",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "description": "Development-focused plugin: conditionally injects code-discipline principles when the session is inside a software project (with a subagent variant injected into every spawned subagent), and hosts standalone dev skills (write-spec, write-blackbox-tests, materialize-blackbox-tests, write-unit-tests) and hooks.",
   "author": { "name": "koh", "email": "koh.718@gmail.com" },
   "homepage": "https://github.com/superkoh/kccplugin",
