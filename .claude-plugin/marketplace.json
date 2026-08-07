@@ -24,7 +24,7 @@
       "name": "kcc-ablation",
       "source": "./plugins/kcc-ablation",
       "description": "Prompt-ablation toolkit: the ablate skill runs sealed A/B campaigns that measure what each rule in an injected prompt is worth, with the portable mechanics (arm builder, extractor, run screening, Fisher-exact verdicts, blinded judging) bundled as scripts.",
-      "version": "0.1.0"
+      "version": "0.2.0"
     }
   ]
 }

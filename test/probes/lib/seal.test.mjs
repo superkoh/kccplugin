@@ -137,6 +137,78 @@ test("the intact skill text does not ride along anywhere else in the arm-B varia
   }
 });
 
+// A ceiling control strengthens the doc instead of cutting it, so arm B
+// removes no lines while still differing from arm A. The guard has to
+// admit that: the invariant it protects is "the arms differ", and line
+// count is only a proxy for it.
+test("an arm B that only ADDS text is a real arm, not a no-op", async () => {
+  RULES["UT-additive-fixture"] = {
+    doc: RULES["UT-paste"].doc,
+    label: "inverted: arm B carries a stronger instruction",
+    inverted: true,
+    snippet: [{ find: UT_LEAD, with: `${UT_LEAD} — and never skip it` }],
+  };
+  try {
+    const v = await makePluginVariant(await variantDir(), {
+      pluginsDir: PLUGINS_DIR,
+      ruleId: "UT-additive-fixture",
+      arm: "B",
+    });
+    const injected = await readFile(
+      path.join(v.pluginDir, RULES["UT-paste"].doc.via),
+      "utf-8"
+    );
+    assert.equal(v.removedLines, 0, "nothing was cut — that is the point");
+    assert.ok(injected.includes("and never skip it"), "the stronger text landed");
+    assert.ok(injected.includes(v.sentinel), "arm B stays attributable");
+  } finally {
+    delete RULES["UT-additive-fixture"];
+  }
+});
+
+// The measured-content guard exists to stop an accidental RE-ABLATION.
+// Arm A ablates nothing, so there is nothing for it to protect there —
+// and blocking it makes the intact document unmeasurable, which is how a
+// verification run of freshly shipped text died at 5/5 unusable.
+test("the measured-content guard does not block arm A", async () => {
+  const guarded = Object.entries(RULES).find(
+    ([, r]) => r.measuredContent && !r.retired
+  );
+  assert.ok(guarded, "registry must carry at least one measured-content rule");
+  const prev = process.env.KCC_ABLATE_MEASURED;
+  delete process.env.KCC_ABLATE_MEASURED;
+  try {
+    const v = await makePluginVariant(await variantDir(), {
+      pluginsDir: PLUGINS_DIR,
+      ruleId: guarded[0],
+      arm: "A",
+    });
+    assert.equal(v.removedLines, 0, "arm A is the intact doc");
+  } finally {
+    if (prev !== undefined) process.env.KCC_ABLATE_MEASURED = prev;
+  }
+});
+
+test("the measured-content guard still blocks arm B", async () => {
+  const guarded = Object.entries(RULES).find(
+    ([, r]) => r.measuredContent && !r.retired
+  );
+  const prev = process.env.KCC_ABLATE_MEASURED;
+  delete process.env.KCC_ABLATE_MEASURED;
+  try {
+    await assert.rejects(
+      makePluginVariant(await variantDir(), {
+        pluginsDir: PLUGINS_DIR,
+        ruleId: guarded[0],
+        arm: "B",
+      }),
+      /measured as load-bearing/
+    );
+  } finally {
+    if (prev !== undefined) process.env.KCC_ABLATE_MEASURED = prev;
+  }
+});
+
 // The property that stops a drifted anchor from producing two identical
 // arms and a confident, wrong "no-delta" verdict.
 test("a skill-delivery arm B that removes nothing throws", async () => {
@@ -185,7 +257,13 @@ for (const [id, rule] of Object.entries(RULES)) {
       }
     }
     const injected = await readFile(path.join(v.pluginDir, rule.doc.via), "utf-8");
-    assert.ok(v.removedLines > 0, "arm B must remove something");
+    // No line-count assertion here on purpose. "Arm B removed lines" is a
+    // proxy, and a wrong one for the two shapes that legitimately cut
+    // nothing: a ceiling control that only strengthens the doc, and a rule
+    // whose ablation rewrites a clause in place. The invariant that matters
+    // — arm B differs from arm A — is enforced inside makeDocVariant, which
+    // throws, so reaching this line already proves it. The test above
+    // ("removes nothing throws") is what guards that check itself.
     assert.ok(injected.includes(v.sentinel), "arm B stays attributable");
   });
 }

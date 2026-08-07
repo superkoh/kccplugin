@@ -33,6 +33,7 @@ import { PROBES as BB_PROBES } from "./probes/blackboxtests.mjs";
 import { PROBES as BBXC_PROBES } from "./probes/bbxcases.mjs";
 import { PROBES as BBXM_PROBES } from "./probes/bbxmaterialize.mjs";
 import { PROBES as BBX2_PROBES } from "./probes/bbx2.mjs";
+import { PROBES as BBXR_PROBES } from "./probes/bbxreviewer.mjs";
 
 const BUILTIN_PROBES = [
   ...S1_PROBES,
@@ -44,6 +45,7 @@ const BUILTIN_PROBES = [
   ...BBXC_PROBES,
   ...BBXM_PROBES,
   ...BBX2_PROBES,
+  ...BBXR_PROBES,
 ];
 
 // Candidate cases live in JSON so a screening round can be defined

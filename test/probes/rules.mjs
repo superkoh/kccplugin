@@ -544,6 +544,12 @@ export const RULES = {
     anchor: /^- \*\*Fix findings before running\*\*/,
   },
 
+  // Round 4 tried to fold this bullet into `One fresh-context reviewer` and
+  // measured the result: on the authoring shape the closing reviewer went
+  // from 5/5 to 1/5 (Fisher p≈0.024). Stating the self-review escape hatch
+  // once, in the MATERIALIZING half, switched off a reliable behaviour in
+  // the WRITING half — so the bullet stays exactly where it is, and its
+  // separateness is now measured rather than assumed.
   "MAT-self-review": {
     doc: BLACKBOX_SKILL,
     label: "run the conformance check yourself below the reviewer bar",
@@ -1446,4 +1452,144 @@ export const RULES = {
     ],
   },
 
+  // ---- Round 4: is the reviewer SUBAGENT worth what it costs? ----------
+  //
+  // `BBX-reviewer-subagents` deletes all seven members at once, which asks
+  // "is reviewing worth it". That is not the expensive question. This
+  // block's real cost is that it mandates up to two extra fresh-context
+  // subagents per skill run, so the question worth paying for is narrower:
+  // given that the review happens either way, does DELEGATING it to a
+  // fresh context change anything?
+  //
+  // Arm B therefore keeps every review obligation the doc states and
+  // rewrites only the delegation out of them. Both arms are told to close
+  // over the draft, told to do it at both depths, given the same
+  // conformance triggers, given the same per-test question, and told to fix
+  // findings before running; `Pipeline order`'s own `review` phase is
+  // untouched in both. The single difference is who holds the pen.
+  //
+  // Single-rule ablation cannot ask this. Four members independently order
+  // a spawn, so removing any one leaves the other three ordering it and the
+  // arm spawns anyway — four no-delta verdicts for a mechanism that is
+  // demonstrably alive, and a licence to delete all four. Mutually
+  // paraphrasing rules are the one shape per-rule ablation reads backwards,
+  // which is why the seam here is cut by observable rather than by bullet.
+  "BBX4-reviewer-delegation": {
+    // ROUND 4 RESULT (claude-opus-5, 25 sealed runs, 0 void):
+    //
+    //   shape                      A (intact)  B (no delegation)  verdict
+    //   S11  authoring, full        5/5         0/5               effective
+    //   FL2  materializing, 12 cases 1/5        0/5               inconclusive
+    //   FL2  ceiling (max imperative)  1/5      —                 at ceiling
+    //
+    // Two things came out of it. The authoring half is load-bearing and now
+    // has the first hard evidence any member of this block has ever carried.
+    // The materializing half is not fixable by wording: an instruction that
+    // says "MUST be delegated, never performed by you. Call the Agent tool
+    // to spawn exactly one general-purpose subagent" spawned 1/5, exactly
+    // what the shipped text spawns. On that shape the model evaluates the
+    // trigger correctly, then declines and cites a session rule forbidding
+    // subagents that appears nowhere in its context.
+    //
+    // A follow-up edit folded `Self-review below the bar` into `One
+    // fresh-context reviewer` so the doc would stop asserting a mechanism it
+    // gets 20% of the time. Verified before shipping, and reverted: the
+    // authoring shape fell 5/5 -> 1/5 (Fisher p≈0.024). One escape hatch,
+    // stated once in the MATERIALIZING half, switched off a near-deterministic
+    // behaviour in the WRITING half. This document is not a set of
+    // independent bullets, and an edit that is locally honest can be
+    // globally destructive.
+    measuredContent:
+      "the closing reviewer — 5/5 vs 0/5 on the authoring shape in round 4",
+    doc: BLACKBOX_SKILL,
+    label:
+      "delegation only: arm B still runs the whole review, just not through a subagent",
+    snippet: [
+      // Authoring side — same closing pass, nobody else to carry it.
+      {
+        find:
+          "- **Closing reviewer** — Close with one fresh-context reviewer subagent " +
+          "carrying only the requirements and the draft, ask it what user-visible " +
+          "behavior could break with no case going red, and turn its findings into " +
+          "cases or Pending entries.",
+        with:
+          "- **Closing check** — Close by going back over only the requirements and " +
+          "the draft, asking what user-visible behavior could break with no case " +
+          "going red, and turning the findings into cases or Pending entries.",
+      },
+      // The bullet name alone would keep cueing a reviewer; the reason
+      // clause is the content and stays verbatim.
+      {
+        find: "- **Reviewer at both depths** — Run it at both depths,",
+        with: "- **Check at both depths** — Run it at both depths,",
+      },
+      // Pure delegation: it says nothing except that the reviewer is a
+      // separate context. Nothing of the obligation is lost with it gone.
+      {
+        find:
+          "- **One fresh-context reviewer** — The conformance review is a single " +
+          "reviewer subagent spawned with fresh context.\n",
+        with: "",
+      },
+      // Tautological once the review is self-run in every case, and both
+      // round-4 shapes sit ABOVE the bar it describes, so no obligation
+      // that either shape can exercise is lost.
+      {
+        find:
+          "- **Self-review below the bar** — Below the reviewer bar, run the same " +
+          "conformance check yourself.\n",
+        with: "",
+      },
+      // The per-test question survives word for word — only its addressee
+      // changes from a delegate to the model itself.
+      {
+        find: "- **Per-test review question** — Ask the reviewer, per test, whether it asserts",
+        with: "- **Per-test check question** — Establish, per test, whether each test asserts",
+      },
+    ],
+  },
+
+  // ---- Round 4 ceiling control — POLARITY IS INVERTED -----------------
+  //
+  // READ THIS BEFORE USING THE VERDICT. Every other rule in this registry
+  // builds arm B by REMOVING something, so B is the weaker arm. Here B is
+  // the STRONGER one: it replaces the shipped delegation line with the most
+  // imperative version of the same instruction that could be written. There
+  // is nothing to delete on the strength of a result here, and `report.mjs`
+  // deltas for this id read backwards.
+  //
+  // It exists because arm A of BBX4-reviewer-delegation did not spawn. Two
+  // very different things produce that, and they license opposite actions:
+  //
+  //   the shipped wording is too weak    a real property of the rule; the
+  //                                      block is not buying the mechanism
+  //                                      it claims, and may be cut.
+  //   `claude -p` suppresses self-       an artifact of the environment.
+  //   initiated delegation               The block is UNMEASURED here and
+  //                                      must not be cut.
+  //
+  // If arm B spawns where arm A did not, the environment permits
+  // self-initiated delegation and the first reading holds. If neither
+  // spawns, this harness cannot see the mechanism at all and the round-4
+  // result must be reported as unmeasurable rather than as a no-delta.
+  "BBX4-reviewer-ceiling": {
+    doc: BLACKBOX_SKILL,
+    label:
+      "CEILING (inverted): arm B carries a maximally imperative delegation instruction",
+    inverted: true,
+    snippet: [
+      {
+        find:
+          "- **One fresh-context reviewer** — The conformance review is a single " +
+          "reviewer subagent spawned with fresh context.",
+        with:
+          "- **One fresh-context reviewer** — The conformance review MUST be " +
+          "delegated, never performed by you. Call the Agent tool to spawn exactly " +
+          "one general-purpose subagent with fresh context, hand it the cases file " +
+          "and the tests you wrote, and wait for its reply before the red run. " +
+          "Reviewing the tests yourself instead of spawning that subagent does not " +
+          "satisfy this skill.",
+      },
+    ],
+  },
 };
