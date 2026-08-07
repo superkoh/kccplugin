@@ -18,8 +18,30 @@ import { extractRun } from "./lib/extract.mjs";
 import { PROBES as S1_PROBES } from "./probes/s1.mjs";
 import { PROBES as W_PROBES } from "./probes/w.mjs";
 import { PROBES as SUB_PROBES } from "./probes/sub.mjs";
+import { PROBES as SPEC_PROBES } from "./probes/spec.mjs";
+import { PROBES as UT_PROBES } from "./probes/unittests.mjs";
+import { PROBES as BB_PROBES } from "./probes/blackboxtests.mjs";
+import { PROBES as BBXC_PROBES } from "./probes/bbxcases.mjs";
+import { PROBES as BBXM_PROBES } from "./probes/bbxmaterialize.mjs";
+import { PROBES as BBX2_PROBES } from "./probes/bbx2.mjs";
+import { PROBES as BBXR_PROBES } from "./probes/bbxreviewer.mjs";
 
-const BUILTIN = [...S1_PROBES, ...W_PROBES, ...SUB_PROBES];
+// Must stay the same set run-probe.mjs runs. A probe missing here is not a
+// missing row: its expectedTools lookup returns undefined, every successful
+// tool call reads as a lockdown escape, and the whole campaign is dropped as
+// unusable — a silent empty table rather than an error.
+const BUILTIN = [
+  ...S1_PROBES,
+  ...W_PROBES,
+  ...SUB_PROBES,
+  ...SPEC_PROBES,
+  ...UT_PROBES,
+  ...BB_PROBES,
+  ...BBXC_PROBES,
+  ...BBXM_PROBES,
+  ...BBX2_PROBES,
+  ...BBXR_PROBES,
+];
 const casesFile = process.argv.includes("--cases")
   ? process.argv[process.argv.indexOf("--cases") + 1]
   : null;

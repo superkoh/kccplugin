@@ -30,9 +30,12 @@ export async function makePluginVariant(variantDir, { pluginsDir, ruleId, arm })
   // to delete content that was measured to be worth 2.7 rubric points. Running
   // one has to be a deliberate act, not the default of a bare `run-probe.mjs`
   // with no --probes (which selects every registered probe).
-  if (rule.measuredContent && process.env.KCC_ABLATE_MEASURED !== "1") {
+  // Arm A is exempt: it keeps the rule, so there is no re-ablation to guard
+  // against, and blocking it makes the intact document unmeasurable — which
+  // is exactly what a verification run of freshly shipped text needs.
+  if (arm === "B" && rule.measuredContent && process.env.KCC_ABLATE_MEASURED !== "1") {
     throw new Error(
-      `rule "${ruleId}" ablates content the 0.10.0 campaign measured as load-bearing ` +
+      `rule "${ruleId}" ablates content a prior campaign measured as load-bearing ` +
         `(${rule.measuredContent}). Its verdict cannot license a deletion. ` +
         `Set KCC_ABLATE_MEASURED=1 only if you know why you want this.`
     );

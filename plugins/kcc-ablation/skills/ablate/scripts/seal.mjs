@@ -97,8 +97,19 @@ export async function makeDocVariant(variantDir, { pluginsDir, rule, ruleId, arm
     label: rule.label,
   });
 
-  if (arm === "B" && removedLines === 0) {
-    throw new Error(`arm B for "${ruleId}" removed nothing — the arms would be identical`);
+  // The invariant is that the two arms DIFFER; a line count is only a proxy
+  // for it, and a wrong one at both ends. It misses a snippet that deletes a
+  // line and puts identical text back, and it rejects a ceiling control that
+  // strengthens the doc without cutting anything. Compare the texts, built
+  // with the same sentinel so arm identity is not what makes them differ.
+  if (arm === "B") {
+    const { text: unablated } = buildVariant(isSkill ? stripFrontmatter(source) : source, {
+      sentinel,
+      label: rule.label,
+    });
+    if (text === unablated) {
+      throw new Error(`arm B for "${ruleId}" changed nothing — the arms would be identical`);
+    }
   }
 
   if (isSkill) {

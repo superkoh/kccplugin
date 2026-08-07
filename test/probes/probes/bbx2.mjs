@@ -82,5 +82,13 @@ export const UNPROBEABLE = [
       "not observable under this harness. Round 1 registered it and never ran it. Seven " +
       "principles that cannot be shown to change any artifact — a finding in its own right, " +
       "but NOT a measured no-delta, and it must never be reported as one.",
+    // SUPERSEDED by probes/bbxreviewer.mjs (round 4). "Every probe disallows
+    // the Agent tool" describes NO_DELEGATION, not the harness: the lockdown
+    // is per-probe, probes/sub.mjs has run Agent-allowed probes since stage 3,
+    // and extract.mjs records every tool_use with its input. Round 4 opens
+    // Agent on two cloned shapes and scores the spawn directly. The rest of
+    // this entry stands — a verdict there is about DELEGATION, not about
+    // whether the review improves the artifact.
+    superseded: "probes/bbxreviewer.mjs",
   },
 ];

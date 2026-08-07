@@ -2187,6 +2187,13 @@ export const UNPROBEABLE = [
     block: "BBX-reviewer-subagents",
     member: "the whole block (7 members)",
     group: "both",
+    // Reason (1) is SUPERSEDED by probes/bbxreviewer.mjs (round 4): the
+    // Agent denial is NO_DELEGATION's, not the harness's, and a probe that
+    // opens it reads the spawn straight off tool_use. Reason (2) stands and
+    // is why round 4 scores delegation rather than artifact quality —
+    // BBX-fidelity-and-lint restates the review's CONTENT but cannot spawn a
+    // subagent, so it cannot hand arm B that observable back.
+    supersededInPart: "probes/bbxreviewer.mjs",
     reason:
       "Two independent reasons, either sufficient. (1) The mechanism is " +
       "unobservable: every probe disallows the Agent tool, so 'did it spawn " +
