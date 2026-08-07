@@ -50,7 +50,7 @@ run_hook() {
   run_hook
   [ "$status" -eq 0 ]
   echo "$output" | jq -e '.decision == "block"'
-  echo "$output" | jq -e '.reason | contains("write-unit-tests")'
+  echo "$output" | jq -e '.reason | contains("kcc-dev-core:unit-tests")'
   echo "$output" | jq -e '.reason | contains("src/logic.mjs")'
 }
 

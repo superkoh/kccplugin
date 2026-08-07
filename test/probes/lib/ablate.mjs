@@ -26,11 +26,32 @@
  * campaign, so every one of those is a hard error.
  */
 
-const SENTINEL_RE = /(<!--\s*kcc-core-sentinel:\s*)([^\s>]+)(\s*-->)/;
+// Each ablatable document names its own marker — `kcc-core-sentinel` for
+// the thinking principles, `kcc-dev-core-<skill>-sentinel` for a SKILL.md
+// — so the prefix is matched loosely and only the token is rewritten.
+const SENTINEL_RE = /(<!--\s*[\w-]*sentinel:\s*)([^\s>]+)(\s*-->)/;
 // A section's block ends at the next bullet, the next heading, or the
 // trailing sentinel comment. Without the last one, ablating a doc's
 // final section swallows the sentinel and the arm loses its identity.
 const BOUNDARY_RE = /^(?:- \*\*|#{1,6} |<!--)/;
+
+/**
+ * Drop a SKILL.md's YAML frontmatter, returning the instruction body.
+ *
+ * The frontmatter is registration metadata — it is what makes the skill
+ * findable, not what the model is asked to follow — so injecting it as
+ * context would put a `description:` line in front of the rules under
+ * measurement. Frontmatter opened and never closed throws: silently
+ * injecting a half-parsed file is the confident-wrong-numbers failure.
+ */
+export function stripFrontmatter(sourceText) {
+  if (!sourceText.startsWith("---\n")) return sourceText;
+  const close = sourceText.indexOf("\n---\n", 3);
+  if (close === -1) {
+    throw new Error("frontmatter opened with --- but never closed");
+  }
+  return sourceText.slice(close + 5).replace(/^\n+/, "");
+}
 
 export function buildVariant(
   sourceText,

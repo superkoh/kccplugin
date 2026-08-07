@@ -33,7 +33,7 @@ const JUDGE_MODEL = "claude-sonnet-5";
  * under test, and runs with no plugins loaded — otherwise the judge
  * would inherit the very principles being measured.
  */
-export async function runJudge({ rubric, reply, model = JUDGE_MODEL }) {
+export async function runJudge({ rubric, reply, model = JUDGE_MODEL, realHome = null }) {
   const dir = await mkdtemp(path.join(tmpdir(), "kcc-judge-"));
   const cfg = path.join(dir, "cfg");
   await writeFile(path.join(dir, ".keep"), "");
@@ -62,7 +62,16 @@ export async function runJudge({ rubric, reply, model = JUDGE_MODEL }) {
     maxBudgetUsd: 0.25,
     timeoutMs: 180_000,
     cwd: dir,
-    env: { CLAUDE_CONFIG_DIR: cfg, HOME: dir },
+    // The judge seals HOME like a probe does, so it needs the real home passed
+    // through for the CLI wrapper's keychain read. Without auth the judge
+    // returns nothing and every judged probe comes back UNPARSEABLE at $0.00 —
+    // a failure that reads like "the rule does nothing" rather than "the judge
+    // never ran".
+    env: {
+      CLAUDE_CONFIG_DIR: cfg,
+      HOME: dir,
+      ...(realHome ? { KCC_REAL_HOME: realHome } : {}),
+    },
   });
 
   const text = res.parsed?.result ?? res.stdout ?? "";

@@ -62,6 +62,27 @@ because that task shape does not tempt the model to create a file at all.
 verdict.** Acting on the first shape alone would have deleted two rules
 that were doing real work.
 
+## Ablating a skill instead of a context doc
+
+Each rule's `doc` names its own plugin, so `kcc-core`'s injected
+principles and `kcc-dev-core`'s skills go through the same driver.
+
+A SKILL.md normally reaches the model only when the model invokes the
+skill, and every probe disallows the `Skill` tool. A skill rule
+therefore declares `deliver: "skill"`, and the arm builder strips the
+YAML frontmatter, ablates the body, and writes it into the file the
+plugin's `SessionStart` hook already injects (`via`) behind a
+both-arms-identical "skill in effect" preamble. `skills/` is deleted
+from the variant in the same step: a SKILL.md left on disk hands arm B
+the intact rule back through a `Read` or a `Grep`, and the delta
+collapses to noise.
+
+Consequence worth knowing: kcc-dev-core's `SessionStart` hook injects
+nothing outside a software project, so **a skill probe's fixture must
+plant a dev-scene signal** (`package.json`, `Makefile`, …) in the
+sealed project dir. Without one the injection is empty and every run
+voids as `arm sentinel absent from injected context`.
+
 ## Sealing
 
 Everything the model can reach that is not the variant is contamination:
@@ -107,7 +128,7 @@ re-derivable from the raw transcripts without re-running anything.
 
 | path | role |
 |---|---|
-| `rules.mjs` | ablation registry: which lines each rule id owns |
+| `rules.mjs` | ablation registry: which document, plugin and lines each rule id owns |
 | `probes/*.mjs` | probe definitions: prompt, tool lockdown, scorer or judge rubric |
 | `lib/ablate.mjs` | builds an arm; **throws** rather than silently no-op |
 | `lib/seal.mjs` | sealed workspace + plugin variant |
