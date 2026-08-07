@@ -96,7 +96,11 @@ export function runClaude(opts) {
 
   const started = Date.now();
   return new Promise((resolve, reject) => {
-    const child = spawn("claude", argv, {
+    // CLAUDE_CLI lets a caller substitute a wrapper that supplies auth — the
+    // probe campaign points it at the user's `ccd`, which picks whichever
+    // account has quota headroom and injects that account's token. Nothing in
+    // this repo then has to handle a credential. Defaults to plain `claude`.
+    const child = spawn(process.env.CLAUDE_CLI || "claude", argv, {
       cwd,
       env: { ...process.env, ...env },
       stdio: ["ignore", "pipe", "pipe"],

@@ -23,7 +23,7 @@ it demands (**→ …**).
   checked. Low-risk, familiar, easily-reversible moves need no
   research ceremony — the existing code is evidence enough.
 - **Unit tests come first.** **When** about to write or change code
-  that branches at all **→** invoke `kcc-dev-core:write-unit-tests`
+  that branches at all **→** invoke `kcc-dev-core:unit-tests`
   and follow its red-first loop before implementing; **when**
   changing existing untested branching logic **→** its backfill mode.
   Which units actually earn a test is that skill's per-unit call —

@@ -1,10 +1,9 @@
 {
   "slashCommands": {
     "requires": [
-      "kcc-dev-core:write-spec",
-      "kcc-dev-core:write-blackbox-tests",
-      "kcc-dev-core:materialize-blackbox-tests",
-      "kcc-dev-core:write-unit-tests"
+      "kcc-dev-core:spec",
+      "kcc-dev-core:blackbox-tests",
+      "kcc-dev-core:unit-tests"
     ],
     "forbids": []
   },

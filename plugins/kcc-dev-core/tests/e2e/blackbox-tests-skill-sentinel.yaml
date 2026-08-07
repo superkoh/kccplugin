@@ -1,4 +1,6 @@
-# L3 activation case for kcc-dev-core's write-blackbox-tests skill.
+# L3 activation case for kcc-dev-core's blackbox-tests skill — the one
+# skill that both writes the cases and materializes them into runnable
+# test code.
 #
 # Proves the chain: `claude --plugin-dir <kcc-dev-core>` loads the plugin,
 # the slash invocation expands the skill, and the skill's body (carrying
@@ -11,8 +13,8 @@
 # removes every out-of-band path to the sentinel — the model cannot grep
 # SKILL.md; the only source is the expanded skill content in context.
 
-name: "kcc-dev-core:write-blackbox-tests skill expands and its sentinel reaches context"
-prompt: "/kcc-dev-core:write-blackbox-tests Sanity check only — do not write any cases, do not call any tools. In the skill instructions above there is an HTML comment starting with kcc-dev-core-write-blackbox-tests-sentinel. Quote that sentinel string verbatim, then stop. If you cannot find it, reply NO_SENTINEL_IN_SKILL."
+name: "kcc-dev-core:blackbox-tests skill expands and its sentinel reaches context"
+prompt: "/kcc-dev-core:blackbox-tests Sanity check only — do not write any cases, do not materialize anything, do not call any tools. In the skill instructions above there is an HTML comment starting with kcc-dev-core-blackbox-tests-sentinel. Quote that sentinel string verbatim, then stop. If you cannot find it, reply NO_SENTINEL_IN_SKILL."
 maxBudgetUsd: 0.05
 timeoutMs: 180000
 
@@ -35,7 +37,7 @@ expect:
     is_error: false
   stdout:
     contains:
-      - "kcc-dev-core-write-blackbox-tests-sentinel: v"
+      - "kcc-dev-core-blackbox-tests-sentinel: v"
     notContains:
       - "NO_SENTINEL_IN_SKILL"
-      - "kcc-dev-core-materialize-blackbox-tests-sentinel"
+      - "kcc-dev-core-unit-tests-sentinel"

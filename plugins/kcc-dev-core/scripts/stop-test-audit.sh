@@ -3,7 +3,7 @@
 #
 # When the turn ends with uncommitted source-code changes but zero
 # touched test files, block the stop ONCE and hand the model a reason
-# pointing at kcc-dev-core:write-unit-tests (backfill mode). The model
+# pointing at kcc-dev-core:unit-tests (backfill mode). The model
 # either backfills tests or states why unit tests don't apply, then
 # stops again — `stop_hook_active` guarantees the second stop passes,
 # so no infinite loop is possible.
@@ -150,7 +150,7 @@ done
 sample="${sample%, }"
 (( ${#fresh[@]} > 5 )) && sample+=", …"
 
-reason="kcc-dev-core stop audit: this turn ends with uncommitted source changes (${sample}) and no test file touched. If any of that code branches, enter kcc-dev-core:write-unit-tests (backfill mode) — its step 1 decides per unit which ones earn a test, and selecting none is a valid one-line finish, so don't rule it out from the outside. Only a docs-only change or tests the user explicitly deferred skip it outright. This audit will not re-block this stop."
+reason="kcc-dev-core stop audit: this turn ends with uncommitted source changes (${sample}) and no test file touched. If any of that code branches, enter kcc-dev-core:unit-tests (backfill mode) — that skill decides per unit which ones earn a test, and selecting none is a valid one-line finish, so don't rule it out from the outside. Only a docs-only change or tests the user explicitly deferred skip it outright. This audit will not re-block this stop."
 
 if command -v jq >/dev/null 2>&1; then
   jq -n --arg r "$reason" '{decision: "block", reason: $r}'

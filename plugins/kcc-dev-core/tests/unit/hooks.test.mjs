@@ -93,7 +93,7 @@ test("scripts/stop-test-audit.sh is present, executable, and loop-guarded", asyn
   );
   assert.match(
     body,
-    /write-unit-tests/,
-    "block reason must route to the write-unit-tests skill"
+    /kcc-dev-core:unit-tests/,
+    "block reason must route to the unit-tests skill"
   );
 });

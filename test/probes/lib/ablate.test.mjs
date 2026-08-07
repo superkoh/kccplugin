@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildVariant } from "./ablate.mjs";
+import { buildVariant, stripFrontmatter } from "./ablate.mjs";
 
 const DOC = [
   "# T",
@@ -186,5 +186,51 @@ test("throws when the document carries no sentinel line", () => {
         label: "control",
       }),
     /sentinel/i
+  );
+});
+
+// Each ablatable document names its own sentinel marker: kcc-core's docs
+// use `kcc-core-sentinel`, kcc-dev-core's skills use
+// `kcc-dev-core-<skill>-sentinel`. Recognising only the first one would
+// make every kcc-dev-core arm throw as sentinel-less — or worse, keep the
+// original token and make both arms answer to the same string.
+test("recognises a sentinel marker whose prefix is not kcc-core", () => {
+  const skillDoc = [
+    "# Writing unit tests",
+    "",
+    "- **Never paste implementation output** — Never run the implementation",
+    "  and paste its output back as the expectation.",
+    "",
+    "<!-- kcc-dev-core-unit-tests-sentinel: v3 -->",
+    "",
+  ].join("\n");
+
+  const { text } = buildVariant(skillDoc, {
+    anchor: /^- \*\*Never paste implementation output\*\*/,
+    sentinel: "probe-B-UT-paste",
+    label: "ut-paste",
+  });
+  assert.ok(
+    text.includes("<!-- kcc-dev-core-unit-tests-sentinel: probe-B-UT-paste -->"),
+    "the arm token must replace the skill doc's own sentinel value"
+  );
+  assert.ok(!text.includes("v3 -->"), "the original token must be gone");
+});
+
+test("strips YAML frontmatter, returning the body from its first content line", () => {
+  const skill = "---\ndescription: Use when …\n---\n\n# Writing unit tests\n\nbody\n";
+  assert.equal(stripFrontmatter(skill), "# Writing unit tests\n\nbody\n");
+});
+
+test("leaves a document with no frontmatter untouched", () => {
+  const doc = "# Development Discipline\n\n- **Rule.** x\n";
+  assert.equal(stripFrontmatter(doc), doc);
+});
+
+test("throws on frontmatter that is opened but never closed", () => {
+  assert.throws(
+    () => stripFrontmatter("---\ndescription: Use when …\n\n# Writing unit tests\n"),
+    /frontmatter/i,
+    "injecting a half-parsed file is exactly the silent-corruption failure"
   );
 });

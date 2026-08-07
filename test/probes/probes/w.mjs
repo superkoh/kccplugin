@@ -11,13 +11,7 @@
  * two probes whose rules it names. That is stated as an indirect
  * measurement in the report rather than dressed up as a direct one.
  */
-const NO_DELEGATION = [
-  "Agent", "Task", "Skill", "ToolSearch", "TodoWrite",
-  "Monitor", "Workflow", "ScheduleWakeup", "SendMessage", "PushNotification",
-  "CronCreate", "CronDelete", "CronList", "RemoteTrigger", "DesignSync",
-  "EnterWorktree", "ExitWorktree", "ReportFindings",
-  "TaskCreate", "TaskGet", "TaskList", "TaskOutput", "TaskStop", "TaskUpdate",
-];
+import { NO_DELEGATION } from "../lib/lockdown.mjs";
 const LOCKED = [
   "Read", "Glob", "Grep", "Bash", "Write", "Edit", "NotebookEdit",
   "WebFetch", "WebSearch", ...NO_DELEGATION,

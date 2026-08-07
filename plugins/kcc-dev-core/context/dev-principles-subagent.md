@@ -18,7 +18,7 @@ not a status narrative.
   boundaries (user input, network, untrusted files); inside the
   codebase, trust type invariants and framework guarantees.
 - **Unit tests come first.** About to write or change code that
-  branches → invoke `kcc-dev-core:write-unit-tests` and follow its
+  branches → invoke `kcc-dev-core:unit-tests` and follow its
   red-first loop before the implementation; changing existing
   untested branching logic → its backfill mode. Which units earn a
   test is that skill's per-unit call, not one to make for the change

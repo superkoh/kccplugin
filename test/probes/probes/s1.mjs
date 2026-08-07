@@ -12,26 +12,12 @@
  * reply to a separate model with a binary rubric; probes carry one or
  * the other, never both.
  */
+import { NO_DELEGATION } from "../lib/lockdown.mjs";
 import {
   opensWithTargetBlock,
   containsTargetBlock,
 } from "../lib/score.mjs";
 
-// Tool lockdown is a whitelist expressed as an exhaustive blacklist:
-// blocking only the obvious tools is not enough. Measured — with Bash
-// denied, one run reached a shell through `Monitor` anyway and spent its
-// reply narrating its own tool activity. Anything that can execute,
-// delegate, schedule or message is listed here, and run-probe.mjs
-// independently voids any run that calls a tool outside a probe's
-// declared `expectedTools`, so a newly-shipped CLI tool cannot silently
-// distort a campaign.
-const NO_DELEGATION = [
-  "Agent", "Task", "Skill", "ToolSearch", "TodoWrite",
-  "Monitor", "Workflow", "ScheduleWakeup", "SendMessage", "PushNotification",
-  "CronCreate", "CronDelete", "CronList", "RemoteTrigger", "DesignSync",
-  "EnterWorktree", "ExitWorktree", "ReportFindings",
-  "TaskCreate", "TaskGet", "TaskList", "TaskOutput", "TaskStop", "TaskUpdate",
-];
 const LOCKED = [
   "Read", "Glob", "Grep", "Bash", "Write", "Edit", "NotebookEdit",
   "WebFetch", "WebSearch", ...NO_DELEGATION,
