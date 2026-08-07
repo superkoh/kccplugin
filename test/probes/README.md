@@ -126,16 +126,26 @@ re-derivable from the raw transcripts without re-running anything.
 
 ## Layout
 
+The portable mechanics live in the **kcc-ablation plugin**
+(`plugins/kcc-ablation/skills/ablate/` — methodology in its SKILL.md,
+sealing recipe in `references/sealed-run.md`, code in `scripts/`).
+`lib/` re-exports them so campaign code keeps one import root, and adds
+this repo's policy on top.
+
 | path | role |
 |---|---|
 | `rules.mjs` | ablation registry: which document, plugin and lines each rule id owns |
 | `probes/*.mjs` | probe definitions: prompt, tool lockdown, scorer or judge rubric |
-| `lib/ablate.mjs` | builds an arm; **throws** rather than silently no-op |
-| `lib/seal.mjs` | sealed workspace + plugin variant |
-| `lib/extract.mjs` | stream-json → observables |
-| `lib/score.mjs` | deterministic scorers + delta classifier |
-| `lib/judge.mjs` | blinded rubric judging for semantic observables |
+| `lib/ablate.mjs` | re-export: arm builder (**throws** rather than silently no-op) |
+| `lib/seal.mjs` | RULES lookup + retired/measured guards around the plugin's variant builder |
+| `lib/extract.mjs` | re-export: stream-json → observables |
+| `lib/score.mjs` | 🎯-probe scorers + re-export of screenRun / classify |
+| `lib/judge.mjs` | spawns the sealed judge via this repo's runner; prompt + parser from the plugin |
+| `lib/lockdown.mjs` | re-export: the deny-by-default tool lists |
 
-`lib/` carries its own unit tests (`node --test 'test/probes/lib/*.test.mjs'`)
-— they are offline and free. A bug in the ablator or the extractor
-produces confident wrong numbers, which is worse than no campaign.
+The mechanics' unit tests moved with the code
+(`plugins/kcc-ablation/tests/unit/`, run by `npm run test:l2`); what
+remains in `lib/*.test.mjs` covers the repo-specific policy above
+(`node --test 'test/probes/lib/*.test.mjs'` — offline and free). A bug
+in the ablator or the extractor produces confident wrong numbers, which
+is worse than no campaign.

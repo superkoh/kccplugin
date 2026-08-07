@@ -20,18 +20,12 @@
  * a perfect red gate and get promoted to a real probe.
  */
 import { opensWithTargetBlock, containsTargetBlock } from "./score.mjs";
+// One lockdown list for every probe, declarative or coded: this file's
+// own copy had drifted (no agent-roster tools) by the time the lists
+// were unified in lockdown.mjs.
+import { FULL_LOCKDOWN } from "./lockdown.mjs";
 
-const NO_DELEGATION = [
-  "Agent", "Task", "Skill", "ToolSearch", "TodoWrite",
-  "Monitor", "Workflow", "ScheduleWakeup", "SendMessage", "PushNotification",
-  "CronCreate", "CronDelete", "CronList", "RemoteTrigger", "DesignSync",
-  "EnterWorktree", "ExitWorktree", "ReportFindings",
-  "TaskCreate", "TaskGet", "TaskList", "TaskOutput", "TaskStop", "TaskUpdate",
-];
-export const FULL_LOCKDOWN = [
-  "Read", "Glob", "Grep", "Bash", "Write", "Edit", "NotebookEdit",
-  "WebFetch", "WebSearch", ...NO_DELEGATION,
-];
+export { FULL_LOCKDOWN };
 
 export function caseToProbe(def) {
   const { id, rule, prompt, scoreKind, pattern, rubric, maxBudgetUsd = 0.6 } = def;

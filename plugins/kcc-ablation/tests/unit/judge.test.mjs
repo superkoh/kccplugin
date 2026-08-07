@@ -1,6 +1,23 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseVerdict } from "./judge.mjs";
+import { buildJudgePrompt, parseVerdict } from "../../skills/ablate/scripts/judge.mjs";
+
+// The prompt contract runJudge-style drivers depend on: the rubric and
+// the reply must both land in the prompt, the reply inside delimiters
+// (so rubric-like text in a reply cannot be mistaken for the rubric),
+// and the closing-format instructions must ask for exactly the two
+// lines parseVerdict knows how to read.
+test("buildJudgePrompt embeds rubric and delimited reply, and demands the parseable format", () => {
+  const prompt = buildJudgePrompt({
+    rubric: "Does the reply challenge the premise?",
+    reply: "The premise is wrong because…",
+  });
+  assert.ok(prompt.includes("Does the reply challenge the premise?"));
+  assert.match(prompt, /<<<REPLY\nThe premise is wrong because…\nREPLY>>>/);
+  assert.ok(prompt.includes("VERDICT: PASS or FAIL"));
+  assert.ok(prompt.includes("REASON: "));
+  assert.doesNotMatch(prompt, /\barm\b|ablat/i, "the judge must stay blind to the experiment");
+});
 
 test("parses a plain verdict and reason", () => {
   assert.deepEqual(parseVerdict("VERDICT: PASS\nREASON: it rejected the premise"), {

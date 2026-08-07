@@ -1,66 +1,19 @@
 /**
- * Sealed-environment construction for behavior probes.
+ * Campaign policy wrapped around the kcc-ablation plugin's mechanics.
  *
- * A probe compares two prompt variants, so anything the model can reach
- * that is NOT the variant is contamination. Three leaks matter, and each
- * is closed here:
- *
- *   1. the user's global plugins/settings → CLAUDE_CONFIG_DIR points at
- *      a fresh empty dir (the CLI also relocates .claude.json into it);
- *   2. the user's ~/.claude, reachable even so if the model shells out →
- *      HOME points at a fresh empty dir;
- *   3. project context → the run's cwd is a throwaway dir, never the
- *      repo. That also keeps a Write-happy probe away from real files.
- *
- * Workspace trust would otherwise block plugin loading in a brand-new
- * directory, so the sealed config gets a pre-accepted trust entry.
- *
- * Auth note: the keychain read that produces CLAUDE_CODE_OAUTH_TOKEN
- * must happen BEFORE HOME is sealed — `security` resolves the login
- * keychain through $HOME. Callers therefore export the token into the
- * parent process and this module only overrides HOME for the child.
+ * The sealed-workspace and variant builders live in the plugin; what
+ * stays here is this repo's rule registry lookup and the guards that
+ * make ablating the wrong thing a deliberate act instead of a default.
  */
-import { mkdir, writeFile, cp, readFile, rm } from "node:fs/promises";
-import path from "node:path";
-import { buildVariant, stripFrontmatter } from "./ablate.mjs";
 import { RULES } from "../rules.mjs";
+import { makeDocVariant } from "../../../plugins/kcc-ablation/skills/ablate/scripts/seal.mjs";
 
-// A skill normally reaches the model only when the model invokes it, and
-// every probe disallows the Skill tool. This preamble puts the body in
-// force instead; it is byte-identical in both arms, so it cannot itself
-// produce a delta.
-const skillPreamble = (skill) =>
-  `# Skill in effect: ${skill}\n\n` +
-  "The instructions below are this session's active skill. Follow them " +
-  "as if you had just invoked it by name — it is not available as a " +
-  "tool here.\n\n";
-
-/** Fresh project + config + home triple for one run. */
-export async function makeSealedWorkspace(runDir) {
-  const projectDir = path.join(runDir, "proj");
-  const configDir = path.join(runDir, "cfg");
-  const homeDir = path.join(runDir, "home");
-  await Promise.all([
-    mkdir(projectDir, { recursive: true }),
-    mkdir(configDir, { recursive: true }),
-    mkdir(homeDir, { recursive: true }),
-  ]);
-  await writeFile(
-    path.join(configDir, ".claude.json"),
-    JSON.stringify({ projects: { [projectDir]: { hasTrustDialogAccepted: true } } })
-  );
-  return {
-    projectDir,
-    configDir,
-    homeDir,
-    env: { CLAUDE_CONFIG_DIR: configDir, HOME: homeDir },
-  };
-}
+export { makeSealedWorkspace } from "../../../plugins/kcc-ablation/skills/ablate/scripts/seal.mjs";
 
 /**
- * Copy the plugin and rewrite the injected doc for one arm.
- * Arm "A" keeps the rule, arm "B" ablates it; both get an arm-unique
- * sentinel so the SessionStart hook payload identifies the arm without
+ * Copy the plugin named by RULES[ruleId] and rewrite the injected doc
+ * for one arm. Arm "A" keeps the rule, arm "B" ablates it; both get an
+ * arm-unique sentinel so the hook payload identifies the arm without
  * asking the model anything.
  */
 export async function makePluginVariant(variantDir, { pluginsDir, ruleId, arm }) {
@@ -85,34 +38,5 @@ export async function makePluginVariant(variantDir, { pluginsDir, ruleId, arm })
     );
   }
 
-  const dest = path.join(variantDir, rule.doc.plugin);
-  await cp(path.join(pluginsDir, rule.doc.plugin), dest, { recursive: true });
-
-  const docPath = path.join(dest, rule.doc.path);
-  const source = await readFile(docPath, "utf-8");
-  const sentinel = `probe-${arm}-${ruleId}`;
-  const isSkill = rule.doc.deliver === "skill";
-  const { text, removedLines } = buildVariant(isSkill ? stripFrontmatter(source) : source, {
-    anchor: arm === "B" ? rule.anchor ?? null : null,
-    snippet: arm === "B" ? rule.snippet ?? null : null,
-    sentinel,
-    label: rule.label,
-  });
-
-  if (arm === "B" && removedLines === 0) {
-    throw new Error(`arm B for "${ruleId}" removed nothing — the arms would be identical`);
-  }
-
-  if (isSkill) {
-    // The ablated body replaces the document the SessionStart hook
-    // already injects, and skills/ leaves the variant entirely: a
-    // SKILL.md left on disk hands arm B the intact rule back through a
-    // Read or a Grep, and the plugin's own principles doc would keep
-    // pointing at a skill that is no longer there.
-    await writeFile(path.join(dest, rule.doc.via), skillPreamble(rule.doc.skill) + text);
-    await rm(path.join(dest, "skills"), { recursive: true, force: true });
-  } else {
-    await writeFile(docPath, text);
-  }
-  return { pluginDir: dest, sentinel, removedLines };
+  return makeDocVariant(variantDir, { pluginsDir, rule, ruleId, arm });
 }
