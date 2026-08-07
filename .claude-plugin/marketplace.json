@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "A Claude Code plugin marketplace",
-    "version": "0.2.0"
+    "version": "0.3.0"
   },
   "plugins": [
     {
@@ -19,6 +19,12 @@
       "source": "./plugins/kcc-dev-core",
       "description": "Development-focused plugin: conditionally injects code-discipline principles when the session is inside a software project (with a subagent variant injected into every spawned subagent), and hosts standalone dev skills (spec, blackbox-tests, unit-tests) and hooks.",
       "version": "0.11.0"
+    },
+    {
+      "name": "kcc-ablation",
+      "source": "./plugins/kcc-ablation",
+      "description": "Prompt-ablation toolkit: the ablate skill runs sealed A/B campaigns that measure what each rule in an injected prompt is worth, with the portable mechanics (arm builder, extractor, run screening, Fisher-exact verdicts, blinded judging) bundled as scripts.",
+      "version": "0.1.0"
     }
   ]
 }

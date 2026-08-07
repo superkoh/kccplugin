@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildVariant, stripFrontmatter } from "./ablate.mjs";
+import { buildVariant, stripFrontmatter } from "../../skills/ablate/scripts/ablate.mjs";
 
 const DOC = [
   "# T",
@@ -189,12 +189,12 @@ test("throws when the document carries no sentinel line", () => {
   );
 });
 
-// Each ablatable document names its own sentinel marker: kcc-core's docs
-// use `kcc-core-sentinel`, kcc-dev-core's skills use
-// `kcc-dev-core-<skill>-sentinel`. Recognising only the first one would
-// make every kcc-dev-core arm throw as sentinel-less — or worse, keep the
-// original token and make both arms answer to the same string.
-test("recognises a sentinel marker whose prefix is not kcc-core", () => {
+// Each ablatable document names its own sentinel marker (kcc-core's docs
+// use `kcc-core-sentinel`, a skill doc uses its own prefix). Recognising
+// only one prefix would make every other doc's arm throw as
+// sentinel-less — or worse, keep the original token and make both arms
+// answer to the same string.
+test("recognises a sentinel marker regardless of its prefix", () => {
   const skillDoc = [
     "# Writing unit tests",
     "",

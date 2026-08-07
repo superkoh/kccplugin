@@ -22,7 +22,7 @@ import { runClaude } from "../lib/claude-runner.mjs";
 import { extractRun } from "./lib/extract.mjs";
 import { makeSealedWorkspace, makePluginVariant } from "./lib/seal.mjs";
 import { runJudge } from "./lib/judge.mjs";
-import { looksLikeHallucinatedToolUse } from "./lib/score.mjs";
+import { screenRun } from "./lib/score.mjs";
 import { caseToProbe } from "./lib/cases.mjs";
 import { PROBES as S1_PROBES } from "./probes/s1.mjs";
 import { PROBES as W_PROBES } from "./probes/w.mjs";
@@ -125,30 +125,18 @@ async function runOnce(probe, arm, i, outDir) {
     configDir: ws.configDir,
   });
 
-  // Arm attribution, read off the hook payload — never off the model.
-  // Which hook carries it depends on the doc under test: the main-session
-  // principles arrive at SessionStart, the subagent variant at
-  // SubagentStart, so accept the sentinel from either.
-  const armProven = Object.values(run.hookInjections).some((text) =>
-    text.includes(variant.sentinel)
-  );
-
-  // A tool call outside the probe's declared set means the model routed
-  // around the lockdown; that run measured something other than the
-  // probe and is voided rather than scored.
-  const expected = new Set(probe.expectedTools ?? []);
-  const unexpectedTools = [
-    ...new Set(
-      run.toolCalls.filter((c) => c.ok === true && !expected.has(c.name)).map((c) => c.name)
-    ),
-  ];
-
-  const faked = looksLikeHallucinatedToolUse(run.finalText, run.toolCalls);
+  // The void-don't-score gate (arm attribution off the hook payload,
+  // lockdown escapes, hallucinated tool use) lives in the kcc-ablation
+  // plugin's screenRun; a voided run is re-run, never scored.
+  const screen = screenRun(run, {
+    sentinel: variant.sentinel,
+    expectedTools: probe.expectedTools ?? [],
+  });
 
   let pass = null;
   let judge = null;
   let judgeDidNotRun = false;
-  if (!run.invalid && armProven && unexpectedTools.length === 0 && !faked) {
+  if (!screen.invalid) {
     if (probe.judge) {
       // Subagent probes judge the delegated reply, not the orchestrator's
       // one-word acknowledgement.
@@ -174,19 +162,13 @@ async function runOnce(probe, arm, i, outDir) {
     rule: probe.rule,
     arm,
     pass,
-    invalid: run.invalid || !armProven || unexpectedTools.length > 0 || faked || judgeDidNotRun,
-    invalidReason: run.invalid
-      ? `permissionDenials=${run.permissionDenials}, noResultOrError`
-      : !armProven
-        ? "arm sentinel absent from injected context"
-        : unexpectedTools.length
-          ? `escaped the lockdown via ${unexpectedTools.join(",")}`
-          : faked
-            ? "narrated a tool call it never made"
-            : judgeDidNotRun
-              ? "judge produced no reply (zero cost) — infrastructure, not a verdict"
-              : null,
-    unexpectedTools,
+    invalid: screen.invalid || judgeDidNotRun,
+    invalidReason:
+      screen.reason ??
+      (judgeDidNotRun
+        ? "judge produced no reply (zero cost) — infrastructure, not a verdict"
+        : null),
+    unexpectedTools: screen.unexpectedTools,
     removedLines: variant.removedLines,
     costUsd: run.costUsd,
     numTurns: run.numTurns,
