@@ -25,6 +25,9 @@ import { PROBES as BBXC_PROBES } from "./probes/bbxcases.mjs";
 import { PROBES as BBXM_PROBES } from "./probes/bbxmaterialize.mjs";
 import { PROBES as BBX2_PROBES } from "./probes/bbx2.mjs";
 import { PROBES as BBXR_PROBES } from "./probes/bbxreviewer.mjs";
+import { PROBES as PM_PROBES } from "./probes/pm.mjs";
+import { PROBES as PM2_PROBES } from "./probes/pm2.mjs";
+import { PROBES as PM3_PROBES } from "./probes/pm3.mjs";
 
 // Must stay the same set run-probe.mjs runs. A probe missing here is not a
 // missing row: its expectedTools lookup returns undefined, every successful
@@ -41,6 +44,9 @@ const BUILTIN = [
   ...BBXM_PROBES,
   ...BBX2_PROBES,
   ...BBXR_PROBES,
+  ...PM_PROBES,
+  ...PM2_PROBES,
+  ...PM3_PROBES,
 ];
 const casesFile = process.argv.includes("--cases")
   ? process.argv[process.argv.indexOf("--cases") + 1]

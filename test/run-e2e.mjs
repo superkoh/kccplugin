@@ -17,6 +17,10 @@
  *   jsonSchema: |                        # optional; forces structured output
  *     { "type": "object", "properties": { "greeting": { "type": "string" } } }
  *   timeoutMs: 120000                    # optional
+ *   cwd: tests/e2e/fixtures/workspace    # optional; CLI working dir,
+ *                                        # resolved against the plugin root.
+ *                                        # For cases whose hooks key off cwd
+ *                                        # (e.g. marker-file detection).
  *   expect:
  *     exitCode: 0
  *     stdout:
@@ -42,6 +46,7 @@
  *   secret yet.
  */
 import { readFile } from "node:fs/promises";
+import path from "node:path";
 import yaml from "js-yaml";
 import {
   PluginFilterError,
@@ -89,6 +94,7 @@ async function runCase(plugin, file) {
   const result = await runClaude({
     prompt: spec.prompt,
     pluginDirs: [plugin.root],
+    cwd: spec.cwd ? path.resolve(plugin.root, spec.cwd) : undefined,
     model: spec.model || DEFAULT_MODEL,
     allowedTools: spec.allowedTools,
     disallowedTools: spec.disallowedTools,

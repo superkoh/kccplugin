@@ -115,8 +115,13 @@ export async function makeDocVariant(variantDir, { pluginsDir, rule, ruleId, arm
   if (isSkill) {
     // The ablated body replaces the document the hook already injects,
     // and skills/ leaves the variant entirely: a SKILL.md left on disk
-    // hands arm B the intact rule back through a Read or a Grep.
-    await writeFile(path.join(dest, rule.doc.via), skillPreamble(rule.doc.skill) + text);
+    // hands arm B the intact rule back through a Read or a Grep. The
+    // via file's directory may not exist in a plugin that ships no
+    // injected docs of its own (measured: kcc-pm 0.3.0 removed its
+    // context/ dir entirely) — create it rather than ENOENT.
+    const viaPath = path.join(dest, rule.doc.via);
+    await mkdir(path.dirname(viaPath), { recursive: true });
+    await writeFile(viaPath, skillPreamble(rule.doc.skill) + text);
     await rm(path.join(dest, "skills"), { recursive: true, force: true });
   } else {
     await writeFile(docPath, text);

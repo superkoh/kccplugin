@@ -1,0 +1,35 @@
+# L3: the charter's task-scoped delivery path.
+#
+# The PM charter lives in the pm-playbook skill and reaches the model
+# when the skill loads. Explicit slash invocation loads the body
+# deterministically (model-routing is probabilistic on small models —
+# see kcc-dev-core's *-skill-sentinel.yaml precedent), and the sentinel
+# at the body's end can then be quoted back. Filesystem tools are
+# locked out so the only path to the sentinel is the loaded skill body.
+
+name: "kcc-pm:pm-playbook loads the charter body (sentinel quote-back)"
+prompt: "/kcc-pm:pm-playbook The document this skill just loaded ends with an HTML comment whose identifier starts with 'kcc-pm-playbook'. Quote that exact identifier string and nothing else. If no such document is in context, reply with the literal text NO_SKILL_SENTINEL_IN_CONTEXT."
+maxBudgetUsd: 0.10
+timeoutMs: 120000
+
+disallowedTools:
+  - Read
+  - Glob
+  - Grep
+  - Bash
+  - Write
+  - Edit
+  - WebFetch
+  - WebSearch
+
+expect:
+  exitCode: 0
+  parsedJson:
+    type: "result"
+    subtype: "success"
+    is_error: false
+  stdout:
+    contains:
+      - "kcc-pm-playbook-sentinel"
+    notContains:
+      - "NO_SKILL_SENTINEL_IN_CONTEXT"

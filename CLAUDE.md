@@ -98,6 +98,9 @@ for free.
   alias — docs intentionally don't restate the literal value). Cap
   every YAML case with `maxBudgetUsd`
   (0.05 is usually plenty). Don't reach for Opus in regression tests.
+  This frugality is scoped to L3 regression tests ONLY — do not
+  generalize it to prompt ablation: kcc-ablation arms always run the
+  model the prompt actually serves (Opus-class), never a cheaper one.
 - **Triage offline first.** Run L1+L2+L4 before L3. If any are red, fix
   them first — don't burn L3 money on a known-broken plugin.
 - **Hermetic vs. fallback auth.** L3 uses `claude --bare` when
