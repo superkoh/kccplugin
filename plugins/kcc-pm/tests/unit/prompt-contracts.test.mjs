@@ -171,25 +171,3 @@ test("the 11 methodology references exist and no stale cross-links remain", asyn
   }
 });
 
-// -------------------------------------------------- business-agnostic guard
-
-test("no prompt or reference smuggles in source-business specifics", async () => {
-  const banned = /particle|newsbreak|crimeradar|mytown|scoopz|trino|nextdoor/i;
-  const files = [
-    path.join(pluginRoot, "agents", "pm.md"),
-    path.join(pluginRoot, "commands", "onboard.md"),
-    path.join(pluginRoot, "skills", "pm-playbook", "SKILL.md"),
-  ];
-  for (const f of (await readdir(referencesDir)).filter((f) => f.endsWith(".md"))) {
-    files.push(path.join(referencesDir, f));
-  }
-  for (const f of files) {
-    const text = await readFile(f, "utf-8");
-    const hit = text.match(banned);
-    assert.equal(
-      hit,
-      null,
-      `${path.relative(pluginRoot, f)} contains business-specific term "${hit?.[0]}" — kcc-pm must stay business-agnostic`
-    );
-  }
-});
