@@ -14,11 +14,13 @@ The failure this skill exists to prevent is the confident wrong number — a har
 - **Forced-choice probes** — Design each probe as a task the ablated arm should fail near-deterministically; statistical power comes from probe design, not from large N.
 - **Probes never name the rule** — The probe prompt never quotes the rule or its vocabulary, so what is measured is internalised behavior, not instruction-following.
 - **Red-gate every probe** — A probe whose B arm passes easily is a bad probe, not evidence of a good rule; discard it and design a sharper temptation.
+- **Arms run the served model** — The campaign measures the document's effect on the model that actually consumes it in production, so downgrading arms to a cheaper model to save money measures a different model and its verdicts license nothing; only the smoke run and the judge may be cheap.
 - **Smoke the harness first** — Before the full campaign, one cheap-model run must prove the pipeline end to end (fixture lands, sentinel attributes the arm, extractor and screener classify correctly), because a harness bug produces confident wrong numbers at full price.
 - **B runs first** — If the ablated arm passes every run the rule has no marginal value and arm A never needs to be paid for, which roughly halves a campaign whose main output is "dead weight".
 - **Seal everything** — Anything the model can reach that is not the variant is contamination, so every run gets a fresh config dir, a fresh home, and a throwaway working directory outside any repository (recipe and known leaks: `references/sealed-run.md`).
 - **Deterministic arm attribution** — Each arm carries a unique sentinel token, and arm identity is read off the injected-context payload in the transcript, never off model narration.
 - **Lock delegation down** — Disallow every tool that hands work to another model or reaches outside the sealed workspace (`scripts/lockdown.mjs`), because a subagent muddies attribution and burns budget.
+- **Probes afford the prescribed behavior** — A document that commands tool use cannot be probed under a lockdown forbidding those tools, because the arms then measure coping-with-contradiction (observed: fabricated tool-call transcripts with invented file contents) instead of the rule's marginal value, so unlock exactly the commanded tools and keep the fixture byte-identical across arms.
 - **Void, don't score** — A run with a permission denial, an executed tool outside the probe's expected set, an unattributable arm, or a narrated-but-never-made tool call is invalid and gets re-run, never counted as a failure of the rule (`screenRun` in `scripts/score.mjs`).
 - **Headless denies writes by default** — Non-interactive `claude -p` refuses file writes under the default permission mode, so probes must bypass permissions inside the sealed throwaway workspace or both arms burn their whole budget fighting denials and return zero information.
 - **Interactive rules are untestable headless** — A rule whose observable needs an interactive tool (such as `AskUserQuestion`) cannot be probed in headless mode and is recorded as untestable, not faked.
@@ -48,4 +50,4 @@ The failure this skill exists to prevent is the confident wrong number — a har
 - **`scripts/lockdown.mjs`** — `NO_DELEGATION` / `FULL_LOCKDOWN`: the deny-by-default tool lists every probe starts from.
 - **`references/sealed-run.md`** — the Claude Code sealed-run recipe: exact CLI flags, environment sealing, auth ordering, stream-json event shapes, the measured-leak checklist, and cost calibration.
 
-<!-- kcc-ablation-ablate-sentinel: v1 -->
+<!-- kcc-ablation-ablate-sentinel: v2 -->

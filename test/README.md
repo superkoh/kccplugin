@@ -83,6 +83,9 @@ maxBudgetUsd: 0.10                  # optional; hard cap per case
 allowedTools: [Read]                # optional
 disallowedTools: [Write, Edit]      # optional
 timeoutMs: 120000                   # optional
+# cwd: tests/e2e/fixtures/ws        # optional; CLI working dir, resolved
+#                                   # against the plugin root — for cases
+#                                   # whose hooks key off cwd
 jsonSchema: |                       # optional — forces structured output
   {
     "type": "object",

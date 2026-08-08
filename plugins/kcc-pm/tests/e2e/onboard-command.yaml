@@ -1,0 +1,35 @@
+# L3: /kcc-pm:onboard smoke — the command registers and starts the
+# interview instead of erroring.
+#
+# Headless one-shot: the command checks for an existing workspace (Read
+# and Glob allowed for that), finds none at the repo root, and must
+# open the agent-led interview — its first batch of questions is the
+# final text. We assert the envelope and the absence of
+# command-resolution errors, not the model's prose.
+
+name: "kcc-pm:onboard command registers and opens the interview"
+prompt: "/kcc-pm:onboard"
+maxBudgetUsd: 0.10
+timeoutMs: 120000
+
+allowedTools:
+  - Read
+  - Glob
+  - Grep
+disallowedTools:
+  - Write
+  - Edit
+  - Bash
+  - WebFetch
+  - WebSearch
+
+expect:
+  exitCode: 0
+  parsedJson:
+    type: "result"
+    subtype: "success"
+    is_error: false
+  stdout:
+    notContains:
+      - "Unknown slash command"
+      - "unknown command"

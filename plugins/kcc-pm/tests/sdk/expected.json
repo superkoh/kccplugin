@@ -1,0 +1,12 @@
+{
+  "slashCommands": {
+    "requires": [
+      "kcc-pm:onboard",
+      "kcc-pm:pm-playbook"
+    ],
+    "forbids": []
+  },
+  "mcpServers": {
+    "requires": []
+  }
+}

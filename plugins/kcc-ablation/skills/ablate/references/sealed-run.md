@@ -116,6 +116,9 @@ Each entry was observed in a real campaign, not theorized:
 
 ## Cost calibration (measured 2026-08, Opus-class arms)
 
+- Arms: always the model the document serves in production (Opus-class
+  here) — never downgraded to save money. A cheap arm measures a
+  different model, and every verdict it produces is void.
 - Short reasoning probe: ~$0.1–0.8 per run under cap.
 - Full authoring probe (spec/tests): ~$1.2–1.8 per run.
 - A 3-round two-arm campaign lands around $9; B-first ordering and
