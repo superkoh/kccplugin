@@ -1,66 +1,68 @@
-# 优先级与决策
+# Prioritization and decision-making
 
-> 资源永远不够，优先级就是战略的日常形态。分数是对话工具，不是自动决策机器。
+> Resources are never enough, so prioritization is what strategy looks
+> like day to day. Scores are a conversation tool, not an automatic
+> decision machine.
 
-## 框架速查
+## Framework quick reference
 
-| 框架 | 一句话 | 何时用 |
+| Framework | In one line | When to use |
 |---|---|---|
-| RICE（Intercom） | (Reach × Impact × Confidence) / Effort | 候选项多且同质，需要可辩论的初排序 |
-| Kano 模型 | 基础型 / 期望型 / 魅力型 / 无差异 / 反向 | 决定"补短板还是造亮点" |
-| Cagan 四大风险 | Value / Usability / Feasibility / Viability | 任何方案从"想法"进"排期"前的检查清单 |
-| LNO（Shreyas Doshi） | 任务分杠杆/中性/开销，差异化投入 | 个人精力分配；忙而无产出时 |
-| Pre-mortem + 三种动物 | 假设已失败倒查原因：Tigers / Paper Tigers / Elephants | 重大项目启动后 1-3 个月内 |
-| 机会成本思维 | 不是"值不值得"，是"是不是当下最值得" | 一切资源决策 |
-| 三层产品工作（Shreyas） | Impact / Execution / Optics | 与上级对不齐、诊断表演性工作 |
+| RICE (Intercom) | (Reach × Impact × Confidence) / Effort | Many similar candidates needing a debatable first ordering |
+| Kano model | Must-be / performance / attractive / indifferent / reverse | Deciding "fix the gap or build the highlight" |
+| Cagan's four risks | Value / Usability / Feasibility / Viability | The checklist any idea passes before entering the schedule |
+| LNO (Shreyas Doshi) | Sort tasks into leverage / neutral / overhead and invest differently | Personal energy allocation; when busy but unproductive |
+| Pre-mortem + three animals | Assume it already failed and work back: Tigers / Paper Tigers / Elephants | 1–3 months into a major project |
+| Opportunity-cost thinking | Not "is it worth it", but "is it the most worth it right now" | Every resource decision |
+| Three layers of product work (Shreyas) | Impact / Execution / Optics | Misalignment with your manager; diagnosing performative work |
 
-## 核心操作
+## Core practices
 
-### RICE 纪律
-- Impact 用 3/2/1/0.5/0.25 档；Confidence 只用 100%/80%/50%/20% 四档。
-- **Confidence 低于 50% 的高分项先补研究，不直接排期**——打分表不是决策自动机。
+### RICE discipline
+- Score Impact on 3 / 2 / 1 / 0.5 / 0.25; Confidence only on 100% / 80% / 50% / 20%.
+- **A high scorer with Confidence below 50% gets research first, not a slot** — the scoring sheet is not a decision automaton.
 
-### Kano 排序
-先补齐 Must-be 基础项 → 再投 Performance 线性项 → 最后加少量 Delighter。定期重测：今天的魅力型会退化为明天的基础型。
+### Kano ordering
+Close the must-be gaps first → then invest in the linear performance items → finally add a small number of delighters. Re-test periodically: today's attractive feature degrades into tomorrow's must-be.
 
-### 四大风险责任到人（Cagan）
-- **Value**（用户会选择它吗）— PM 亲自负责
-- **Usability**（用得明白吗）— 设计师负责
-- **Feasibility**（造得出来吗）— 技术负责人负责
-- **Business Viability**（法务/财务/销售/品牌行得通吗）— PM 亲自负责
-任何生产代码写下之前，用原型在 discovery 阶段低成本干掉最大风险。
+### The four risks, each with an owner (Cagan)
+- **Value** (will users choose it?) — the PM owns it personally
+- **Usability** (can they figure it out?) — design owns it
+- **Feasibility** (can we build it?) — the tech lead owns it
+- **Business viability** (does it work for legal / finance / sales / brand?) — the PM owns it personally
+Before a line of production code is written, kill the biggest risk cheaply with a prototype during discovery.
 
-### Pre-mortem 流程（1 小时）
-10 分钟开场 → 10 分钟静默书写"假设项目已失败，为什么" → 30 分钟投票讨论 → 10 分钟行动计划。风险分类：
-- **Tiger**：真威胁，会咬死你 → 指定负责人和缓解措施；
-- **Paper Tiger**：看似威胁实则不必担心 → 明确忽略；
-- **Elephant**：房间里没人敢说的大问题 → 逼到桌面上。
-对前 3-5 个 Tiger/Elephant 制定带负责人的缓解计划。这套词汇让团队可以心理安全地谈风险。
+### The pre-mortem (1 hour)
+10 minutes of setup → 10 minutes of silent writing on "assume the project has failed — why?" → 30 minutes of voting and discussion → 10 minutes of action planning. Risk classification:
+- **Tiger**: a real threat that will kill you → assign an owner and a mitigation;
+- **Paper Tiger**: looks like a threat but isn't → explicitly ignore it;
+- **Elephant**: the big thing nobody in the room dares name → force it onto the table.
+Build owner-assigned mitigation plans for the top 3–5 tigers and elephants. This vocabulary is what lets a team discuss risk with psychological safety.
 
-### LNO 精力分配
-- **Leverage**（回报 10x-100x：战略文档、关键决策）→ 用巅峰状态做到卓越；
-- **Neutral**（回报≈投入：协调、汇报）→ 够好即可；
-- **Overhead**（回报<投入：例行仪式）→ 最低可接受质量快速了结。
-核心是允许自己在 N 和 O 任务上"不优秀"，把巅峰精力留给 L。
+### LNO energy allocation
+- **Leverage** (10x–100x return: strategy documents, key decisions) → peak state, done excellently;
+- **Neutral** (return ≈ investment: coordination, reporting) → good enough;
+- **Overhead** (return < investment: routine ceremony) → minimum acceptable quality, done fast.
+The core move is permitting yourself to be "not excellent" at N and O tasks so peak energy stays available for L.
 
-### 说"不"的方式
-给出机会成本而非含糊拖延："做 X 意味着 Y 延后一个季度"，让请求方看到统一透明的优先级规则。对"这只是个小功能"保持最高警惕。"放到 backlog 里"是懦弱的拒绝。
+### How to say no
+Give the opportunity cost rather than a vague stall: "doing X means Y slips a quarter", and let the requester see one transparent set of prioritization rules. Be maximally suspicious of "it's only a small feature". "Let's put it in the backlog" is a cowardly no.
 
-## 原则
+## Principles
 
-- 每个功能上线前先问"不做会怎样"（张小龙）。
-- 评估研究投入用机会成本：团队越大建造越贵，越值得先 research；小实验可能比调研更快给答案（Shreyas）。
-- 决策前主动邀请反对意见并激烈辩论；决策后 disagree & commit，100% 执行不留暗账。
-- ROI 单项思维是陷阱：只论证"这个项目有正回报"就立项，从不和其他选项比机会成本——资源有限时正 ROI 的项目也可能是错误选择。
+- Ask "what if we don't" before every feature ships (Zhang Xiaolong).
+- Judge research investment by opportunity cost: the bigger the team, the more expensive building is, and the more research pays; a small experiment may answer faster than a study (Shreyas).
+- Actively invite dissent and argue hard before the decision; after it, disagree & commit — 100% execution, no hidden ledger.
+- Single-item ROI thinking is a trap: approving a project because "it has positive returns" and never comparing opportunity costs — under finite resources, a positive-ROI project can still be the wrong choice.
 
-## 反面模式
+## Anti-patterns
 
-- 低置信度硬上：Confidence 20% 的"月球计划"不补研究直接进排期。
-- 有求必应的老好人：roadmap 变成政治分赃表。
-- 均匀完美主义：对 Overhead 任务也用 Leverage 标准。
-- 先入为主的单方案决策：对唯一想到的方案做"做不做"判断。
-- 按开发工作量定优先级/发布级别：市场与业务影响才是驱动因素。
+- Forcing through low confidence: a 20%-confidence moonshot goes straight into the schedule with no research.
+- The people-pleaser: the roadmap becomes a political spoils table.
+- Uniform perfectionism: applying the Leverage bar to Overhead tasks.
+- Anchored single-option decisions: passing "should we or not" judgment on the only solution you thought of.
+- Prioritizing (or setting launch tier) by engineering effort: market and business impact are the drivers.
 
-## 来源
+## Sources
 
-Intercom RICE · 狩野纪昭 Kano · Marty Cagan / SVPG 四大风险 · Shreyas Doshi（LNO / Pre-mortem / 三层产品工作，Lenny's Podcast & Superhuman docs）· Des Traynor · 张小龙
+Intercom RICE · Noriaki Kano · Marty Cagan / SVPG on the four risks · Shreyas Doshi (LNO / pre-mortem / three layers of product work, Lenny's Podcast & Superhuman docs) · Des Traynor · Zhang Xiaolong

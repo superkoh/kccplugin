@@ -1,60 +1,62 @@
-# 商业化与定价
+# Monetization and pricing
 
-> "How you charge is often more important than how much you charge." 围绕价格设计产品，而不是围绕产品定价格。定价改善 1%，利润提升 11%（McKinsey）。
+> "How you charge is often more important than how much you charge."
+> Design the product around the price, not the price around the product.
+> A 1% pricing improvement lifts profit 11% (McKinsey).
 
-## 框架速查
+## Framework quick reference
 
-| 框架 | 一句话 | 何时用 |
+| Framework | In one line | When to use |
 |---|---|---|
-| Monetizing Innovation 九步法 | 先验证付费意愿（WTP）再开发 | 新产品 0-1 立项与定价 |
-| 四种商业化失败 | feature shock / minivation / hidden gem / undead | 复盘收入不及预期 |
-| Van Westendorp PSM | 四问画出可接受价格区间 | 成熟品类价格摸底（有偏差，勿单独依赖） |
-| Conjoint 联合分析 | 从选择行为反推各功能的相对支付意愿 | 新品定价、套餐分层、付费墙取舍 |
-| a16z 16 Metrics | LTV/CAC/回收周期/churn 的标准口径 | 与财务和管理层对话、验增长健康度 |
-| DHM 打分 | 每个变现 idea 过 Delight/Hard-to-copy/Margin | 判断是否在用长期资产换短期收入 |
-| 订阅价值循环（Phil Carter） | 创造→传递→捕获→再投资 | 消费者订阅业务增长诊断 |
-| 会员体系设计 | 优惠型+特权型权益 × 触发机制 × 价格分级 | 搭建/改版会员体系 |
-| Take rate 决策 | 抽成上限 = 平台提供的增量价值 | 交易平台佣金/货币化决策 |
-| 广告收入分解 | DAU × 时长 × 加载率 × eCPM | 广告变现规划；加载率是体验借债 |
+| *Monetizing Innovation*'s nine steps | Validate willingness to pay (WTP) before you build | 0-to-1 product kickoff and pricing |
+| The four monetization failures | Feature shock / minivation / hidden gem / undead | Post-mortem on revenue missing plan |
+| Van Westendorp PSM | Four questions that draw the acceptable price range | Sizing price in a mature category (biased — don't rely on it alone) |
+| Conjoint analysis | Infer relative willingness to pay per feature from choice behavior | New-product pricing, tier design, paywall trade-offs |
+| a16z's 16 metrics | Standard definitions of LTV/CAC/payback/churn | Talking to finance and leadership; testing growth health |
+| DHM scoring | Run every monetization idea through Delight/Hard-to-copy/Margin | Judging whether you're trading a long-term asset for short-term revenue |
+| Subscription value loop (Phil Carter) | Create→deliver→capture→reinvest | Growth diagnosis for a consumer subscription business |
+| Membership design | Discount + privilege benefits × triggers × price tiers | Building or reworking a membership program |
+| Take-rate decisions | The ceiling on take rate is the incremental value the platform adds | Commission and monetization decisions on a marketplace |
+| Ad revenue decomposition | DAU × time spent × ad load × eCPM | Ad monetization planning; ad load is debt against experience |
 
-## 核心操作
+## Core practices
 
-### 单位经济口径（a16z，防"指标化妆"）
-- **LTV = 每客户月贡献毛利 × 平均生命周期**——绝不用收入或毛利冒充净贡献。
-- **CAC 分渠道看**：判断付费渠道能否扩量只看 paid CAC，blended 会掩盖付费渠道恶化。
-- **回收周期 = CAC ÷ 月贡献毛利**，SaaS 惯例 <12 个月；LTV/CAC ≥3 是健康线但受折现假设操纵，回收期才决定现金流约束下能买多少增长。
-- 用 **gross churn** 看真实流失（net churn 用增购抵消流失，系统性低估）；GMV ≠ revenue。
+### Unit-economics definitions (a16z — anti "metric makeup")
+- **LTV = monthly gross-margin contribution per customer × average lifetime** — never pass off revenue or gross profit as net contribution.
+- **Look at CAC per channel**: judging whether a paid channel can scale means looking at paid CAC only; blended CAC hides a deteriorating paid channel.
+- **Payback period = CAC ÷ monthly contribution margin**, conventionally <12 months for SaaS; LTV/CAC ≥3 is the health line but is manipulable through discount-rate assumptions — payback is what determines how much growth you can buy under a cash constraint.
+- Use **gross churn** to see real attrition (net churn offsets churn with expansion and systematically understates it); GMV ≠ revenue.
 
-### 定价研究组合拳
-- 立项前 WTP 访谈三问："你觉得可接受的价格是多少？""多少钱贵到你不会考虑？""X 价格你会买吗？为什么？"——用 WTP 数据写商业计划，否则"商业计划只会告诉你你想听的"。
-- 按付费意愿分约 3 个可执行 WTP 段（不按人口属性），每段配功能包与价格；打包区分 leader（必买）/ filler（加分）/ killer（拖累整包）。
-- 方法偏差：Van Westendorp 报价偏高、Gabor-Granger 偏低、conjoint 只给相对值——高风险决策用方法组合，任何定量前先做定性访谈。
-- 价格实验不做"同品同时同域不同价"裸测；**大数据杀熟在中国明确违法**（《个保法》《消保条例》），自动续费须显著提醒、取消路径不得难于开通。
+### The pricing research combination
+- Three WTP interview questions before kickoff: "what price would you consider acceptable?", "at what price is it too expensive to consider?", "would you buy at price X, and why?" — write the business plan from WTP data, otherwise "the business plan will only tell you what you want to hear".
+- Segment into about 3 actionable WTP bands by willingness to pay (not by demographics), each with its own feature bundle and price; when bundling, distinguish leaders (must-have), fillers (nice to have) and killers (they drag the whole bundle down).
+- Method bias: Van Westendorp reads high, Gabor-Granger reads low, conjoint only gives relative values — combine methods for high-stakes decisions, and always run qualitative interviews before any quantitative work.
+- Don't run naked "same product, same time, same region, different price" experiments; **algorithmic price discrimination against loyal customers is explicitly illegal in China** (PIPL, the Consumer Rights Protection Law implementing regulations); auto-renewal requires prominent notice and cancelling must not be harder than subscribing.
 
-### 变现优先级
-**先提留存，再提 ARPU（增购/会员），最后才动价格**——留存是唯一同时放大获客、变现、传播的复利杠杆。折扣是最后手段：常态化折扣摧毁价格锚和定价诚信。
+### Monetization priority order
+**Lift retention first, then ARPU (upsell / membership), and only then touch price** — retention is the one lever that amplifies acquisition, monetization and word of mouth at once. Discounting is the last resort: habitual discounting destroys the price anchor and pricing integrity.
 
-### 会员体系设计
-- 权益分两类：**优惠型**（折扣券、多倍返利——负责"肉眼可见的划算"、拉转化）+ **特权型**（免广告、专属资源——负责差异化）。
-- 权益必须与核心业务钩稽（88VIP 连接阿里生态：会员客单价 2 倍、购买宽度 6 倍）。
-- 续费靠抬高沉没成本：长周期订阅、储值（星巴克星享卡沉淀 16 亿美元零息现金流）。
-- 北极星：付费渗透率、ARPU、LTV、续费率、NDR。
+### Membership design
+- Two kinds of benefit: **discount type** (coupons, multiplied cashback — they deliver visible savings and drive conversion) + **privilege type** (ad-free, exclusive resources — they deliver differentiation).
+- Benefits must tie back to the core business (Alibaba's 88VIP connects the whole ecosystem: 2x order value, 6x purchase breadth among members).
+- Renewal comes from raising sunk cost: long-cycle subscriptions and stored value (Starbucks' card program holds about $1.6bn in interest-free float).
+- North Star metrics: paid penetration, ARPU, LTV, renewal rate, NDR.
 
-### 广告与抽成的克制
-- 广告加载率是"向用户体验借债"：产品形态决定库存天花板（单列沉浸流 >10% vs 双列约 7% vs 朋友圈每天最多 4 条）；任何上调必须绑定留存/时长护栏指标，设"体验预算"上限。
-- Take rate 定在平台提供的增量价值以内（参照：2024 淘天约 3.9% vs 拼多多约 7.6%）；抽成过高把供给推向站外。提升路径通常靠广告渗透而非硬提佣金。
-- Netflix 式定力：主动上线试用到期提醒，放弃 5000 万美元转化收入换品牌信任——延迟变现换难以复制的资产（Gibson Biddle）。
+### Restraint on ads and take rates
+- Ad load is "borrowing against user experience": the product form sets the inventory ceiling (single-column immersive feeds >10% vs two-column around 7% vs Moments at most 4 a day); any increase must be tied to retention/time-spent guardrails, with an "experience budget" cap.
+- Set the take rate within the incremental value the platform provides (for reference: roughly 3.9% at Taobao/Tmall in 2024 vs roughly 7.6% at Pinduoduo); too high and supply moves off-platform. The usual path up is ad penetration, not raising commission outright.
+- Netflix-style discipline: proactively shipping trial-expiry reminders and giving up $50m of conversion revenue to buy brand trust — deferring monetization for an asset that's hard to copy (Gibson Biddle).
 
-## 反面模式
+## Anti-patterns
 
-- 先建后价：产品做完才第一次讨论定价——72% 新品收入不及预期的根因。
-- 用收入冒充 LTV、GMV 冒充营收、只看 blended CAC、用 net churn 报留存。
-- 把 Van Westendorp 曲线交点当"最优价"迷信。
-- 把加载率当无限收入旋钮，为季度目标透支留存。
-- 会员权益凑数、惩罚式变现（人为降级免费体验倒逼付费）。
-- 暗黑模式 A/B：隐藏取消入口、误导性默认勾选——短期赢率好看，长期是法律暴露。
-- 只会喊"要懂商业"却不碰数字：不算回收周期、不拆收入公式、不做 WTP 研究。
+- Build first, price later: the first pricing discussion happens after the product is finished — the root cause behind 72% of new products missing revenue plan.
+- Passing revenue off as LTV, GMV as revenue, looking only at blended CAC, reporting retention with net churn.
+- Treating the Van Westendorp intersection as "the optimal price".
+- Treating ad load as an unlimited revenue dial, overdrawing retention to hit a quarterly target.
+- Padding membership benefits; punitive monetization (deliberately degrading the free experience to force payment).
+- Dark-pattern A/B: hidden cancel paths, misleading pre-ticked defaults — good short-term win rates, long-term legal exposure.
+- Preaching "understand the business" while never touching the numbers: no payback calculation, no revenue decomposition, no WTP research.
 
-## 来源
+## Sources
 
-Ramanujam & Tacke《Monetizing Innovation》· a16z《16 Startup Metrics》· Gibson Biddle（Netflix DHM）· Lenny's Newsletter（WTP 指南 / Take rate / Subscription Value Loop）· Reforge（Casey Winters）· 付费会员体系长文（woshipm）· 加载率对比研究（woshipm/腾讯新闻）· 《消费者权益保护法实施条例》(2024)、《个人信息保护法》
+Ramanujam & Tacke, *Monetizing Innovation* · a16z, *16 Startup Metrics* · Gibson Biddle (Netflix DHM) · Lenny's Newsletter (WTP guide / take rate / subscription value loop) · Reforge (Casey Winters) · long-form analyses of paid membership programs (woshipm) · ad-load comparison research (woshipm / Tencent News) · the Regulations on Implementing the Consumer Rights Protection Law (2024) and the Personal Information Protection Law

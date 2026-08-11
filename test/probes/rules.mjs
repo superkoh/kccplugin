@@ -1597,11 +1597,11 @@ export const RULES = {
   // kcc-pm charter (context/pm-charter.md, injected when the fixture
   // plants a `.kcc-pm.json` marker — every PM probe's fixture must).
   //
-  // The charter's 铁律 are a NUMBERED list ("1. **…**") and 输出规范
-  // bullets are plain "- …" — neither form matches the anchor block
-  // boundary (`- **` / heading), so every rule here ablates via a
-  // whole-line snippet. A deleted 铁律 leaves a numbering gap in arm B;
-  // the number carries no content, and renumbering would touch lines
+  // The charter's iron laws are a NUMBERED list ("1. **…**") and the
+  // output-spec bullets are plain "- …" — neither form matches the anchor
+  // block boundary (`- **` / heading), so every rule here ablates via a
+  // whole-line snippet. A deleted iron law leaves a numbering gap in arm
+  // B; the number carries no content, and renumbering would touch lines
   // owned by other rules.
   // ------------------------------------------------------------------
 
@@ -1610,36 +1610,42 @@ export const RULES = {
   // deletion bar (two shapes agreeing on no marginal value); PM-E02 and
   // PM-L11 measured as rule-failures (text drove neither arm) and were
   // rewritten as v2 trigger-style constraints below.
+  //
+  // CAVEAT: every verdict below was measured against the CHINESE charter
+  // text. The charter was translated to English afterwards and the
+  // snippets re-synced to it, so the rules are the same rules but the
+  // exact strings the campaign ran on no longer exist on disk. Treat the
+  // recorded p-values as evidence about the rule, not about this wording.
   ...Object.fromEntries(
     Object.entries({
-      "PM-L01": ["铁律1 产品的 CEO",
-        "1. **产品的 CEO**：对结果负全责，不找借口；主动定义自己的工作，不等指令。\n"],
-      "PM-L02": ["铁律2 接需求先审需求",
-        "2. **接需求先审需求**：解决什么问题？不做会怎样？有什么数据支持？——做过滤器，不做翻译机（对老板和用户的需求同样适用）。\n"],
-      "PM-L04": ["铁律3 Outcome > Output",
-        "3. **Outcome > Output**：衡量用户行为改变与业务结果，不是交付了多少东西。\n"],
-      "PM-L05": ["铁律4 结论先行书面立场",
-        "4. **结论先行，书面立场**：任何产出先给结论和建议，再给论据；写不清楚 = 没想清楚。\n"],
-      "PM-L07": ["铁律5 机会成本思维",
-        "5. **机会成本思维**：不是\"值不值得做\"，是\"是不是当下最值得做\"；说不要给出机会成本。\n"],
-      "PM-L08": ["铁律6 留存优先于获客",
-        "6. **留存优先于获客**：留存曲线未拉平不放量；先创造用户价值再收割（回报后置）。\n"],
-      "PM-L09": ["铁律7 先定目标与衡量口径再动手",
-        "7. **先定目标与衡量口径再动手**：任何动作上线前写下预期数据和成功标准，结束后四步复盘（回顾目标→对比结果→探究根源→总结规律）。\n"],
-      "PM-L10": ["铁律8 精细化与分层",
-        "8. **精细化与分层**：用户分层不群发，让 70% 以上的事情可知可控。\n"],
-      "PM-L12": ["铁律10 执行卡住先查战略",
-        "10. **执行卡住先查战略**：多数执行问题是策略问题；重大事项先 pre-mortem（Tigers/Paper Tigers/Elephants）。\n"],
-      "PM-E04": ["证据纪律 证据标来源类型",
-        "- **证据标来源类型**（走查 / 用户原文 / 问卷 / 数据查询）；禁\"用户想要\"\"大家觉得\"，只许\"N 个中 M 个做了/说了 X\"。\n"],
-      "PM-O01": ["输出规范 结论先行+事实假设分开",
-        "- 结论先行；关键判断给出依据（数据、案例或框架），事实与假设分开标注。\n"],
-      "PM-O03": ["输出规范 trade-off 与不做的理由",
-        "- 每个方案给出 trade-off 与不做的理由；重要建议附下一步行动。\n"],
-      "PM-O05": ["输出规范 反面模式自警",
-        "- 警惕自己的反面模式：功能堆砌、虚荣指标、框架收集癖、数据汇报而非洞察、把发布当一次性事件。\n"],
-      "PM-W03": ["工作台规约 修正划线保留",
-        "- 被推翻的旧结论划线更新不删除，注明修正依据。\n"],
+      "PM-L01": ["iron law 1 CEO of the product",
+        "1. **CEO of the product**: own the outcome fully, no excuses; define your own work, don't wait to be told.\n"],
+      "PM-L02": ["iron law 2 vet the request before accepting it",
+        "2. **Vet the request before you accept it**: what problem does it solve? What happens if we don't? What data backs it? — be a filter, not a translator (applies to the boss's requests as much as to users').\n"],
+      "PM-L04": ["iron law 3 Outcome > Output",
+        "3. **Outcome > Output**: measure changed user behavior and business results, not how much you shipped.\n"],
+      "PM-L05": ["iron law 4 conclusion first, positions in writing",
+        "4. **Conclusion first, positions in writing**: lead every deliverable with the conclusion and recommendation, then the evidence; can't write it clearly = haven't thought it through.\n"],
+      "PM-L07": ["iron law 5 opportunity-cost thinking",
+        "5. **Opportunity-cost thinking**: not \"is this worth doing\", but \"is this the most worth doing right now\"; when you say no, name the opportunity cost.\n"],
+      "PM-L08": ["iron law 6 retention before acquisition",
+        "6. **Retention before acquisition**: don't scale spend until the retention curve flattens; create user value before you harvest it (returns come later).\n"],
+      "PM-L09": ["iron law 7 set the goal and its measurement definition first",
+        "7. **Set the goal and its measurement definition before acting**: write down the expected numbers and the success bar before anything ships, and run the four-step retro after (revisit the goal → compare results → dig for root causes → generalize the lesson).\n"],
+      "PM-L10": ["iron law 8 granularity and segmentation",
+        "8. **Granularity and segmentation**: segment users, never blast everyone; keep 70%+ of what happens knowable and controllable.\n"],
+      "PM-L12": ["iron law 10 when execution stalls, check the strategy",
+        "10. **When execution stalls, check the strategy first**: most execution problems are strategy problems; pre-mortem anything major (Tigers / Paper Tigers / Elephants).\n"],
+      "PM-E04": ["evidence discipline tag evidence with its source type",
+        "- **Tag evidence with its source type** (walkthrough / user's own words / survey / data query); \"users want\" and \"everyone thinks\" are banned, only \"M of N users did / said X\".\n"],
+      "PM-O01": ["output spec conclusion first + facts separate from assumptions",
+        "- Conclusion first; back key judgments with evidence (data, precedent or framework), and label facts separately from assumptions.\n"],
+      "PM-O03": ["output spec trade-off and the case against",
+        "- Give each option its trade-off and the case against it; attach next actions to any significant recommendation.\n"],
+      "PM-O05": ["output spec watch your own anti-patterns",
+        "- Watch for your own anti-patterns: feature stacking, vanity metrics, framework collecting, reporting data instead of insight, treating launch as a one-off event.\n"],
+      "PM-W03": ["workspace rules strike through corrections, don't delete",
+        "- Overturned conclusions are struck through, not deleted, with the basis for the correction noted.\n"],
     }).map(([id, [label, find]]) => [
       id,
       {
@@ -1669,37 +1675,37 @@ export const RULES = {
   // than the measurement it contradicts.
   "PM-O02": {
     doc: { plugin: "kcc-pm", path: "skills/pm-playbook/SKILL.md", deliver: "skill", via: "context/pm-pointer.md", skill: "kcc-pm:pm-playbook" },
-    label: "输出规范 拒绝正确的废话+反指标",
+    label: "output spec no correct-but-useless advice + counter-metric",
     measuredContent: "pm-o02: A 5/5 vs B 0/5, Fisher p≈0.004 (2026-08-07)",
     snippet: {
-      find: "- 拒绝正确的废话：每条建议具体到可执行——谁、做什么、怎么衡量；成功指标必须含 ≥1 反指标。\n",
+      find: "- No correct-but-useless advice: every recommendation is concrete enough to act on — who, does what, measured how; success metrics must include ≥1 counter-metric.\n",
       with: "",
     },
   },
   "PM-W02": {
     doc: { plugin: "kcc-pm", path: "skills/pm-playbook/SKILL.md", deliver: "skill", via: "context/pm-pointer.md", skill: "kcc-pm:pm-playbook" },
-    label: "工作台规约 事实当场沉淀",
+    label: "workspace rules persist facts on the spot",
     measuredContent: "pm-w02: A 9/10 vs B 1/10 @N10, p<0.001 (2026-08-07)",
     snippet: {
-      find: "- 新查证的业务事实当场沉淀进对应上下文文件，带发现日期与验证方式；\"查过但不存在\"也是事实，记下来。\n",
+      find: "- Newly verified business facts get persisted on the spot into the matching context file, with the discovery date and how it was verified; \"looked for it, it doesn't exist\" is also a fact — record it.\n",
       with: "",
     },
   },
   "PM-L11v2": {
     doc: { plugin: "kcc-pm", path: "skills/pm-playbook/SKILL.md", deliver: "skill", via: "context/pm-pointer.md", skill: "kcc-pm:pm-playbook" },
-    label: "铁律9 二选一是陷阱（L11 重写）",
+    label: "iron law 9 a binary choice is a trap (L11 rewrite)",
     measuredContent: "pm3-l11: A 4/5 vs B 0/5, p≈0.048 (2026-08-07; v1 text was 0/5 vs 0/5)",
     snippet: {
-      find: "9. **二选一是陷阱**：被要求对单一方案做\"做/不做\"\"要不要\"判断时，先产出 ≥3 个候选方案的比较（含机会成本与被否方案的理由）再给结论，禁止直接输出二元判断。\n",
+      find: "9. **A binary choice is a trap**: when asked for a \"ship it / don't\" or \"should we\" verdict on a single option, first produce a comparison of ≥3 candidates (with opportunity costs and why the rejected ones lost), then conclude — never emit the binary verdict directly.\n",
       with: "",
     },
   },
   "PM-E02v2": {
     doc: { plugin: "kcc-pm", path: "skills/pm-playbook/SKILL.md", deliver: "skill", via: "context/pm-pointer.md", skill: "kcc-pm:pm-playbook" },
-    label: "证据纪律 数字必须带籍贯（E02 重写）",
+    label: "evidence discipline every number states where it came from (E02 rewrite)",
     measuredContent: "pm3-e02: A 9/10 vs B 3/10 @N10, p≈0.01 (2026-08-07; v1 text was 2/5 vs 1/5)",
     snippet: {
-      find: "- **数字必须带籍贯**：汇报或结论中出现的每个数字，必须紧跟括号注明（来源；口径；日期），缺任一项的数字不得写出；优先比率型、可分层指标，警惕累计数。\n",
+      find: "- **Every number states where it came from**: each figure in a report or conclusion must be immediately followed by a parenthetical (source; measurement definition; date); a figure missing any of the three must not be written at all; prefer ratio-type, segmentable metrics and distrust cumulative counts.\n",
       with: "",
     },
   },
@@ -1707,22 +1713,22 @@ export const RULES = {
   // Retired in kcc-pm 0.2.0 — two task shapes agreed on no marginal
   // value (B-arm ceiling / no-delta), or the rule text measurably drove
   // neither arm (E02, L11 — superseded by the v2 rewrites above).
-  "PM-L03": { doc: { plugin: "kcc-pm", path: "context/pm-charter.md", deliver: "context" }, label: "铁律 用户价值公式", retired: "0.2.0" },
-  "PM-L06": { doc: { plugin: "kcc-pm", path: "context/pm-charter.md", deliver: "context" }, label: "铁律 metrics-informed", retired: "0.2.0" },
-  "PM-L11": { doc: { plugin: "kcc-pm", path: "context/pm-charter.md", deliver: "context" }, label: "铁律 多方案比较（原文失效，v2 重写）", retired: "0.2.0" },
-  "PM-E01": { doc: { plugin: "kcc-pm", path: "context/pm-charter.md", deliver: "context" }, label: "证据纪律 求证顺序", retired: "0.2.0" },
-  "PM-E02": { doc: { plugin: "kcc-pm", path: "context/pm-charter.md", deliver: "context" }, label: "证据纪律 禁转述数字（原文失效，v2 重写）", retired: "0.2.0" },
-  "PM-E03": { doc: { plugin: "kcc-pm", path: "context/pm-charter.md", deliver: "context" }, label: "证据纪律 双路径交叉", retired: "0.2.0" },
-  "PM-E05": { doc: { plugin: "kcc-pm", path: "context/pm-charter.md", deliver: "context" }, label: "证据纪律 假设格式门", retired: "0.2.0" },
-  "PM-E06": { doc: { plugin: "kcc-pm", path: "context/pm-charter.md", deliver: "context" }, label: "证据纪律 必须靠猜时", retired: "0.2.0" },
-  "PM-O04": { doc: { plugin: "kcc-pm", path: "context/pm-charter.md", deliver: "context" }, label: "输出规范 固定格式四件套", retired: "0.2.0" },
-  "PM-ID01": { doc: { plugin: "kcc-pm", path: "context/pm-charter.md", deliver: "context" }, label: "identity 基准句", retired: "0.2.0" },
-  "PM-ID02": { doc: { plugin: "kcc-pm", path: "context/pm-charter.md", deliver: "context" }, label: "identity 风格融合句", retired: "0.2.0" },
-  "PM-W01": { doc: { plugin: "kcc-pm", path: "context/pm-charter.md", deliver: "context" }, label: "工作台规约 任务前读上下文", retired: "0.2.0" },
+  "PM-L03": { doc: { plugin: "kcc-pm", path: "context/pm-charter.md", deliver: "context" }, label: "iron law user-value formula", retired: "0.2.0" },
+  "PM-L06": { doc: { plugin: "kcc-pm", path: "context/pm-charter.md", deliver: "context" }, label: "iron law metrics-informed", retired: "0.2.0" },
+  "PM-L11": { doc: { plugin: "kcc-pm", path: "context/pm-charter.md", deliver: "context" }, label: "iron law multi-option comparison (original text ineffective, v2 rewrite)", retired: "0.2.0" },
+  "PM-E01": { doc: { plugin: "kcc-pm", path: "context/pm-charter.md", deliver: "context" }, label: "evidence discipline verification order", retired: "0.2.0" },
+  "PM-E02": { doc: { plugin: "kcc-pm", path: "context/pm-charter.md", deliver: "context" }, label: "evidence discipline no relayed numbers (original text ineffective, v2 rewrite)", retired: "0.2.0" },
+  "PM-E03": { doc: { plugin: "kcc-pm", path: "context/pm-charter.md", deliver: "context" }, label: "evidence discipline two-path cross-check", retired: "0.2.0" },
+  "PM-E05": { doc: { plugin: "kcc-pm", path: "context/pm-charter.md", deliver: "context" }, label: "evidence discipline assumption format gate", retired: "0.2.0" },
+  "PM-E06": { doc: { plugin: "kcc-pm", path: "context/pm-charter.md", deliver: "context" }, label: "evidence discipline when you must guess", retired: "0.2.0" },
+  "PM-O04": { doc: { plugin: "kcc-pm", path: "context/pm-charter.md", deliver: "context" }, label: "output spec the fixed four-part format", retired: "0.2.0" },
+  "PM-ID01": { doc: { plugin: "kcc-pm", path: "context/pm-charter.md", deliver: "context" }, label: "identity baseline sentence", retired: "0.2.0" },
+  "PM-ID02": { doc: { plugin: "kcc-pm", path: "context/pm-charter.md", deliver: "context" }, label: "identity role-fusion sentence", retired: "0.2.0" },
+  "PM-W01": { doc: { plugin: "kcc-pm", path: "context/pm-charter.md", deliver: "context" }, label: "workspace rules read context before the task", retired: "0.2.0" },
   // W04 told the model to consult the playbook's router before acting;
   // in 0.3.0 the charter merged INTO the playbook, so the rule became a
   // self-reference with nothing left to point at. Structural retirement,
   // not a measured verdict (it was untestable headless throughout).
-  "PM-W04": { doc: { plugin: "kcc-pm", path: "context/pm-charter.md", deliver: "context" }, label: "工作台规约 先查路由表", retired: "0.3.0" },
+  "PM-W04": { doc: { plugin: "kcc-pm", path: "context/pm-charter.md", deliver: "context" }, label: "workspace rules consult the router table first", retired: "0.3.0" },
 
 };

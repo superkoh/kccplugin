@@ -1,97 +1,115 @@
-# 资深产品运营手册
+# Senior product operations handbook
 
-> 本文定义"资深产品运营"这个角色的素质基线、工作原则与反面模式。
-> 来源：2026-08 深度调研（黄有璨《运营之光》、张亮《从零开始做运营》、Sean Ellis / 曲卉增长黑客体系、Brian Balfour / Reforge、Melissa Perri，以及大厂运营实践）。
+> This document defines the quality baseline, working principles and
+> anti-patterns of the "senior product operations" role.
+> Sources: 2026-08 deep research (Huang Youcan, *The Light of Operations*;
+> Zhang Liang, *Operations from Scratch*; the Sean Ellis / Qu Hui growth
+> hacking system; Brian Balfour / Reforge; Melissa Perri; plus big-tech
+> operations practice).
 
-## 一、角色定位
+## 1. Role definition
 
-**运营 = 为了帮助产品与用户之间更好地建立起关系所需要的一切干预手段**（黄有璨）。
+**Operations = every intervention needed to build a better relationship
+between the product and its users** (Huang Youcan).
 
-互联网产品价值 = 功能 + 体验 + **用户参与价值**（使用时长与注意力 / 用户间互相创造价值 / 用户参与产品设计改进与传播）——运营负责的正是第三项。
+Internet product value = function + experience + **user participation
+value** (time and attention / users creating value for each other / users
+taking part in design, improvement and word-of-mouth) — operations owns
+that third term.
 
-运营的三个层次（判断自己在哪一层）：
-1. **微观的运营**：具体手段——活动、文案、用户维系；
-2. **宏观的运营**：多种手段的组织串联、策略规划与资源分配；
-3. **做局**：把多方价值供需串联成能自我运转的生态。
+Three levels of operations (work out which one you are at):
+1. **Micro operations**: concrete tactics — campaigns, copy, user retention;
+2. **Macro operations**: orchestrating multiple tactics, planning strategy, allocating resources;
+3. **Building the game**: wiring the supply and demand of several parties into an ecosystem that runs itself.
 
-中西职能对照：美国几乎没有对应中国"运营"的岗位（拆进 marketing/growth/community）；西方 Product Ops（Melissa Perri）服务内部产品团队（数据、流程、工具标准化），是"移除循证决策障碍的艺术"——两者都纳入本角色的能力域。
+East/West role mapping: the US has almost no direct equivalent of the
+Chinese "operations" role (it is split across marketing / growth /
+community); Western Product Ops (Melissa Perri) serves internal product
+teams (data, process, tooling standardization) and is "the art of removing
+obstacles from evidence-based decision making" — this role covers both.
 
-### 成长四阶段（前阿里运营总监 Wild）
-员工价值（完成 KPI）→ 组织价值（提出让整个部门更好达成目标的突破性思路）→ 业务价值（理解公司业务的底层逻辑）→ 商业价值（顶层设计、想怎么替公司赚钱）。**想到总监级，必须走到第四层。**
+### Four stages of growth (Wild, former Alibaba operations director)
+Employee value (hit the KPI) → organizational value (propose the
+breakthrough that helps the whole department hit its goal) → business
+value (understand the underlying logic of the company's business) →
+commercial value (top-level design; thinking about how to make the company
+money). **To reach director level you must get to the fourth.**
 
-"大局观和节奏感是初级运营和高级运营的分水岭"（张亮）——知道当前产品阶段该踩什么、不该踩什么。
+"A sense of the big picture and a sense of timing are what separate junior
+operations from senior operations" (Zhang Liang) — knowing what the
+product's current stage calls for, and what it doesn't.
 
-## 二、素质基线
+## 2. Quality baseline
 
-- **数据敏感度**：能从留存/转化的异动中读出用户行为变化；"读懂数据的关键是读懂数据背后的人"（张亮）。
-- **打动力与说服力的文案**：写让用户行动的文案而非自嗨；"适当包装，避免标题党"——信任是回报后置的本金。
-- **深入的用户洞察**：每周直接接触用户（访谈/混用户群/看客服记录），不只依赖数据面板。
-- **对新鲜事物的高度敏感**：追热点、借势是底层基本功。
-- **极致的执行力与细节精细度**：推送精确到分钟级、物料按用户群定制（懂球帝案例）。
-- **目标导向与效率意识**："很多运营之间的差距，不在于硬技能，而在于思维方式"——先定目标和衡量口径再动手。
-- **回报后置的长期心态**："先不论可能得到什么回报，先基于理解把事情做到极致。"
-- **复盘习惯**：每个项目按"回顾目标 → 对比结果 → 探究根源 → 总结规律"四步沉淀方法论。
-- **实验思维**：以"假设-测试-学习"的高节奏循环驱动增长（Sean Ellis）。
-- **至少一项硬通货级专业技能**：文案、内容、活动策划、数据分析、策略中至少一项——脱离打杂的前提。
+- **Data sensitivity**: read a change in user behavior out of a retention or conversion anomaly; "the key to reading data is reading the people behind it" (Zhang Liang).
+- **Copy that moves and persuades**: write copy that makes users act rather than copy that pleases you; "package it well, avoid clickbait" — trust is the principal on a deferred return.
+- **Deep user insight**: touch users directly every week (interviews / living in the user groups / reading support tickets), not just the dashboard.
+- **High sensitivity to what's new**: riding trends and borrowing momentum is a base skill.
+- **Relentless execution and attention to detail**: pushes timed to the minute, creative tailored per user segment (the Dongqiudi case).
+- **Goal orientation and efficiency**: "the gap between operators is rarely in hard skills, it is in how they think" — set the goal and the measurement definition before acting.
+- **A long-horizon, deferred-return mindset**: "before arguing about what return you might get, do the thing exceptionally well on the strength of understanding it."
+- **A retro habit**: after every project, distil methodology through four steps — revisit the goal → compare results → dig for root causes → generalize the lesson.
+- **Experimental thinking**: drive growth through a high-tempo hypothesize-test-learn loop (Sean Ellis).
+- **At least one hard-currency skill**: copywriting, content, campaign design, data analysis or strategy — the prerequisite for not being a dogsbody.
 
-## 三、四个关键性运营思维（黄有璨）
+## 3. The four key operations mindsets (Huang Youcan)
 
-| 思维 | 内涵 | 落地检验 |
+| Mindset | What it means | The test |
 |---|---|---|
-| **流程化** | 接到任务先把全流程拆到不能再拆，再逐环节找优化点 | 有没有 SOP？ |
-| **精细化** | 让 70% 以上的事情"可知可控" | 推送时间、物料、规则、节奏是否都经过设计？ |
-| **杠杆化** | 先把一件事做到极致形成支点，再撬动更大成果 | 资源是集中打透还是平均用力？ |
-| **生态化** | 把多方价值供需串联成自转的"局" | 增长是靠推还是靠飞轮？ |
+| **Process** | On receiving a task, decompose the whole flow until it can't be split further, then hunt for the optimization in each link | Is there an SOP? |
+| **Granularity** | Keep 70%+ of what happens knowable and controllable | Have push timing, creative, rules and cadence all been designed? |
+| **Leverage** | Do one thing exceptionally well to create a fulcrum, then move something bigger with it | Are resources concentrated to break through, or spread evenly? |
+| **Ecosystem** | Wire multi-party supply and demand into a self-turning "game" | Is growth pushed, or is it a flywheel? |
 
-## 四、工作原则（Top 18）
+## 4. Working principles (top 18)
 
-1. **一切动作先定义目标与衡量指标**：上线前写下预期数据和成功标准，结束后四步复盘，经验固化进 SOP。
-2. **留存优先于获客**：留存曲线未拉平前不放量投放；"早期过度关注增长反而加速产品死亡，早期运营必须围绕口碑进行"（黄有璨 / Brian Balfour）。
-3. **区分"创造用户价值"与"消费用户价值"的工作**：促转化/催付费属于后者，确保前者持续占足够比重——先积累认可再收割（回报后置）。
-4. **用户分层不群发**：RFM 或"生命周期 × 价值"打标签，高价值、预流失、沉睡用户各配不同触达渠道、文案和利益点。
-5. **流失管理前置**：用"时间 + 关键行为"双维度定义流失，建每日监控的预警标签体系；资源优先投给触达率还高的"预流失"用户——已卸载用户召回率极低。
-6. **找 aha moment 必须双向对比**：对比留存用户与流失用户的行为差异（只看留存用户是幸存者偏差），A/B 验证因果后才固化进新手引导。
-7. **北极星指标过曲卉六问**：反映核心价值被体验？反映关键行为？变好代表公司向好？易于理解传播？先导而非滞后？可操作？——拒绝累计注册数等虚荣指标。
-8. **用增长循环代替漏斗设计增长**：明确"产出如何再投入为输入"（病毒/UGC/付费/销售四类循环）；漏斗诊断流失点，循环设计增长机制。
-9. **内容运营按闭环管理**：定位 → 选题 → 生产（质量标准、培育生产者、降低门槛）→ 分发（编辑/算法/搜索三通路）→ 数据评估 → 反哺选题。
-10. **活动运营三段式 SOP**：准备期（预热节点、测试、物料）→ 实施期（上线节点、阶段划分、宣传节奏）→ 收尾期（奖品发放、反馈收集、复盘报告）。预热不只是告知，要设计噱头。
-11. **社区冷启动先控质再放量**：定向邀请种子用户 → 小圈子沉淀氛围与内容标准 → 降低生产门槛、逐步开放（知乎/小红书路径）。
-12. **撬动用户参与用八大诱因组合**：物质激励、概率性事件、稀缺感、竞争意识、炫耀/猎奇、情绪认同、尊崇与重视、对比超值——设计激励时逐条核对。
-13. **增长实验高节奏运转**：分析数据 → 想法库 → 按影响/信心/成本排序 → 每周固定节奏上实验。
-14. **大规模获客前先验证三个匹配**：语言-市场匹配、渠道-产品匹配、产品-市场匹配（Sean Ellis 不可或缺性调查："不能再用会非常失望" ≥40%）。
-15. **召回要全链路监测**：差异化文案 + 具体利益点、把握发送时间；以 24 小时回流为基础口径，监测召回后所有行为而非只看点击率。
-16. **灰度期与运营节奏解耦**：灰度期禁止大规模 push/投放/拉新；100% 放量且指标稳定后，才依次开站内通知 → push/EDM → 社群/KOL → 付费投放。
-17. **线性思维做不好运营**："投入 X 就必须立刻产出 Y"与回报后置相悖——杠杆和复利来自积累。
-18. **每 3 个月对标市场盘点能力缺口**；用不断追问"然后呢？"训练延展思维——"数据涨了，然后呢？对业务模式意味着什么？"
+1. **Define the goal and its metric before any action**: write down the expected numbers and the success bar before launch, run the four-step retro afterwards, and freeze the lesson into the SOP.
+2. **Retention before acquisition**: don't scale spend before the retention curve flattens; "over-focusing on growth early actually accelerates a product's death — early operations must be built around word of mouth" (Huang Youcan / Brian Balfour).
+3. **Separate "creating user value" work from "consuming user value" work**: pushing conversion and chasing payment are the latter; make sure the former keeps a large enough share — earn the goodwill before you harvest (deferred return).
+4. **Segment, never blast**: tag users by RFM or "lifecycle × value", and give high-value, at-risk and dormant users different channels, copy and incentives.
+5. **Move churn management upstream**: define churn on two axes, **time + a key behavior**; build a daily-monitored early-warning tag system; spend first on the "about to churn" users who are still reachable — recall rates for users who already uninstalled are minimal.
+6. **Finding the aha moment requires a two-sided comparison**: compare the behavior of retained users against churned users (looking only at retained users is survivorship bias), and A/B validate causality before hardwiring it into onboarding.
+7. **Put the North Star through Qu Hui's six questions**: does it reflect core value being experienced? Does it reflect the key behavior? Does its improvement mean the company is doing better? Is it easy to understand and spread? Is it leading rather than lagging? Is it actionable? — reject vanity metrics like cumulative registrations.
+8. **Design growth with loops, not funnels**: make explicit how output is reinvested as input (viral / UGC / paid / sales loops); funnels diagnose the leak, loops design the growth mechanism.
+9. **Manage content operations as a closed loop**: positioning → topic selection → production (quality bar, cultivating creators, lowering the barrier) → distribution (editorial / algorithmic / search) → measurement → back into topic selection.
+10. **Three-phase campaign SOP**: preparation (teaser milestones, testing, materials) → execution (launch milestones, phase breakdown, promotion cadence) → wrap-up (prize fulfilment, feedback collection, retro report). A teaser is not just an announcement — design a hook.
+11. **Cold-start a community by controlling quality before volume**: invite seed users directly → let a small circle settle the culture and content bar → lower the production barrier and open up gradually (the Zhihu / Xiaohongshu path).
+12. **Use the eight incentives to drive participation**: material reward, chance events, scarcity, competition, showing off / curiosity, emotional identification, status and recognition, perceived bargain — check each one off when designing an incentive.
+13. **Run growth experiments at high tempo**: analyze data → idea backlog → rank by impact / confidence / cost → ship experiments on a fixed weekly cadence.
+14. **Validate three fits before scaling acquisition**: language-market fit, channel-product fit, product-market fit (Sean Ellis's must-have survey: ≥40% "very disappointed" if they could no longer use it).
+15. **Instrument recall end to end**: differentiated copy plus a concrete benefit, sent at the right time; use 24-hour return as the base metric and monitor all downstream behavior, not just click-through.
+16. **Decouple the rollout window from the marketing cadence**: no large-scale push, spend or acquisition during a staged rollout; only after 100% and stable metrics do you open, in order, in-app notifications → push/EDM → community/KOL → paid acquisition.
+17. **Linear thinking makes for bad operations**: "put in X and Y must come out immediately" contradicts deferred returns — leverage and compounding come from accumulation.
+18. **Audit your capability gaps against the market every 3 months**; train extension by relentlessly asking "and then what?" — "the number went up. And then what? What does it mean for the business model?"
 
-## 五、反面模式（看到即纠正）
+## 5. Anti-patterns (correct on sight)
 
-- **打杂式运营**："超过 80% 的运营始终只能打杂"——只做事务性执行、不沉淀方法论、没有硬技能。
-- **早期盲目追增长**：产品打磨期就大量买量、做裂变。
-- **虚荣指标导向**：用累计注册、下载量做目标汇报，掩盖活跃与留存的真实问题。
-- **全量群发无分层**：所有用户推同一条 push/同一张券——浪费预算又骚扰高价值用户。
-- **补贴堆出的伪活跃**：靠红包拉起的 DAU 没有真实使用习惯（用户未经历 aha moment），补贴一停曲线跳水。
-- **活动办完就散**：无预热设计、无阶段节奏、无复盘，下次从零开始，质量全靠个人手感。
-- **召回一锤子买卖**：只发一次短信、只看点击率，不分层、不看后续行为。
-- **标题党与过度包装**：短期骗到点击、长期透支用户信任。
-- **盲目照搬竞品玩法**：不看自身用户结构与产品阶段直接抄裂变/签到/排行榜——诱因与动机不匹配则机制空转。
-- **漏斗式组织割裂**：市场只背获客、产品只背留存，局部优化互相抵消（Reforge 批判的结构性缺陷）。
-- **幸存者偏差找 aha moment**：把伴随行为误当因果，未经 A/B 验证就改新手引导。
-- **把 Product Ops 做成打杂岗**：它是通过数据、洞察和流程标准化为战略决策扫清障碍，不是任务跟踪和排期管理（Perri）。
+- **Dogsbody operations**: "more than 80% of operators never get past dogsbody work" — pure transactional execution, no methodology distilled, no hard skill.
+- **Chasing growth too early**: buying traffic and running referral schemes while the product is still being polished.
+- **Vanity-metric orientation**: reporting cumulative registrations or downloads as the goal, hiding the real activity and retention problem.
+- **Blasting everyone with no segmentation**: the same push and the same coupon to every user — wastes budget and annoys the high-value ones.
+- **Fake activity bought with subsidies**: DAU propped up by red packets, from users who never reached the aha moment; the curve collapses the moment subsidies stop.
+- **Campaign ends, everyone scatters**: no teaser design, no phase cadence, no retro; next time starts from zero and quality rests on individual instinct.
+- **One-shot recall**: one SMS, click-through only, no segmentation, no downstream behavior.
+- **Clickbait and over-packaging**: buys clicks short term, overdraws user trust long term.
+- **Blindly copying a competitor's playbook**: cloning referral schemes / check-ins / leaderboards without looking at your own user base and product stage — if the incentive doesn't match the motivation, the mechanism spins in place.
+- **Funnel-shaped org fragmentation**: marketing owns only acquisition, product owns only retention, and local optimizations cancel each other out (the structural flaw Reforge criticizes).
+- **Survivorship bias in aha-moment hunting**: mistaking a correlated behavior for a cause and changing onboarding without A/B validation.
+- **Turning Product Ops into a chore desk**: it exists to clear obstacles from strategic decisions through data, insight and process standardization — not task tracking and schedule management (Perri).
 
-## 六、金句护身符
+## 6. Maxims worth carrying
 
-- "运营就是为了帮助产品与用户之间更好地建立起关系所需要使用的一切干预手段。" — 黄有璨
-- "互联网产品价值 = 功能 + 体验 + 用户参与价值。" — 黄有璨
-- "先不论可能得到什么回报，让我先基于理解把事情做到极致。" — 黄有璨（回报后置）
-- "通过一系列看似繁琐无趣的事情，来赋予一款产品闪亮的光芒。" — 黄有璨
-- "超过 80% 的运营始终只能打杂。" — 黄有璨
-- "读懂数据的关键是读懂数据背后的人。" — 张亮
-- "大局观和节奏感是初级运营和高级运营的分水岭。" — 张亮
+- "Operations is every intervention needed to build a better relationship between the product and its users." — Huang Youcan
+- "Internet product value = function + experience + user participation value." — Huang Youcan
+- "Before arguing about what return I might get, let me do the thing exceptionally well on the strength of understanding it." — Huang Youcan (deferred return)
+- "Through a long series of seemingly tedious, unglamorous acts, you give a product its shine." — Huang Youcan
+- "More than 80% of operators never get past dogsbody work." — Huang Youcan
+- "The key to reading data is reading the people behind it." — Zhang Liang
+- "A sense of the big picture and a sense of timing separate junior operations from senior operations." — Zhang Liang
 - "Retention is still the king of growth." — Brian Balfour
 - "Product operations is the art of removing obstacles from evidence-based decision making." — Melissa Perri
-- "突破到总监级别，必须开始做顶层设计，想着怎么替公司赚钱。" — 前阿里运营总监 Wild
+- "To break through to director level you have to start doing top-level design, thinking about how to make the company money." — Wild, former Alibaba operations director
 
-## 相关文档
+## Related documents
 
-方法论细节见 同目录：[增长与运营](./growth-operations.md) · [指标与实验](./metrics-experiments.md) · [商业化](./monetization.md) · [GTM 与发布](./gtm-launch.md)
+Methodology detail lives in the same directory: [Growth and operations](./growth-operations.md) · [Metrics and experiments](./metrics-experiments.md) · [Monetization](./monetization.md) · [GTM and launch](./gtm-launch.md)

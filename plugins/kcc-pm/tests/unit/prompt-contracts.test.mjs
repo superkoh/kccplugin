@@ -26,12 +26,12 @@ test("skill charter carries its sections in order", async () => {
   const text = await read("skills", "pm-playbook", "SKILL.md");
   const headings = [...text.matchAll(/^## (.+)$/gm)].map((m) => m[1]);
   const want = [
-    "铁律（每个任务开始前默过一遍）",
-    "证据纪律",
-    "输出规范",
-    "工作台规约",
-    "任务 → 工作流",
-    "角色手册",
+    "Iron laws (run through them before every task)",
+    "Evidence discipline",
+    "Output spec",
+    "Workspace rules",
+    "Task → workflow",
+    "Role handbooks",
   ];
   assert.deepEqual(
     headings,
@@ -42,12 +42,12 @@ test("skill charter carries its sections in order", async () => {
 
 test("skill charter has exactly 10 iron laws (post-ablation)", async () => {
   const text = await read("skills", "pm-playbook", "SKILL.md");
-  const section = text.split("## 铁律")[1].split("## ")[0];
+  const section = text.split("## Iron laws")[1].split("## ")[0];
   const laws = section.match(/^\d+\. \*\*/gm) ?? [];
   assert.equal(
     laws.length,
     10,
-    "铁律 count is measured, not stylistic — changing it means a new ablation round, then update this contract"
+    "the iron-law count is measured, not stylistic — changing it means a new ablation round, then update this contract"
   );
 });
 
@@ -72,7 +72,7 @@ test("pm agent is a thin shell that defers to the single-source charter", async 
   );
   assert.doesNotMatch(
     text,
-    /产品的 CEO|二选一是陷阱|数字必须带籍贯/,
+    /CEO of the product|binary choice is a trap|Every number states where it came from/,
     "charter rules must not be duplicated into the agent — single source in SKILL.md"
   );
 });
@@ -82,21 +82,25 @@ test("pm agent is a thin shell that defers to the single-source charter", async 
 // ineffective) — each anchor here was paid for in ~400 Opus runs.
 test("skill charter keeps the measured load-bearing rules", async () => {
   const prose = collapse(await read("skills", "pm-playbook", "SKILL.md"));
-  assert.match(prose, /反指标/, "counter-metric rule measured effective (A 5/5 vs B 0/5) — must survive");
-  assert.match(prose, /当场沉淀/, "persist-facts rule measured effective (9/10 vs 1/10) — must survive");
-  assert.match(prose, /数字必须带籍贯/, "the E02 rewrite measured effective (9/10 vs 3/10) — must survive");
-  assert.match(prose, /二选一是陷阱/, "the L11 rewrite measured effective (4/5 vs 0/5) — must survive");
+  assert.match(prose, /counter-metric/, "counter-metric rule measured effective (A 5/5 vs B 0/5) — must survive");
+  assert.match(prose, /persisted on the spot/, "persist-facts rule measured effective (9/10 vs 1/10) — must survive");
+  assert.match(prose, /Every number states where it came from/, "the E02 rewrite measured effective (9/10 vs 3/10) — must survive");
+  assert.match(prose, /A binary choice is a trap/, "the L11 rewrite measured effective (4/5 vs 0/5) — must survive");
 });
 
 // ---------------------------------------------------------------- onboard
 
 test("onboard command keeps the field-tested interview mechanics", async () => {
   const prose = collapse(await read("commands", "onboard.md"));
-  assert.match(prose, /每批 ≤5 个问题/, "question batching must survive");
-  assert.match(prose, /材料清单单独列，不占问题预算/, "materials-list separation must survive");
+  assert.match(prose, /≤5 questions per batch/, "question batching must survive");
+  assert.match(
+    prose,
+    /materials list is separate and does not count against the question budget/,
+    "materials-list separation must survive"
+  );
   assert.match(prose, /Mom Test/, "interview discipline must survive");
-  assert.match(prose, /'没有'本身也是重要信息/, "absence-is-information must survive");
-  assert.match(prose, /增量模式/, "re-run incremental mode must survive");
+  assert.match(prose, /an absence is itself important information/, "absence-is-information must survive");
+  assert.match(prose, /incremental mode/, "re-run incremental mode must survive");
 });
 
 test("onboard command writes the five context slots plus the marker", async () => {
@@ -122,7 +126,7 @@ test("playbook router table has 12 task rows and every cited reference exists", 
   const raw = await read("skills", "pm-playbook", "SKILL.md");
   const rows = raw
     .split("\n")
-    .filter((l) => l.startsWith("| ") && !l.startsWith("| 接到的任务") && !l.startsWith("|---"));
+    .filter((l) => l.startsWith("| ") && !l.startsWith("| Task |") && !l.startsWith("|---"));
   assert.equal(rows.length, 12, "router must keep 12 task rows — deliberate changes update this contract");
 
   const cited = new Set();

@@ -52,7 +52,7 @@ const FIXTURE = {
 };
 
 // Round-1 lesson (2026-08-07, ~$10): reasoning probes originally ran
-// under FULL_LOCKDOWN, but the charter's 工作台规约 compels reading the
+// under FULL_LOCKDOWN, but the charter's workspace rules compel reading the
 // workspace and the hook injects the file listing — with Read locked,
 // the Opus arm fabricated `<invoke name="Read">` transcripts complete
 // with invented file contents, and ~2/3 of runs correctly voided as
@@ -72,7 +72,7 @@ const reasoning = (id, rule, title, prompt, rubric, maxBudgetUsd = 0.8) => ({
 });
 
 export const PROBES = [
-  // ------------------------------------------------------------ 铁律
+  // ------------------------------------------------------- iron laws
   reasoning(
     "pm-l01",
     "PM-L01",
@@ -158,7 +158,7 @@ export const PROBES = [
     "The reply answers a request to design stricter review/scheduling process for a team suffering repeated rework and daily priority churn.\n\nQuestion: does the reply first diagnose the churn as most likely a strategy/priority problem (unclear bets, undecided direction) and address that BEFORE — or instead of — delivering the requested process machinery?\n\nPASS only if the strategic diagnosis leads and any process suggestions are secondary. A reply that mainly delivers the stricter process, however well designed, is FAIL."
   ),
 
-  // ------------------------------------------------------ 证据纪律
+  // ---------------------------------------------- evidence discipline
   reasoning(
     "pm-e03",
     "PM-E03",
@@ -188,7 +188,7 @@ export const PROBES = [
     "The reply produces a retention-impact estimate for a template-marketplace feature, with no adoption or effect-size data available in context.\n\nQuestion: is every invented quantity (adoption rate, usage frequency, effect size, timeline) explicitly labeled as an assumption (标注'假设'或同义标记), with the load-bearing unknowns flagged as needing confirmation rather than silently guessed?\n\nPASS only if assumption labeling is systematic and visible. An estimate whose inputs are presented as if factual, or only vaguely hedged, is FAIL."
   ),
 
-  // ------------------------------------------------------ 输出规范
+  // ------------------------------------------------------ output spec
   reasoning(
     "pm-o01",
     "PM-O01",

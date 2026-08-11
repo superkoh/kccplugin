@@ -30,7 +30,7 @@
       "name": "kcc-pm",
       "source": "./plugins/kcc-pm",
       "description": "Business-agnostic senior PM × product-ops capability with zero session-start footprint: a task-scoped playbook skill carrying the role charter (iron laws, evidence discipline, output spec — per-rule A/B ablated on Opus-class arms) and the workflow router, a dispatchable pm agent that keeps the persona out of the main session entirely, and an interview-driven onboarding command that builds per-project PM context files.",
-      "version": "0.3.0"
+      "version": "0.3.1"
     }
   ]
 }
