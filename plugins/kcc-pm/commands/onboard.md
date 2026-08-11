@@ -1,48 +1,63 @@
 ---
-description: 为当前项目建立（或增量补全）PM 工作台——访谈式 onboarding，把 PM 需要的业务上下文沉淀成 repo 内知识文件，供 pm-playbook 技能与 pm agent 在处理 PM 任务时取用
-argument-hint: "[可选：补充说明，如业务简介或想侧重的方向]"
+description: 建立 PM 工作台 / PM onboarding — stand up (or incrementally fill in) the PM workspace for this project via an interview, persisting the business context a PM needs into repo knowledge files for the pm-playbook skill and the pm agent to draw on
+argument-hint: "[optional: extra context, e.g. a business summary or the angle to focus on]"
 ---
 
-# 建立 PM 工作台
+# Stand up the PM workspace
 
-目的：把"这个业务 LLM 无法先验知道、查证过一次就不该再查第二次"的知识，从用户和现有材料里挖出来，落成 repo 内文件。用户可能是新入职（需要你帮 TA 诊断业务），也可能对业务很熟（需要把知识转移给你）——两种场景访谈方式相同：你问，用户答，你落盘。
+Goal: extract the knowledge an LLM cannot know a priori and should never
+have to look up twice — from the user and from existing material — and
+land it as files in the repo. The user may be newly hired (they need you
+to help diagnose the business) or deeply familiar with it (they need to
+transfer that knowledge to you). Both cases interview the same way: you
+ask, they answer, you write it to disk.
 
-## 模式判定
+## Mode detection
 
-先检查项目根的 `.kcc-pm.json`：已存在 → **增量模式**：读全部上下文文件，只针对空缺、过时、标记待验证处提问，不重问已记录的内容。不存在 → 全新 onboarding，走下面的流程。
+First check for `.kcc-pm.json` at the project root: present → **incremental
+mode**: read every context file and ask only about gaps, stale entries and
+things marked for verification; never re-ask what is already recorded.
+Absent → fresh onboarding, run the flow below.
 
-## 访谈（agent 主导）
+## Interview (agent-led)
 
-- 你主导提问，分批进行，**每批 ≤5 个问题**；消化一批回答后再出下一批，第二批必须基于第一批的回答变得更聚焦。两批通常足够；要问第三批需说明为什么。
-- 第一批固定五问：
-  1. 产品一句话定义：给谁、解决什么问题、靠什么赚钱（或计划靠什么赚）；多条产品线时哪条是主线。
-  2. 阶段与量级：上线多久、DAU/MAU 量级、有没有收入、在找 PMF 还是在规模化。
-  3. 这个 PM 职能为什么存在：接手的是"空白"、"废墟"还是"运转中的机器"；此前谁在干、怎么干。
-  4. 老板/决策者最焦虑的一件事（不是职责描述，是夜里睡不着想的那个问题）；以及 6 个月后出现什么变化算做对了。
-  5. 内部公认的最大问题（用户自己的版本即可；听过的不同版本都要）。
-- **材料清单单独列，不占问题预算**：数据看板与分析工具权限、产品入口与测试账号、一页背景（融资/团队规模与分工/组织架构）、历史文档（roadmap/周报/用户调研/复盘）、建议第一周约聊的人。
-- 访谈纪律（Mom Test）：问过去的行为和具体决策，不问观点与愿景；明确告诉用户**"没有的直接说'没有'，'没有'本身也是重要信息"**。
-- 每个问题都要过一道自检：答案会改变你接下来做什么吗？不会就砍掉。
+- You lead the questioning, in batches of **≤5 questions per batch**; digest one batch of answers before sending the next, and the second batch must be sharper because of the first. Two batches are usually enough; a third needs a stated reason.
+- The first batch is fixed:
+  1. One-sentence product definition: for whom, solving what, making money how (or planning to); if there are several product lines, which is the main one.
+  2. Stage and scale: how long since launch, DAU/MAU order of magnitude, is there revenue, hunting for PMF or scaling.
+  3. Why this PM role exists: are they inheriting a blank slate, a ruin, or a running machine; who did it before and how.
+  4. The one thing the boss / decision-maker is most anxious about (not a job description — the thing that keeps them up at night); and what change six months out would count as having gotten it right.
+  5. The biggest problem by internal consensus (the user's own version is fine; capture every version they've heard).
+- **The materials list is separate and does not count against the question budget**: access to dashboards and analytics tools, product entry points and test accounts, a one-page background (funding / team size and split / org chart), historical documents (roadmap / weeklies / user research / retros), and who to book a chat with in week one.
+- Interview discipline (Mom Test): ask about past behavior and specific decisions, never opinions or visions; tell the user explicitly **"if there isn't one, just say 'there isn't one' — an absence is itself important information"**.
+- Every question passes one self-check: would the answer change what you do next? If not, cut it.
 
-## 自查
+## Self-service digging
 
-用户给了数据或文档通路的，先自己挖再问人：元数据先行、只读、小步探查。挖到的发现和"查过但不存在"都要记录；没有通路的记为盲区，不堵塞访谈。
+Where the user has given you a data or document path, dig before you ask:
+metadata first, read-only, small probing steps. Record both what you found
+and what you "looked for but does not exist"; where there is no access,
+log a blind spot and keep the interview moving.
 
-## 落盘
+## Writing to disk
 
-上下文目录默认 `pm/`（用户明确要求其他位置时相应调整并写进标记文件）。生成：
+The context directory defaults to `pm/` (adjust and record it in the
+marker file if the user asks for somewhere else). Produce:
 
-- `pm/org.md` — 公司与产品、商业模式；用户的角色边界（**明确什么不归 TA 管**）；老板意图与成功标准；团队与可调动资源；数据与工具通路。
-- `pm/baselines.md` — 定量基线：规模、留存、收入等关键数字，每条带来源、口径、日期。
-- `pm/market.md` — 竞品与外部环境：主要竞品状态、品类打法、外部风险。
-- `pm/findings.md` — 内部文档与数据发现：战略文档要点、数据挖掘结论、**修正记录**（被推翻的假设划线保留）、**"不存在"清单**（查过但没有的数据/文档）。
-- `pm/capabilities.md` — 工作台自身的能力账本：数据通路、权限、盲区，每条带状态（探索中 / 待路由 / 已解决 / 冻结）。与业务问题分开，不混入产品结论。
-- `.kcc-pm.json`（项目根）— `{"version": 1, "contextDir": "pm"}`。工作台的标记与配置：`pm-playbook` 技能和 `pm` agent 处理 PM 任务时凭它定位上下文目录。
+- `pm/org.md` — company and product, business model; the user's role boundary (**state explicitly what is NOT theirs**); the boss's intent and success bar; team and mobilizable resources; data and tooling access.
+- `pm/baselines.md` — quantitative baselines: scale, retention, revenue and other key numbers, each with source, measurement definition and date.
+- `pm/market.md` — competitors and external environment: state of the main competitors, category playbooks, external risks.
+- `pm/findings.md` — findings from internal documents and data: strategy-doc takeaways, data-mining conclusions, **correction log** (overturned assumptions kept with strikethrough), and the **"does not exist" list** (data/documents looked for and not found).
+- `pm/capabilities.md` — the workspace's own capability ledger: data access, permissions, blind spots, each with a status (exploring / needs routing / resolved / frozen). Kept apart from business questions; no product conclusions mixed in.
+- `.kcc-pm.json` (project root) — `{"version": 1, "contextDir": "pm"}`. The workspace marker and config: the `pm-playbook` skill and the `pm` agent use it to locate the context directory when handling PM tasks.
 
-落盘纪律：写结论化事实，不写对话流水；每条事实带发现日期与验证方式；事实 / 假设 / 待验证分栏标注；敏感凭证（token、密码）绝不落入上下文文件。
+Writing discipline: record concluded facts, not conversation transcripts;
+every fact carries its discovery date and how it was verified; label
+facts / assumptions / to-be-verified in separate columns; secrets (tokens,
+passwords) never land in a context file.
 
-## 收口
+## Closing out
 
-1. 向用户复述"我理解的业务坐标系"（一页以内）：主线、阶段、最大问题、角色边界、最缺的信息。请用户纠偏，纠偏结果回写文件。
-2. 报告生成了哪些文件、各自记了什么、哪些槽位还空着（空着的写进 `pm/capabilities.md` 的盲区）。
-3. 提议（不强加）下一步：新入职场景可继续产出内部访谈问题清单和 30 天计划；熟悉业务的场景可直接开始接任务。
+1. Play back "the business coordinate system as I understand it" (one page max): the main line, the stage, the biggest problem, the role boundary, the most-missing information. Ask the user to correct you, and write the corrections back to the files.
+2. Report which files you created, what each one records, and which slots are still empty (empty ones go into the blind-spot list in `pm/capabilities.md`).
+3. Propose (don't impose) the next step: for the newly-hired case, an internal interview question list and a 30-day plan; for the already-fluent case, start taking tasks straight away.

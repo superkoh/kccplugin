@@ -1,56 +1,57 @@
-# 用户洞察与需求发现
+# User insight and requirement discovery
 
-> 怎么找到真需求、验证真需求。写代码是最贵的验证方式，永远最后用。
+> How to find a real need and validate it. Writing code is the most
+> expensive way to validate anything — always the last resort.
 
-## 框架速查
+## Framework quick reference
 
-| 框架 | 一句话 | 何时用 |
+| Framework | In one line | When to use |
 |---|---|---|
-| 持续发现 + 机会解决方案树（Teresa Torres） | 每周访谈维护"结果→机会→方案→测试"四层树 | 从交付功能转向交付结果 |
-| JTBD（Christensen） | 用户"雇用"产品完成任务，竞品是一切替代方案 | 定义新产品、发现需求本质 |
-| The Mom Test（Fitzpatrick） | 谈对方的生活，不谈你的想法 | 每一次用户访谈 |
-| 俞军用户模型 | 用户是需求的集合，不是自然人 | 需求评审争论"用户想要 X"时 |
-| 俞军用户价值公式 | 价值 =（新体验 − 旧体验）− 替换成本 | 评估功能/产品能否替代现状 |
-| 梁宁痛爽痒 + 用户画像 | 痛点是恐惧、爽点是即时满足、痒点是虚拟自我 | 给需求定性、找切入点 |
-| 10/100/1000（马化腾） | 每月 10 个调查、100 个用户声音、1000 条反馈 | 与用户保持接触的制度设计 |
-| aha moment 双向对比 | 对比留存与流失用户的行为差异找 magic number | 确定激活目标、优化新手引导 |
+| Continuous discovery + opportunity solution tree (Teresa Torres) | Maintain an outcome → opportunity → solution → test tree through weekly interviews | Moving from shipping features to delivering outcomes |
+| JTBD (Christensen) | Users "hire" a product to get a job done; the competition is every alternative | Defining a new product, getting at the essence of a need |
+| The Mom Test (Fitzpatrick) | Talk about their life, not your idea | Every single user interview |
+| Yu Jun's user model | A user is a bundle of needs, not a person | When a requirement review devolves into "users want X" |
+| Yu Jun's user-value formula | Value = (new experience − old experience) − switching cost | Judging whether a feature/product can displace the status quo |
+| Liang Ning's pain/pleasure/itch + personas | Pain is fear, pleasure is instant gratification, itch is the imagined self | Characterizing a need, finding the wedge |
+| 10/100/1000 (Pony Ma) | 10 surveys, 100 user voices, 1000 pieces of feedback per month | Institutionalizing contact with users |
+| Two-sided aha-moment comparison | Compare retained vs churned behavior to find the magic number | Setting the activation target, improving onboarding |
 
-## 核心操作
+## Core practices
 
-### 访谈纪律（The Mom Test 三原则）
-1. 谈对方的生活，不谈你的想法；
-2. 问过去的具体事实，不问未来的观点——用"上次遇到这个问题是什么时候？你当时怎么解决的？付出了什么代价？"替代"你会用吗/你会买吗？"；
-3. 少说多听。
+### Interview discipline (the Mom Test's three rules)
+1. Talk about their life, not your idea;
+2. Ask about concrete past facts, not future opinions — replace "would you use it / would you buy it?" with "when did you last hit this problem? What did you do about it? What did it cost you?";
+3. Talk less, listen more.
 
-信号真伪判据：对方付出了真实货币——**时间**（约下次带目标的会议、试用产品）、**声誉**（引荐同事/老板）或**金钱**（意向书、预付款）。"我通常/我会/我可能"当噪音过滤；**恭维一律作废**——"恭维是客户认知的愚人金"。
+Test for a real signal: they paid real currency — **time** (booking a next meeting with an agenda, trialling the product), **reputation** (introducing a colleague or their boss) or **money** (a letter of intent, a prepayment). Filter "I usually / I would / I might" as noise; **discard all compliments** — "compliments are the fool's gold of customer learning".
 
-### 持续发现节奏（Torres）
-- 每周至少一次客户访谈，PM + 设计 + 工程"产品三人组"共同参与；访谈是持续节奏（像刷牙），不是项目里程碑。
-- 机会树上每个机会必须溯源到访谈中的真实痛点故事，禁止来自内部头脑风暴。
-- 针对同一目标机会至少并行比较 3 个候选方案——比较-对比决策显著优于单方案"做不做"。
+### Continuous discovery cadence (Torres)
+- At least one customer interview a week, attended by the "product trio" of PM + design + engineering; interviewing is a continuous rhythm (like brushing your teeth), not a project milestone.
+- Every opportunity on the tree must trace back to a real pain story from an interview; opportunities from internal brainstorms are not allowed.
+- Compare at least 3 candidate solutions in parallel for the same target opportunity — compare-and-contrast decisions substantially beat single-option "should we or not".
 
-### 俞军双公式
-- **用户价值 =（新体验 − 旧体验）− 替换成本**。三个抓手：最大化新体验（新技术/新人群/新渠道）、最小化旧体验（选旧体验最差的那批用户切入）、最小化替换成本（认知/获取/使用/交易四类成本逐项压低）。
-- 用户五属性：异质性、情境性、可塑性、自利性、有限理性。讨论需求必须绑定具体场景——同一个人在不同场景是不同用户。
+### Yu Jun's two formulas
+- **User value = (new experience − old experience) − switching cost.** Three levers: maximize the new experience (new technology / new audience / new channel), minimize the old one (enter through the users whose current experience is worst), and minimize switching cost (drive down all four kinds: awareness, acquisition, usage, transaction).
+- Five properties of users: heterogeneity, situationality, plasticity, self-interest, bounded rationality. Every requirement discussion must be bound to a concrete situation — the same person in a different situation is a different user.
 
-### aha moment 方法（增长交叉点）
-对比留存用户与流失用户的早期行为差异（只看留存用户 = 幸存者偏差），找出留存用户独有且正相关的行为，A/B 验证因果后固化进新手引导。案例：Facebook 10 天加 7 好友、LinkedIn 一周 5 联系人、Dropbox 上传第一个文件。参考：次日留存提升 10% 可带来月活约 30% 增长。
+### The aha-moment method (where discovery meets growth)
+Compare the early behavior of retained users against churned users (looking at retained users alone is survivorship bias), find the behavior unique to and positively correlated with retention, A/B validate the causality, then hardwire it into onboarding. Cases: Facebook's 7 friends in 10 days, LinkedIn's 5 connections in a week, Dropbox's first uploaded file. For reference: a 10% lift in D1 retention can be worth roughly 30% in MAU.
 
-## 原则
+## Principles
 
-- 用户不是自然人，而是需求的集合（俞军）；对用户行为不评判、不教育、不纠正，研究"完整鲜活的人"（梁宁）。
-- 听用户抱怨但不照抄用户方案——微信拒做"已读"，为的是给接收方留撒谎余地、保护弱势一方（张小龙）。
-- 高端用户不来论坛发帖，就主动去社区"潜水"追出来（马化腾 10/100/1000）。
-- 用"前人失败史"验证需求真伪：所有伟大的需求一定被前人在错误的时间用错误的方式尝试过；研究前人为何失败、PEST 哪个变量变了、时间窗口是否已打开（王慧文）。
-- 写需求时明确标注属于痛点（恐惧）、爽点（即时满足）还是痒点（虚拟自我）——恐惧是最强的付费动力（梁宁）。
+- A user is a bundle of needs, not a person (Yu Jun); don't judge, educate or correct user behavior — study "the whole, living person" (Liang Ning).
+- Listen to complaints, don't copy the user's solution — WeChat refuses read receipts to leave the recipient room to lie and protect the weaker party (Zhang Xiaolong).
+- High-end users don't post in forums, so go lurk in their communities and chase them down (Pony Ma's 10/100/1000).
+- Validate a need against the history of prior failures: every great need has already been attempted by someone earlier, at the wrong time and in the wrong way; study why they failed, which PEST variable has changed, and whether the timing window has opened (Wang Huiwen).
+- When writing a requirement, state explicitly whether it is a pain (fear), a pleasure (instant gratification) or an itch (the imagined self) — fear is the strongest motivator to pay (Liang Ning).
 
-## 反面模式
+## Anti-patterns
 
-- 访谈变推销：介绍自己的想法收集"听起来不错"。
-- 项目式调研：只在立项时做一轮用户研究，靠三个月前的认知做今天的决策。
-- 伪需求与闭门造车：从技术到场景而非从场景到技术（"我们接入了大模型"式自嗨）。
-- 角色化想象用户：认为用户"应该"这样做；把用户当抽象"流量"。
+- The interview becomes a pitch: presenting your idea and collecting "sounds good".
+- Project-shaped research: one round of user research at kickoff, then decisions made today on three-month-old understanding.
+- Fake needs built in a vacuum: reasoning from technology to use case instead of use case to technology (the "we've integrated an LLM" kind of self-congratulation).
+- Imagining users as roles: believing users "ought to" behave a certain way; treating users as abstract "traffic".
 
-## 来源
+## Sources
 
-Teresa Torres《Continuous Discovery Habits》/ producttalk.org · Rob Fitzpatrick《The Mom Test》· 俞军《俞军产品方法论》· 梁宁《产品思维30讲》· 张小龙 2012《微信背后的产品观》· 马化腾产品法则（woshipm）· Facebook/LinkedIn aha moment 实践（woshipm）
+Teresa Torres, *Continuous Discovery Habits* / producttalk.org · Rob Fitzpatrick, *The Mom Test* · Yu Jun, *Yu Jun on Product Methodology* · Liang Ning, *30 Lectures on Product Thinking* · Zhang Xiaolong, *The Product Philosophy Behind WeChat* (2012) · Pony Ma's product rules (woshipm) · Facebook/LinkedIn aha-moment practice (woshipm)

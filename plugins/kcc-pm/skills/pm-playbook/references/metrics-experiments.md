@@ -1,52 +1,53 @@
-# 指标体系与实验
+# Metric systems and experimentation
 
-> metrics-informed 而非 metrics-driven：用数据校准判断，不让数据代替判断。
+> Metrics-informed, not metrics-driven: calibrate judgment with data;
+> don't let data replace judgment.
 
-## 框架速查
+## Framework quick reference
 
-| 框架 | 一句话 | 何时用 |
+| Framework | In one line | When to use |
 |---|---|---|
-| North Star（Amplitude） | 一个客户价值时刻的领先指标 + 3-5 个可撬动的输入指标 | 多团队对齐、翻译战略为执行 |
-| 曲卉北极星六问 | 六条标准检验候选指标 | 设定 OMTM / OKR 对齐 |
-| AARRR 海盗指标 | 获客-激活-留存-推荐-收入五段漏斗 | 增长诊断：定位最漏的一环 |
-| Google HEART + GSM | 五维体验度量，Goals→Signals→Metrics 推导 | 度量单个功能/改版的体验质量 |
-| 可信 A/B（Kohavi） | OEC + 护栏 + 固定时长 + SRM 检查 | 有流量的成熟产品做发布决策 |
-| 构建-测量-学习（Ries） | MVP = 最小代价跑通一轮学习循环 | 不确定性最高的 0-1 阶段 |
-| 字节实验文化 | "万物皆可 AB"，先验证后全量 | 在组织内推行数据文化 |
+| North Star (Amplitude) | One leading indicator of a customer-value moment + 3–5 movable input metrics | Aligning multiple teams; translating strategy into execution |
+| Qu Hui's six North Star questions | Six tests for a candidate metric | Setting the OMTM / aligning OKRs |
+| AARRR pirate metrics | Acquisition-activation-retention-referral-revenue | Growth diagnosis: locating the leakiest stage |
+| Google HEART + GSM | Five experience dimensions, derived Goals→Signals→Metrics | Measuring the experience quality of one feature or redesign |
+| Trustworthy A/B (Kohavi) | OEC + guardrails + fixed duration + SRM check | Launch decisions on a mature product with traffic |
+| Build-measure-learn (Ries) | An MVP is the cheapest way to complete one learning loop | The 0-to-1 stage, where uncertainty is highest |
+| ByteDance's experiment culture | "A/B everything", validate before full rollout | Instilling a data culture in an organization |
 
-## 核心操作
+## Core practices
 
-### 北极星指标纪律
-- 必须是**客户价值时刻的领先指标**（Airbnb: nights booked、Slack: 团队消息数达阈值），拒绝 MRR/DAU/下载量这类滞后或虚荣指标。
-- 同时定义 3-5 个团队日常可直接撬动的**输入指标**作为杠杆——北极星是产出，输入是杠杆，团队日常只对杠杆负责。
-- 曲卉六问：①反映核心价值被体验到？②反映关键行为？③变好代表公司向好？④易于理解传播？⑤先导而非滞后？⑥可操作？
+### North Star discipline
+- It must be a **leading indicator of a customer-value moment** (Airbnb: nights booked; Slack: teams passing a message threshold), never a lagging or vanity metric like MRR / DAU / downloads.
+- Define 3–5 **input metrics** the team can move directly day to day — the North Star is the output, the inputs are the levers, and daily accountability sits on the levers.
+- Qu Hui's six questions: (1) does it reflect core value being experienced? (2) does it reflect the key behavior? (3) does its improvement mean the company is doing better? (4) is it easy to understand and spread? (5) is it leading rather than lagging? (6) is it actionable?
 
-### HEART 用法
-Happiness / Engagement / Adoption / Retention / Task Success，每维度经 Goals→Signals→Metrics 推导。**只挑当前目标最相关的 2-3 个维度**（新功能看 Adoption + Task Success），不要五维全上。
+### Using HEART
+Happiness / Engagement / Adoption / Retention / Task Success, each derived through Goals→Signals→Metrics. **Pick only the 2–3 dimensions most relevant to the current goal** (a new feature: Adoption + Task Success); don't run all five.
 
-### A/B 实验铁律（Kohavi）
-1. 实验开始前**写下并冻结**：假设、主指标（OEC）、最小可检测效应、所需样本量、结束日期。
-2. **严禁中途窥视**：看到 p<0.05 就提前收割会把假阳性率推高到 26%+。
-3. 每个主指标必须配**护栏指标**（延迟、崩溃率、退订率、客服量）——主指标赢了但护栏破了照样不能发布。
-4. **把基线刻在脑子里**：成熟产品上大多数想法失败（微软 2/3 无效、Bing 约 80% 失败），成功实验的典型提升仅 0.1%-1%。
-5. **Twyman's Law**：任何好得反常的数字，第一反应是查埋点、数据泄漏或 SRM（样本比例失配），不是庆祝。
-6. A/B 只能比较方案优劣，测不出用户要什么（张一鸣）——方向性判断靠同理心和想象力。
+### The iron laws of A/B testing (Kohavi)
+1. Before the experiment starts, **write down and freeze**: the hypothesis, the primary metric (OEC), the minimum detectable effect, the required sample size, and the end date.
+2. **No peeking**: harvesting the moment you see p<0.05 pushes the false-positive rate above 26%.
+3. Every primary metric needs a **guardrail metric** (latency, crash rate, unsubscribe rate, support volume) — a win on the primary with a broken guardrail still cannot ship.
+4. **Keep the base rate in mind**: most ideas fail on a mature product (two-thirds ineffective at Microsoft, roughly 80% failures at Bing), and a typical successful experiment lifts only 0.1%–1%.
+5. **Twyman's Law**: any number that looks unusually good means "check the instrumentation, data leakage or SRM (sample ratio mismatch)" first, not celebrate.
+6. A/B can only compare options; it cannot tell you what users want (Zhang Yiming) — directional judgment comes from empathy and imagination.
 
-### MVP 的正确用法（Ries）
-MVP 是"以最小代价跑通一轮构建-测量-学习"，不是缩水版产品。能用落地页、视频、人肉流程（Wizard of Oz）验证价值假设的，就不写代码。先写价值假设（用了觉得有价值吗）再写增长假设（新用户怎么发现），分别设计实验，不要混在一起。
+### Using the MVP correctly (Ries)
+An MVP is "the cheapest way to complete one build-measure-learn loop", not a stripped-down product. If a landing page, a video or a manual Wizard-of-Oz process can validate the value hypothesis, don't write code. Write the value hypothesis first (do they find it valuable once used?) and the growth hypothesis second (how do new users discover it?), design a separate experiment for each, and don't mix them.
 
-### 数据汇报四段式
-观察（发生了什么）→ 根因归因（为什么）→ 建议方案（做什么）→ 预期影响（带 ROI 估算）。只贴 dashboard 截图的汇报在 senior 层面不合格。
+### The four-part data report
+Observation (what happened) → root cause (why) → recommendation (what to do) → expected impact (with an ROI estimate). A report that only pastes a dashboard screenshot does not pass at senior level.
 
-## 反面模式
+## Anti-patterns
 
-- 虚荣指标汇报：下载量、注册数、累计用户——只涨不跌、感觉良好、无法指导任何决策。
-- 实验中途窥视 / peeking。
-- 北极星选错：滞后指标或团队无法影响的指标；或只有北极星没有输入指标，无杠杆可拉。
-- 被指标奴役：优化局部数字损害产品整体；用局部指标提升论证伤害体验的改动。
-- 误用 MVP：当借口发布残次品，或反向追求完美迟迟不学习。
-- 流量不足或变更不可随机化时硬上 A/B。
+- Reporting vanity metrics: downloads, registrations, cumulative users — they only go up, they feel good, and they guide no decision.
+- Peeking mid-experiment.
+- Picking the wrong North Star: a lagging metric, or one the team cannot influence; or having a North Star with no input metrics, so there is no lever to pull.
+- Enslavement to metrics: optimizing a local number at the whole product's expense; justifying an experience-damaging change with a local metric lift.
+- Misusing the MVP: as an excuse to ship something broken, or the reverse — chasing perfection and never learning.
+- Forcing an A/B when traffic is insufficient or the change cannot be randomized.
 
-## 来源
+## Sources
 
-Amplitude《North Star Playbook》· 曲卉《硅谷增长黑客实战笔记》· Dave McClure AARRR · Kerry Rodden HEART · Ronny Kohavi《Trustworthy Online Controlled Experiments》· Eric Ries《The Lean Startup》· 字节跳动 DataTester 实践 · 张一鸣
+Amplitude, *North Star Playbook* · Qu Hui, *Growth Hacking in Silicon Valley* · Dave McClure AARRR · Kerry Rodden HEART · Ronny Kohavi, *Trustworthy Online Controlled Experiments* · Eric Ries, *The Lean Startup* · ByteDance DataTester practice · Zhang Yiming

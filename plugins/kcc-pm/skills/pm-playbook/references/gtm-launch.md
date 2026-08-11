@@ -1,71 +1,72 @@
-# GTM 与发布管理
+# GTM and launch management
 
-> 发布是产品与运营的交汇接口：launch 是过程不是事件。"Not every release deserves a launch."
+> Launch is where product and operations meet: a launch is a process, not
+> an event. "Not every release deserves a launch."
 
-## 框架速查
+## Framework quick reference
 
-| 框架 | 一句话 | 何时用 |
+| Framework | In one line | When to use |
 |---|---|---|
-| Dunford 定位五要素 | 竞争替代→独特属性→价值证明→目标细分→市场类别 | 对外叙事动笔前；转化异常怀疑"说错了故事" |
-| Sales Pitch 两段式 | 先卖世界观（市场洞察）再卖产品 | 销售话术、demo 脚本、发布 keynote |
-| Messaging House | 一句话主张 + 3-4 支柱 + 每支柱配证据 | P0/P1 发布物料生产前，多渠道口径统一 |
-| PR/FAQ（Amazon） | 开工前写发布日新闻稿 + 内外 FAQ | 重大功能立项与 GTM kickoff |
-| Launch Tiers（P0-P2） | 按业务影响四问定级，每级绑定固定活动清单 | 每个迭代排发布计划 |
-| 发布门禁四项 | 物料/销售赋能/客服 FAQ/埋点，任一未验收不放量 | P0/P1 发布前 2-4 周 |
-| 灰度放量（Guarded Rollout） | 1%→5%→10%→25%→50%→100% + 双护栏 | 任何触达真实用户的上线 |
-| 采用漏斗四段 | Exposed→Activated→Used→Used Again | 发布后 1-4 周诊断"没人用" |
-| 30 天复盘 | 对照目标读数，输出 keep/change 回写 playbook | 每个 P0/P1 发布固定日程 |
+| Dunford's five positioning components | Competitive alternatives→unique attributes→value and proof→target segment→market category | Before writing any external narrative; when conversion is off, suspect the story |
+| Two-part sales pitch | Sell the worldview (market insight) first, the product second | Sales scripts, demo flow, launch keynote |
+| Messaging house | One-line claim + 3–4 pillars + evidence per pillar | Before producing P0/P1 launch material, to unify the story across channels |
+| PR/FAQ (Amazon) | Write launch-day press release + internal and external FAQ before you build | Major feature kickoff and GTM kickoff |
+| Launch tiers (P0–P2) | Grade by four business-impact questions; each tier binds a fixed activity list | Every iteration's launch planning |
+| The four launch gates | Materials / sales enablement / support FAQ / instrumentation — miss one and you don't roll out | 2–4 weeks before a P0/P1 launch |
+| Guarded rollout | 1%→5%→10%→25%→50%→100% with two sets of guardrails | Any launch that reaches real users |
+| The four-stage adoption funnel | Exposed→Activated→Used→Used Again | Weeks 1–4 after launch, diagnosing "nobody uses it" |
+| The 30-day retro | Read the numbers against the goal, output keep/change back into the playbook | A fixed calendar item for every P0/P1 launch |
 
-## 核心操作
+## Core practices
 
-### 定位五要素（严格按顺序填写）
-1. **竞争替代方案**：客户没有你会用什么——含 Excel 和"不作为"；
-2. **独特属性**：你有而替代没有的能力；
-3. **价值与证明**：属性转化为客户收益 + 证据；
-4. **目标细分**：最在乎该价值的客户特征；
-5. **市场类别**：让价值显而易见的参照系。
-起点永远是"客户没有你会用什么"，而非产品功能清单。定位不是一次性任务，市场变化后要周期性复查。
+### The five positioning components (fill them in strictly in order)
+1. **Competitive alternatives**: what the customer would use without you — including Excel and doing nothing;
+2. **Unique attributes**: what you have that the alternatives don't;
+3. **Value and proof**: those attributes turned into customer benefit, plus evidence;
+4. **Target segment**: the characteristics of customers who care most about that value;
+5. **Market category**: the frame of reference that makes the value obvious.
+The starting point is always "what would the customer use without you", never your feature list. Positioning is not a one-off; revisit it periodically as the market shifts.
 
-### 发布定级四问（与工程量无关）
-能否带来新增/扩展收入？能否提升参与度或降流失？是否构成市场差异化？影响多大比例的客户？
-- **P0**：官网改版 + PR/发布活动 + 销售认证 + 客户沟通计划；
-- **P1**：博客 + 邮件 + in-app 公告 + 销售简报 + 帮助文档；
-- **P2**：changelog + 帮助文档更新。
-每级活动清单事先定死，避免逐案争论资源。例外条款：解决严重流失的小功能可人为升级。
+### Four questions to set the launch tier (unrelated to engineering effort)
+Can it bring new or expansion revenue? Can it lift engagement or reduce churn? Does it create market differentiation? What share of customers does it affect?
+- **P0**: website refresh + PR/launch event + sales certification + a customer communication plan;
+- **P1**: blog + email + in-app announcement + sales brief + help docs;
+- **P2**: changelog + help-doc update.
+Fix each tier's activity list in advance so resources aren't argued case by case. Exception clause: a small feature that fixes serious churn can be promoted deliberately.
 
-### 发布门禁（任一未验收不得放量）
-1. 市场物料终稿；
-2. 销售话术 + 异议处理卡，培训完成率/测验达标**留痕**（转发文件不算完成）；
-3. 客服 FAQ + 升级路径演练；
-4. 埋点验收 + 发布看板上线——**埋点是发布门禁，不是上线后补作业**。
+### Launch gates (miss one and you do not roll out)
+1. Final marketing materials;
+2. Sales script + objection-handling card, with training completion and quiz results **on record** (forwarding a file does not count as done);
+3. Support FAQ + a rehearsed escalation path;
+4. Instrumentation signed off + the launch dashboard live — **instrumentation is a launch gate, not homework you do after shipping**.
 
-### 灰度纪律
-- 固定阶梯放量，每步设最短观察窗口；同一用户始终命中同一版本。
-- 双护栏 + 预设回滚线：技术（错误率、延迟、崩溃）+ 业务（核心转化、留存、客服工单量），统计显著恶化即自动暂停/回滚；回滚标准和负责人写进发布单，不靠临时拉会。
-- 先小流量实验后全量（字节纪律）：显著为负→关实验重优化；不显著→延长/加样本；显著为正→放量。
-- **灰度期与运营宣发解耦**：灰度期禁止大规模 push/投放/拉新；全量稳定后运营才接棒，依次站内通知 → push/EDM → 社群/KOL → 付费投放。内容型功能上线前先完成内容供给储备。
+### Rollout discipline
+- Fixed rollout steps, each with a minimum observation window; a given user always lands on the same variant.
+- Two sets of guardrails plus a pre-set rollback line: technical (error rate, latency, crashes) and business (core conversion, retention, support ticket volume); statistically significant degradation triggers an automatic pause or rollback. The rollback criteria and their owner go in the launch ticket, not into an ad-hoc meeting.
+- Small-traffic experiment before full rollout (ByteDance's discipline): significantly negative → stop and re-optimize; not significant → extend or add sample; significantly positive → roll out.
+- **Decouple the rollout window from marketing**: no large-scale push, spend or acquisition during a staged rollout; operations takes over only after a stable 100%, in order: in-app notification → push/EDM → community/KOL → paid acquisition. For a content feature, build up the content supply before launch.
 
-### 采用漏斗诊断（发布后 1-4 周）
-Exposed → Activated → Used → Used Again。
-- 低曝光 = 发现问题 → 定向 in-app 公告；
-- 激活流失 = 摩擦问题 → 在具体卡点加 tooltip/checklist；
-- 无复用 = 习惯问题 → 触发式 nudge 与二次引导。
-"功能没人用"≠"用户不需要"——多数修复是一条应用内消息，不是一张工程工单。launch 前必须写下量化采用目标并锁定 baseline（SaaS 核心功能采用率均值约 24.5% 可作参照）。
+### Adoption-funnel diagnosis (weeks 1–4 after launch)
+Exposed → Activated → Used → Used Again.
+- Low exposure = a discovery problem → targeted in-app announcement;
+- Drop-off at activation = a friction problem → add a tooltip/checklist at the specific sticking point;
+- No repeat use = a habit problem → triggered nudges and a second onboarding pass.
+"Nobody uses the feature" ≠ "users don't need it" — most fixes are an in-app message, not an engineering ticket. Before launch you must write down a quantified adoption target and lock the baseline (the average adoption rate of a core SaaS feature, roughly 24.5%, is a usable reference).
 
-### 30 天复盘制度
-召集产品/市场/销售/客服，对照目标读数：采用率 vs 目标、pipeline/成单提及、客户反馈 Top3、各渠道转化。输出 keep/change 两栏**回写发布 playbook**——复盘产物是下次 checklist 的输入，不是归档文档。Feature flag 设生命周期与 owner：100% 放量后限期清理（Uber 用 Piranha 自动清了约 2000 个僵尸 flag）。
+### The 30-day retro as an institution
+Bring product, marketing, sales and support together and read the numbers against the goal: adoption vs target, pipeline and closed-won mentions, the top 3 pieces of customer feedback, conversion per channel. Output two columns, keep and change, **written back into the launch playbook** — a retro's product is the input to the next checklist, not an archived document. Give feature flags a lifetime and an owner: clean them up on a deadline after 100% rollout (Uber's Piranha automatically removed around 2,000 zombie flags).
 
-## 反面模式
+## Anti-patterns
 
-- 把发布当一次性事件：发完即撤场，采用曲线冲高即死。
-- 按工程量定发布级别：半年重构开发布会、高影响小功能静默上线。
-- 全渠道广播每个小更新：制造公告疲劳；相关小功能应合并成季度 launch moment。
-- messaging 从功能清单出发：写成 spec 复读机，客户看不懂"为什么关我事"。
-- 灰度期同时开闸拉新：放大事故半径且污染实验数据。
-- 销售赋能 = 转发一个 deck。
-- 采用率低一律归咎"用户不需要"，直接砍功能或返工。
-- 复盘只归档不回写，同样的错每季度重犯。
+- Treating launch as a one-off event: pack up when it ships, and the adoption curve spikes then dies.
+- Setting launch tier by engineering effort: a launch event for a six-month refactor, a silent release for a high-impact small feature.
+- Broadcasting every minor update on every channel: manufacturing announcement fatigue; related small features should be bundled into a quarterly launch moment.
+- Messaging written from the feature list: it reads like a spec, and the customer can't see "why does this concern me".
+- Opening the acquisition taps during a staged rollout: it widens the blast radius and pollutes the experiment data.
+- Sales enablement = forwarding a deck.
+- Blaming every low adoption number on "users don't need it", then cutting the feature or rebuilding it.
+- Retros that get archived instead of written back, so the same mistake recurs every quarter.
 
-## 来源
+## Sources
 
-April Dunford《Obviously Awesome》《Sales Pitch》· Amazon Working Backwards PR/FAQ · Intercom / Pragmatic Institute / PMA launch tiers · Sales Enablement Collective · LaunchDarkly guarded rollouts · 字节 DataTester · 有赞/腾讯灰度实践 · Userpilot 采用漏斗 · PMA 复盘模板
+April Dunford, *Obviously Awesome* and *Sales Pitch* · Amazon Working Backwards PR/FAQ · Intercom / Pragmatic Institute / PMA launch tiers · Sales Enablement Collective · LaunchDarkly guarded rollouts · ByteDance DataTester · Youzan and Tencent rollout practice · Userpilot adoption funnel · PMA retro templates

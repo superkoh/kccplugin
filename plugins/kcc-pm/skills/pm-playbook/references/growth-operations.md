@@ -1,69 +1,71 @@
-# 增长与运营方法
+# Growth and operations methods
 
-> 留存是增长之王。每一点留存改善都同时放大获客、变现与传播——唯一的复利型杠杆。
+> Retention is the king of growth. Every point of retention improvement
+> amplifies acquisition, monetization and word of mouth at the same time
+> — the only compounding lever there is.
 
-## 框架速查
+## Framework quick reference
 
-| 框架 | 一句话 | 何时用 |
+| Framework | In one line | When to use |
 |---|---|---|
-| 增长循环 Growth Loops（Reforge） | 输出可再投入为输入的封闭系统 | 设计可持续增长引擎 |
-| 留存曲线 + Magic Number | 曲线拉平 = 有人长期留下；找 aha 行为 | 判断能否放量、定激活目标 |
-| RFM 用户分层 | Recency × Frequency × Monetary 打分分层 | 精细化触达、识别流失异动 |
-| 生命周期管理 + 流失预警五步 | 引入-成长-成熟-休眠-流失分段干预 | 留存瓶颈期、DAU 停滞 |
-| 内容运营闭环 | 定位→选题→生产→分发→评估→反哺 | 内容型产品/栏目日常管理 |
-| 活动运营三段式 SOP | 准备期→实施期→收尾期 + 复盘四步 | 任何活动全周期 |
-| 社区冷启动三步 | 种子用户→小圈子沉淀→逐步开放 | 社区/内容平台/社群 0-1 |
-| 八大诱因（黄有璨） | 设计激励时逐条核对的动机清单 | 活动机制、UGC 激励、裂变玩法 |
-| 增长实验流程（Sean Ellis） | 分析→想法库→排序→每周上实验 | 组建增长节奏 |
+| Growth loops (Reforge) | A closed system whose output is reinvested as input | Designing a durable growth engine |
+| Retention curve + magic number | A flattening curve means people stay; find the aha behavior | Deciding whether to scale spend; setting the activation target |
+| RFM segmentation | Score and segment by Recency × Frequency × Monetary | Granular outreach; spotting churn anomalies |
+| Lifecycle management + five-step churn warning | Intervene by stage: new, growing, mature, dormant, churned | Retention plateaus; DAU stagnation |
+| Content operations loop | Positioning→topics→production→distribution→measurement→back to topics | Day-to-day management of a content product or section |
+| Three-phase campaign SOP | Preparation→execution→wrap-up + the four-step retro | Any campaign, end to end |
+| Three-step community cold start | Seed users→small-circle settling→gradual opening | 0-to-1 for a community, content platform or group |
+| The eight incentives (Huang Youcan) | A motivation checklist to tick off when designing incentives | Campaign mechanics, UGC incentives, referral schemes |
+| Growth experiment process (Sean Ellis) | Analyze→idea backlog→rank→ship weekly | Establishing a growth cadence |
 
-## 核心操作
+## Core practices
 
-### 增长循环设计（代替漏斗）
-四类典型循环：**病毒/转介绍**（Dropbox 邀请送空间）、**UGC 内容**（用户生产内容→搜索/推荐带来新用户→新用户再生产）、**付费**（收入再投广告）、**销售**（回款扩团队）。漏斗产生线性增长且造成部门割裂（市场只背获客、产品只背留存、互相抵消）；循环产生复利且难被抄袭。**漏斗诊断流失点，循环设计增长机制**——两者配合用。
+### Designing growth loops (instead of funnels)
+Four typical loops: **viral / referral** (Dropbox's invite-for-storage), **UGC content** (users produce content → search/recommendation brings new users → who produce more), **paid** (revenue reinvested in ads), **sales** (collections fund a bigger team). Funnels produce linear growth and fragment the org (marketing owns acquisition, product owns retention, and they cancel each other out); loops compound and are hard to copy. **Funnels diagnose the leak, loops design the growth mechanism** — use both together.
 
-### RFM 分层触达
-按 Recency（最近一次行为）、Frequency（频次）、Monetary（金额）打分，分出重要价值/重要保持/重要发展/重要挽留等 8 类，各配不同触达渠道、文案和利益点。三指标可按业务替换（内容产品：最近访问/互动频次/消费深度），也可取两维做象限分析。**全量群发是运营的耻辱。**
+### RFM-segmented outreach
+Score on Recency (last action), Frequency and Monetary, and split into roughly 8 classes (high-value, keep, develop, win back and so on), each with its own channel, copy and incentive. The three axes can be swapped to fit the business (for a content product: last visit / interaction frequency / consumption depth), or reduced to two for a quadrant analysis. **Blasting everyone is an operator's disgrace.**
 
-### 流失预警五步
-1. 定义流失：**时间 + 关键行为双维度**（如金融产品按提现/投资行为分 3-120 天六级）；
-2. 分析流失征兆；
-3. 建立每日监控的预警标签体系；
-4. 流失用户分层：预流失 / 部分流失 / 完全流失 / 大额用户；
-5. 差异化干预：页面挽留 / 短信 push A/B / 重定向卡券 / 客服外呼。
-资源优先投给触达率还高的"预流失"用户；已卸载用户召回率极低。召回以 24 小时回流为基础口径，监测后续全链路行为而非只看点击率；短信前 10 个字决定展示效率。
+### The five-step churn warning
+1. Define churn on **two axes, time + a key behavior** (a fintech product might grade withdrawal/investment behavior across six levels from 3 to 120 days);
+2. Analyze the leading indicators of churn;
+3. Build a daily-monitored early-warning tag system;
+4. Segment churned users: about to churn / partially churned / fully churned / high-value;
+5. Intervene differentially: on-page retention / SMS-push A/B / retargeted coupons / outbound support calls.
+Spend first on the "about to churn" users who are still reachable; recall rates for users who already uninstalled are minimal. Use 24-hour return as the base metric for recall and monitor the whole downstream path, not just click-through; the first ten characters of an SMS decide whether it gets read.
 
-### 活动运营三段式 SOP
-- **准备期**：预热节点、测试周期、奖品采购、物料与页面开发；预热不只是告知，要设计噱头并配推广资源。
-- **实施期**：上线节点、活动内阶段划分、期间宣传节奏。
-- **收尾期**：奖品统计发放、反馈收集、复盘报告。
-复盘四步：回顾目标 → 对比结果 → 探究根源 → 总结规律迭代，产物回写 SOP。
+### The three-phase campaign SOP
+- **Preparation**: teaser milestones, test cycle, prize procurement, creative and page development; a teaser is not just an announcement — design a hook and back it with promotion budget.
+- **Execution**: launch milestones, phase breakdown within the campaign, promotion cadence throughout.
+- **Wrap-up**: prize accounting and fulfilment, feedback collection, retro report.
+The four-step retro: revisit the goal → compare results → dig for root causes → generalize the lesson and iterate, with the output written back into the SOP.
 
-### 社区冷启动（知乎/小红书路径）
-1. 定向邀请高质量种子用户（知乎邀请码请专家学者；小红书从赴港购物买手切入）；
-2. 小圈子沉淀氛围与内容标准（知乎近 3 年沉淀；小红书前两年零投放靠口碑）；
-3. UGC 激励与逐步开放：降低生产门槛（滤镜/模板/话题）、对种子用户迅速反馈与充分尊重，跑通"供给-分发-消费"飞轮后再放量。
+### Community cold start (the Zhihu / Xiaohongshu path)
+1. Directly invite high-quality seed users (Zhihu's invite codes for experts and academics; Xiaohongshu starting from Hong Kong shopping buyers);
+2. Let a small circle settle the culture and content standard (Zhihu spent nearly 3 years; Xiaohongshu spent its first two years on word of mouth with zero paid spend);
+3. UGC incentives and gradual opening: lower the production barrier (filters / templates / topics), respond fast to seed users and treat them with real respect, and only scale once the supply-distribution-consumption flywheel turns.
 
-### 八大诱因清单
-物质激励 · 概率性事件（抽奖）· 稀缺感（限时限量）· 竞争意识（排行榜）· 炫耀/猎奇 · 情绪认同感 · 尊崇与重视感 · 对比超值感。设计任何激励机制时逐条核对用了哪几个、与目标用户动机是否匹配。
+### The eight-incentive checklist
+Material reward · chance events (lotteries) · scarcity (limited time or quantity) · competition (leaderboards) · showing off / curiosity · emotional identification · status and recognition · perceived bargain. When designing any incentive mechanism, tick off which ones you used and whether they match the target users' motivations.
 
-### 增长节奏（Sean Ellis）
-大规模获客前先验证三个匹配：**语言-市场**、**渠道-产品**、**产品-市场**（不可或缺性调查："不能再用会非常失望" ≥40% 视为 PMF 信号）。之后：分析数据 → 建立想法库 → 按影响/信心/成本排序 → 每周固定节奏上实验。
+### Growth cadence (Sean Ellis)
+Validate three fits before scaling acquisition: **language-market**, **channel-product**, **product-market** (the must-have survey: ≥40% "very disappointed" if they could no longer use it counts as a PMF signal). Then: analyze data → build an idea backlog → rank by impact / confidence / cost → ship experiments on a fixed weekly cadence.
 
-## 原则
+## Principles
 
-- 留存曲线未拉平前不放量投放；早期运营围绕口碑，不围绕规模。
-- 区分"创造用户价值"与"消费用户价值"的工作，先积累认可再收割（回报后置）。
-- 内容运营三通路分发：编辑推荐 / 算法推荐 / 搜索，评估看 PV/UV/留存/分享率/转化率并反哺选题。
-- 私域用"内容 + 钩子"引流，群内以固定栏目和活动节奏维持活跃，目标是"供给-营销-活动"自转飞轮。
+- Don't scale spend before the retention curve flattens; early operations orbits word of mouth, not scale.
+- Separate "creating user value" work from "consuming user value" work; earn the goodwill before you harvest (deferred return).
+- Content operations distributes through three channels — editorial, algorithmic and search; measure PV/UV, retention, share rate and conversion, and feed it back into topic selection.
+- Drive owned-channel communities with "content + a hook", keep them alive with fixed sections and a campaign cadence, and aim for a self-turning supply-marketing-campaign flywheel.
 
-## 反面模式
+## Anti-patterns
 
-- 补贴堆出的伪活跃：用户未经历 aha moment，补贴一停曲线跳水。
-- 幸存者偏差找 aha：不对比流失用户、不 A/B 验证因果。
-- 活动办完就散、召回一锤子买卖、全量群发无分层。
-- 盲目照搬竞品玩法：诱因与用户动机不匹配则机制空转。
-- 漏斗式组织割裂：各部门局部优化互相抵消。
+- Fake activity bought with subsidies: users never reached the aha moment, and the curve collapses the moment subsidies stop.
+- Survivorship bias in aha-moment hunting: no comparison against churned users, no A/B validation of causality.
+- Campaign ends and everyone scatters; one-shot recall; blasting everyone with no segmentation.
+- Blindly copying a competitor's playbook: if the incentive doesn't match user motivation, the mechanism spins in place.
+- Funnel-shaped org fragmentation: departments optimize locally and cancel each other out.
 
-## 来源
+## Sources
 
-Reforge《Growth Loops are the New Funnels》《Retention is the Silent Killer》（Brian Balfour / Casey Winters）· Sean Ellis《增长黑客》· 曲卉《硅谷增长黑客实战笔记》· 黄有璨《运营之光》· 张亮《从零开始做运营》· RFM/流失预警实践（woshipm / GrowingIO / 数数科技）· 知乎/小红书冷启动复盘
+Reforge, *Growth Loops are the New Funnels* and *Retention is the Silent Killer* (Brian Balfour / Casey Winters) · Sean Ellis, *Hacking Growth* · Qu Hui, *Growth Hacking in Silicon Valley* · Huang Youcan, *The Light of Operations* · Zhang Liang, *Operations from Scratch* · RFM and churn-warning practice (woshipm / GrowingIO / Shushu Technology) · Zhihu and Xiaohongshu cold-start retros

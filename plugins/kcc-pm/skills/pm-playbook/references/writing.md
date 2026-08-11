@@ -1,59 +1,60 @@
-# 写作与沟通
+# Writing and communication
 
-> 写作即思考："If you cannot articulate your thinking clearly in writing, you likely do not understand it well enough."（Amazon）
+> Writing is thinking: "If you cannot articulate your thinking clearly in
+> writing, you likely do not understand it well enough." (Amazon)
 
-## 框架速查
+## Framework quick reference
 
-| 框架 | 一句话 | 何时用 |
+| Framework | In one line | When to use |
 |---|---|---|
-| 一页纸文档 | 机会 + 期望结果 + 假设 + 未知与风险 | 任何新工作的起点 |
-| PR/FAQ（Working Backwards） | 未来新闻稿 ≤1 页 + FAQ ≤5 页 | 新产品/大功能立项 |
-| 6-pager（Amazon） | 6 页叙事备忘录 + 会议开头全员默读 | 跨组织重大决策 |
-| 金字塔原理 / SCQA | 结论先行，情境-冲突-问题-答案 | 一切高管沟通 |
-| Pre-wire | 会前逐个一对一过方案 | 重要评审会前 |
-| Power/Interest 矩阵 | 按权力×关注度分层配置沟通带宽 | 利益相关者管理 |
-| 影响力三货币 | 专业权威 × 关系信任 × 数据 | 无权威推动跨团队工作 |
+| The one-pager | Opportunity + desired outcome + assumptions + unknowns and risks | The starting point for any new piece of work |
+| PR/FAQ (Working Backwards) | A future press release ≤1 page + FAQ ≤5 pages | New product / major feature kickoff |
+| The 6-pager (Amazon) | A six-page narrative memo, read silently by everyone at the top of the meeting | Major cross-org decisions |
+| The pyramid principle / SCQA | Conclusion first; situation-complication-question-answer | All executive communication |
+| Pre-wire | Walk the proposal through key stakeholders one-on-one before the meeting | Before an important review |
+| Power/interest matrix | Allocate communication bandwidth by power × interest | Stakeholder management |
+| The three currencies of influence | Expertise × relationship trust × data | Driving cross-team work without authority |
 
-## 核心操作
+## Core practices
 
-### 一页纸文档（任何新工作从这开始）
-一个机会、期望结果（非产出清单）、已知假设、未知项与风险。**想清楚了 30 分钟就能写完，写了几天说明思考未完成。**
+### The one-pager (start every new piece of work here)
+One opportunity, the desired outcome (not a list of deliverables), known assumptions, unknowns and risks. **If you've thought it through, it takes 30 minutes; if it takes days, the thinking isn't finished.**
 
-### PR/FAQ 写法
-以未来时态写一页新闻稿（描述已发布产品给客户的价值，收益、功能、价格具体化）+ 外部 FAQ（客户/媒体会问什么）+ 内部 FAQ（财务/客服/销售/法务的尖锐问题）。**写不出令人兴奋的新闻稿 = 价值主张不成立，回炉重新定位。**"Iterating on a press release is a lot less expensive than iterating on the product itself."
+### How to write a PR/FAQ
+Write a one-page press release in the future tense (describe the value the shipped product gives the customer, with concrete benefits, features and price) + an external FAQ (what customers and press will ask) + an internal FAQ (the sharp questions from finance, support, sales and legal). **If you can't write an exciting press release, the value proposition doesn't hold — go back and re-position.** "Iterating on a press release is a lot less expensive than iterating on the product itself."
 
-### 高管文档纪律
-- **结论先行**：第一段直接给出建议和所需决策，再展开论据——"高管没时间跟随你的分析旅程，先给目的地。"
-- 叙事结构强迫你想清楚什么比什么重要、事物如何关联（Bezos 禁 PPT 的原因）。
-- 预答尖锐问题（FAQ 化），一页结构化备忘录可以撬动百万级预算。
+### Executive-document discipline
+- **Conclusion first**: the opening paragraph gives the recommendation and the decision you need, then the supporting argument — "executives don't have time to follow your analytical journey; give them the destination first."
+- A narrative structure forces you to work out what matters more than what, and how things connect (the reason Bezos banned slide decks).
+- Pre-answer the sharp questions (FAQ them); a one-page structured memo can move a seven-figure budget.
 
-### Pre-wire（预接线）
-重要评审会前与关键干系人逐个一对一过方案、吸收反馈进新版本，带着已有非正式支持的提案进会场——**把会议变成确认而非辩论**。
+### Pre-wire
+Before an important review, walk the proposal through each key stakeholder one-on-one and absorb their feedback into the next version, then enter the room with informal support already in hand — **turn the meeting into a confirmation, not a debate**.
 
-### 翻译成对方的语言
-- 向 CFO 谈技术债 → 用财务损失表述；
-- 向工程师谈需求 → 先讲 why 并共创方案，而非推销结论；
-- 向高管对齐 → 先挂钩其 OKR；
-- 说服销售 → 用收入语言。
-影响力 = 信任 × 信息优势 × 对他人目标的理解，而非职权。三种货币：专业权威（每周直接接触客户、掌握数据、懂架构）、关系信任电池（一对一先关心人再谈事）、数据（把主观争论变客观事实）。
+### Translate into their language
+- Talking to the CFO about tech debt → frame it as financial loss;
+- Talking to engineers about a requirement → lead with why and co-create the solution, don't sell a conclusion;
+- Aligning with executives → hook it to their OKRs first;
+- Persuading sales → speak in revenue.
+Influence = trust × information advantage × understanding of the other person's goals, not positional authority. The three currencies: expertise (weekly direct contact with customers, command of the data, understanding of the architecture), the relationship trust battery (in a one-on-one, care about the person before the topic), and data (turning a subjective argument into an objective fact).
 
-### 利益相关者分层
-核心伙伴（工程/设计负责人、直属经理）日常高频同步；高权力低关注的高管用双周数据摘要维持满意；低权力高关注者月度通报——按 power/interest 配置带宽，不对所有人均匀撒消息。
+### Segmenting stakeholders
+Core partners (engineering and design leads, your manager) get frequent day-to-day sync; high-power low-interest executives are kept satisfied with a biweekly data summary; low-power high-interest people get a monthly update — allocate bandwidth by power/interest rather than spraying everyone equally.
 
-### 沟通纪律（Horowitz）
-- 重要立场书面化；更新 PRD 主动通知所有相关人并解释原因。
-- 方向必须书面下达并抄送相关方，杜绝口头指令造成版本漂移。
-- 状态报告准时发。
-- 把重复问题沉淀为 FAQ、白皮书、演示文稿等**杠杆物料**，让组织自助，而不是整天救火。
+### Communication discipline (Horowitz)
+- Put important positions in writing; when you update the PRD, proactively notify everyone affected and explain why.
+- Direction must be issued in writing and copied to the relevant parties; verbal instructions cause version drift.
+- Send status reports on time.
+- Turn recurring questions into **leverage material** — FAQs, whitepapers, decks — so the org can self-serve instead of you firefighting all day.
 
-## 反面模式
+## Anti-patterns
 
-- PPT 要点罗列掩盖未完成的思考。
-- PRD 扔过墙：一次性规格说明书，跳过问题定义直接写方案细节。
-- 数据汇报只贴截图：没有归因、建议、预期影响（四段式：观察→根因→建议→预期影响）。
-- 带问题上会而非带方案上会。
-- 口头政治家：只口头发表意见、事后指责，从不书面表态承担风险。
+- Bulleted slides hiding unfinished thinking.
+- Throwing the PRD over the wall: a one-shot spec that skips problem definition and goes straight to solution detail.
+- Data reports that are only screenshots: no attribution, recommendation or expected impact (the four parts: observation → root cause → recommendation → expected impact).
+- Bringing the problem to the meeting instead of a proposal.
+- The verbal politician: opines out loud, blames after the fact, never takes a written position and the risk with it.
 
-## 来源
+## Sources
 
-Amazon Working Backwards（Colin Bryar/Bill Carr）· Bezos 6-pager 文化 · 金字塔原理（Barbara Minto）· Ben Horowitz《Good PM/Bad PM》· Aakash Gupta《How to Influence Without Authority》· Reforge PRD 演化
+Amazon Working Backwards (Colin Bryar / Bill Carr) · Bezos's 6-pager culture · *The Pyramid Principle* (Barbara Minto) · Ben Horowitz, *Good Product Manager / Bad Product Manager* · Aakash Gupta, *How to Influence Without Authority* · Reforge on the evolution of the PRD

@@ -1,56 +1,59 @@
-# 产品战略与机会判断
+# Product strategy and opportunity judgment
 
-> 战略回答"在哪打、打不打、凭什么赢"。没有策略时，产品忙于填满功能对比矩阵——产出"最大"而不是"最好"的产品（Des Traynor）。
+> Strategy answers "where to fight, whether to fight, and why we win".
+> With no strategy, a product busies itself filling in a feature
+> comparison matrix — producing the *largest* product rather than the
+> best one (Des Traynor).
 
-## 框架速查
+## Framework quick reference
 
-| 框架 | 一句话 | 何时用 |
+| Framework | In one line | When to use |
 |---|---|---|
-| DHM（Gibson Biddle, Netflix） | Delight × Hard-to-copy × Margin 三问检验策略 | 制定/检验产品策略；区分战略 vs feature |
-| 王慧文战略八要素 | 市场体量、规模效应、马太效应、集中度、产业链、先发/后发、增量/存量、高频/低频+时机 | 判断一个市场值不值得进 |
-| 规模效应三曲线（王慧文） | A 网络效应（V∝N²）/ B 平台型 / C 双边且同边负效应 | 判断烧钱能不能烧出终局 |
-| 梁宁点线面体 | 点的努力被面和体的势能放大或湮灭 | 战略选位、要不要进入某方向 |
-| 梁宁体验五层次 | 战略存在层→能力圈→资源→角色框架→感知层 | 自上而下设计产品，别只在感知层较劲 |
-| STP（王慧文版） | 市场划分维度决定行业认知；切入点 ≠ 目标市场 | 新业务立项与定位 |
-| Empowered Teams（Cagan） | outcome 衡量、被授权解决问题的跨职能团队 | 诊断组织产品能力、设计 OKR |
-| 三级火箭（梁宁） | 高频流量 → 沉淀场景 → 商业闭环 | 设计免费+变现的增长结构 |
+| DHM (Gibson Biddle, Netflix) | Test a strategy against Delight × Hard-to-copy × Margin | Setting or testing product strategy; telling strategy from feature |
+| Wang Huiwen's eight strategic factors | Market size, scale effects, Matthew effect, concentration, position in the value chain, first/late mover, incremental/zero-sum, high/low frequency + timing | Judging whether a market is worth entering |
+| Three scale-effect curves (Wang Huiwen) | A network effects (V∝N²) / B platform / C two-sided with negative same-side effects | Judging whether burning cash can buy the endgame |
+| Liang Ning's dot-line-plane-body | A dot's effort is amplified or annihilated by the plane and body it sits on | Choosing where to position; whether to enter a direction |
+| Liang Ning's five experience layers | Strategic existence → capability circle → resources → role framework → perception | Design top-down; don't fight only at the perception layer |
+| STP (Wang Huiwen's version) | How you segment the market defines how you see the industry; the wedge ≠ the target market | New business kickoff and positioning |
+| Empowered teams (Cagan) | Cross-functional teams measured on outcomes and empowered to solve problems | Diagnosing org product capability; designing OKRs |
+| Three-stage rocket (Liang Ning) | High-frequency traffic → a place for it to settle → the commercial loop | Designing a free-plus-monetization growth structure |
 
-## 核心操作
+## Core practices
 
-### DHM 三问（每条产品策略必过）
-- 它如何 **Delight** 客户？
-- 什么让它 **Hard-to-copy**？来源：品牌、网络效应、规模经济、反定位（Netflix"无滞纳金"令 Blockbuster 无法跟进）、独有技术、切换成本、流程能力。
-- 它如何 **Margin-enhancing**？
-三问答不具体，你手里是个 feature，不是 strategy。配套：给每个策略 idea 建红黄绿打分表；高风险不可逆决策必须 A/B 验证，低风险可逆决策快速拍板。
+### DHM's three questions (every product strategy must pass)
+- How does it **Delight** the customer?
+- What makes it **Hard-to-copy**? Sources: brand, network effects, economies of scale, counter-positioning (Netflix's "no late fees" was something Blockbuster could not follow), proprietary technology, switching costs, process capability.
+- How is it **Margin-enhancing**?
+If the three answers aren't concrete, you are holding a feature, not a strategy. Supporting practice: score every strategy idea red/yellow/green; high-risk irreversible decisions must be A/B validated, low-risk reversible ones decided fast.
 
-### 王慧文机会判断清单（进新市场前过一遍）
-市场体量 → 规模效应类型 → 马太效应强度 → 市场集中度 → 产业链位置 → 先发/后发优势 → 增量还是存量（增量市场获客成本比存量低 10 倍以上）→ 高频还是低频（高频可打低频：美团酒店打携程）→ 时机（时间窗口常只有 3 个月，用 PEST 找驱动窗口的变量）。
+### Wang Huiwen's opportunity checklist (run it before entering a new market)
+Market size → type of scale effect → strength of the Matthew effect → market concentration → position in the value chain → first- vs late-mover advantage → incremental or zero-sum (customer acquisition in an incremental market costs 10x+ less than in a zero-sum one) → high or low frequency (high frequency beats low: Meituan's hotels beating Ctrip) → timing (the window is often only 3 months; use PEST to find the variable driving it).
 
-互联网 AB 面：A 类供给履约在线上；B1 以 SKU 为中心（电商）；B2 以 Location 为中心（本地生活，靠大规模线下地推）——业务类型决定组织能力需求。
+The internet's A and B sides: type A fulfils supply online; B1 is SKU-centred (e-commerce); B2 is location-centred (local services, won with large-scale on-the-ground sales) — the business type determines what organizational capability you need.
 
-### 梁宁点线面体
-入职、立项、投资都别只评估"点"本身，先判断它附着的线、面、体是否在崛起——"当面打仗时，面上的点是有红利的"。个人和产品同理。
+### Liang Ning's dot-line-plane-body
+Whether joining a company, starting a project or investing, don't evaluate the "dot" alone — first judge whether the line, plane and body it attaches to are rising: "when the plane is fighting, the dots on it get the dividend". The same holds for individuals and for products.
 
-### PMF 的正确方向
-为市场匹配产品，而不是为产品找市场（王慧文）。切入点（校内网的校园）≠ 目标市场（全人群）：没有锐利切入点不要铺大摊子，切口验证成功后要敢扩张。
+### Getting PMF the right way round
+Match the product to the market, not the market to the product (Wang Huiwen). The wedge (Xiaonei's campuses) is not the target market (everyone): without a sharp wedge, don't spread out; once the wedge is validated, dare to expand.
 
-## 原则
+## Principles
 
-- 竞争分析必须以行动结尾：产出"建议动作 + 待验证的开放问题"，不是填 SWOT 模板归档；抓竞品的用户评论和客服记录做规模化用户之声。
-- 战略选择先看客观基本面，"如果你分析得足够好，决策会自己呈现"（王慧文）。
-- 让团队聚焦收入与客户，而非竞品的功能数量对比（Horowitz）。
-- 工具型产品用"任务完成效率"而非停留时长做北极星——"用完即走"的真义是高效完成任务（张小龙）。
-- 产品是演化出来的，不是规划出来的：小步快跑、试错迭代；张小龙"从不做超过一个版本的规划"。
-- 战略需持续迭代："You'll never be done."（Gibson Biddle）
+- Competitive analysis must end in action: produce "recommended actions + open questions to validate", not a filled-in SWOT template filed away; scrape competitors' reviews and support logs as voice-of-customer at scale.
+- Judge strategy on objective fundamentals first — "if you analyze it well enough, the decision presents itself" (Wang Huiwen).
+- Keep the team focused on revenue and customers, not on counting competitor features (Horowitz).
+- For a tool product, make "task completion efficiency" the North Star rather than session length — "use it and leave" really means completing the job efficiently (Zhang Xiaolong).
+- Products evolve, they aren't planned: small steps, fast iteration; Zhang Xiaolong "never plans more than one version ahead".
+- Strategy needs continuous iteration: "You'll never be done." (Gibson Biddle)
 
-## 反面模式
+## Anti-patterns
 
-- 把策略问题误诊为执行问题：团队反复返工就加流程加会议，不回头修策略（Shreyas Doshi）。
-- 功能对表狂：盯竞品功能清单而非收入与客户。
-- 用勤奋代替判断：不分析规模效应、时间窗口、集中度就入场硬干；"做容易的事而不是正确的事"。
-- 错把切入点当目标市场，或没有切入点就铺大摊子。
-- 迷信教条：把方法论当标准答案背诵——"我所说的都是错的"（张小龙自警）。
+- Misdiagnosing a strategy problem as an execution problem: the team reworks everything, so you add process and meetings instead of going back to fix the strategy (Shreyas Doshi).
+- Feature-matrix obsession: watching the competitor's feature list instead of revenue and customers.
+- Substituting diligence for judgment: charging in without analyzing scale effects, timing windows or concentration; "doing the easy thing instead of the right thing".
+- Mistaking the wedge for the target market, or spreading out with no wedge at all.
+- Dogma worship: reciting methodology as the standard answer — "everything I say is wrong" (Zhang Xiaolong's self-warning).
 
-## 来源
+## Sources
 
-Gibson Biddle《The DHM Model》· 王慧文清华《互联网产品管理课》· 梁宁《产品思维30讲》· Marty Cagan / SVPG《Product vs Feature Teams》《Product Strategy》· Des Traynor（BoS 演讲）· 张小龙 2019 微信公开课
+Gibson Biddle, *The DHM Model* · Wang Huiwen's Tsinghua course on internet product management · Liang Ning, *30 Lectures on Product Thinking* · Marty Cagan / SVPG, *Product vs Feature Teams* and *Product Strategy* · Des Traynor (BoS talk) · Zhang Xiaolong, WeChat Open Class 2019
