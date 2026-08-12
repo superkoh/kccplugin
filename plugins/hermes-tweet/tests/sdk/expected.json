@@ -1,0 +1,11 @@
+{
+  "slashCommands": {
+    "requires": [
+      "hermes-tweet:workflow"
+    ],
+    "forbids": []
+  },
+  "mcpServers": {
+    "requires": []
+  }
+}
