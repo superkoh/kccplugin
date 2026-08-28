@@ -46,6 +46,47 @@ jobs:
       - name: Run L2 (unit)
         run: npm run test:l2
 
+      # The installer is the only thing between this repo and a user's
+      # project, so exercise it for real: install, prove it is idempotent,
+      # prove --check passes, prove --check catches an edit, and prove
+      # uninstall leaves nothing behind.
+      - name: Installer round-trip
+        run: |
+          set -euo pipefail
+          target="$(mktemp -d)"
+          git -C "$target" init -q
+          node installer/install.mjs --target "$target" --all -y
+          node installer/install.mjs --target "$target" --all -y | tee /tmp/second.log
+          grep -q "already up to date" /tmp/second.log
+          node installer/install.mjs --target "$target" --check
+          echo "tampered" >> "$target/.claude/skills/kcc-dev-core:spec/SKILL.md"
+          if node installer/install.mjs --target "$target" --check; then
+            echo "--check failed to detect a local edit" >&2
+            exit 1
+          fi
+          node installer/install.mjs --target "$target" --all -y
+          node installer/install.mjs --target "$target" --check
+          node installer/install.mjs --target "$target" --uninstall -y
+          test ! -e "$target/.claude/skills"
+          test ! -e "$target/.claude/kcc/kcc.lock.json"
+
+      # Regression: a pre-existing file at a *pulled-in dependency's* path
+      # must be a conflict. It once was not — the caller hashed only the
+      # requested modules, so the dependency's paths looked absent and the
+      # file was overwritten with no conflict and no backup.
+      - name: Installer refuses to clobber a dependency's path
+        run: |
+          set -euo pipefail
+          target="$(mktemp -d)"
+          git -C "$target" init -q
+          mkdir -p "$target/.claude/kcc/kcc-core/context"
+          echo "someone else's file" > "$target/.claude/kcc/kcc-core/context/thinking-principles.md"
+          if node installer/install.mjs --target "$target" --modules kcc-dev-core -y; then
+            echo "installer clobbered a dependency path instead of reporting a conflict" >&2
+            exit 1
+          fi
+          grep -q "someone else's file" "$target/.claude/kcc/kcc-core/context/thinking-principles.md"
+
   online:
     name: L3 + L4 (API-gated)
     runs-on: ubuntu-latest

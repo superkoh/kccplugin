@@ -5,7 +5,18 @@
       "kcc-dev-core:blackbox-tests",
       "kcc-dev-core:unit-tests"
     ],
-    "forbids": []
+    "forbids": [
+      "spec",
+      "blackbox-tests",
+      "unit-tests"
+    ]
+  },
+  "skills": {
+    "requires": [
+      "kcc-dev-core:spec",
+      "kcc-dev-core:blackbox-tests",
+      "kcc-dev-core:unit-tests"
+    ]
   },
   "mcpServers": {
     "requires": []

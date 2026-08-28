@@ -27,8 +27,12 @@
  *   are opt-in.
  */
 import { spawn } from "node:child_process";
+import { existsSync } from "node:fs";
+import { readdir } from "node:fs/promises";
+import path from "node:path";
 import {
   PluginFilterError,
+  REPO_ROOT,
   discoverPlugins,
   discoverTestArtifacts,
 } from "./lib/discover.mjs";
@@ -142,14 +146,35 @@ function printReport() {
   return failed;
 }
 
+/**
+ * The installer is not a plugin, but it is the load-bearing code of this
+ * repo — everything a project ends up with passes through it — so its unit
+ * tests run in the same layer, under the pseudo-plugin name "installer".
+ * `PLUGIN=installer` scopes to it; any other PLUGIN filter skips it.
+ */
+async function runInstallerTests() {
+  const filter = process.env.PLUGIN;
+  if (filter && filter !== "installer") return;
+  const dir = path.join(REPO_ROOT, "installer", "tests");
+  if (!existsSync(dir)) return;
+  const files = (await readdir(dir))
+    .filter((f) => f.endsWith(".test.mjs"))
+    .sort()
+    .map((f) => path.join(dir, f));
+  await runNodeTest({ name: "installer" }, files);
+}
+
 async function main() {
-  const plugins = await discoverPlugins();
-  for (const plugin of plugins) {
-    const art = await discoverTestArtifacts(plugin);
-    await runNodeTest(plugin, art.unit.nodeTest);
-    await runBats(plugin, art.unit.bats);
-    await runPytest(plugin, art.unit.pytest);
+  if (process.env.PLUGIN !== "installer") {
+    const plugins = await discoverPlugins();
+    for (const plugin of plugins) {
+      const art = await discoverTestArtifacts(plugin);
+      await runNodeTest(plugin, art.unit.nodeTest);
+      await runBats(plugin, art.unit.bats);
+      await runPytest(plugin, art.unit.pytest);
+    }
   }
+  await runInstallerTests();
   const failed = printReport();
   process.exit(failed > 0 ? 1 : 0);
 }

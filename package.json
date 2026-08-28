@@ -9,6 +9,8 @@
     "node": ">=20"
   },
   "scripts": {
+    "install:kcc": "node installer/install.mjs",
+    "check:kcc": "node installer/install.mjs --check",
     "test": "node test/validate.mjs && node test/run-unit.mjs && node test/run-sdk.mjs && node test/run-e2e.mjs",
     "test:l1": "node test/validate.mjs",
     "test:l2": "node test/run-unit.mjs",

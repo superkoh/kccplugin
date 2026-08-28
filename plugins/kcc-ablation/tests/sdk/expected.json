@@ -1,7 +1,16 @@
 {
   "slashCommands": {
-    "requires": ["kcc-ablation:ablate"],
-    "forbids": []
+    "requires": [
+      "kcc-ablation:ablate"
+    ],
+    "forbids": [
+      "ablate"
+    ]
+  },
+  "skills": {
+    "requires": [
+      "kcc-ablation:ablate"
+    ]
   },
   "mcpServers": {
     "requires": []

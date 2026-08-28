@@ -1,0 +1,116 @@
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import {
+  extractManagedHooks,
+  isManagedHook,
+  mergeManagedHooks,
+  sameManagedHooks,
+  stripManagedHooks,
+} from "../lib/settings.mjs";
+
+const ours = (n = "") => ({
+  type: "command",
+  command: `bash "$CLAUDE_PROJECT_DIR/.claude/kcc/kcc-core/scripts/s${n}.sh"`,
+});
+const theirs = (cmd = "npm run lint") => ({ type: "command", command: cmd });
+
+test("ownership is decided by the .claude/kcc/ marker in the command", () => {
+  assert.equal(isManagedHook(ours()), true);
+  assert.equal(isManagedHook(theirs()), false);
+  assert.equal(isManagedHook(theirs("bash ./scripts/kcc/other.sh")), false);
+  assert.equal(isManagedHook(null), false);
+  assert.equal(isManagedHook({ type: "command" }), false);
+});
+
+test("stripping removes our hooks and leaves the project's own untouched", () => {
+  const settings = {
+    permissions: { allow: ["Bash(npm test)"] },
+    hooks: {
+      SessionStart: [{ hooks: [ours()] }, { hooks: [theirs()] }],
+      PreToolUse: [{ matcher: "Write", hooks: [theirs("./guard.sh")] }],
+    },
+  };
+  const out = stripManagedHooks(settings);
+  assert.deepEqual(out.permissions, settings.permissions, "unrelated keys survive");
+  assert.deepEqual(out.hooks.SessionStart, [{ hooks: [theirs()] }]);
+  assert.deepEqual(out.hooks.PreToolUse, settings.hooks.PreToolUse);
+});
+
+test("an entry that mixes ours and theirs loses only our half", () => {
+  const out = stripManagedHooks({
+    hooks: { Stop: [{ matcher: "*", hooks: [theirs(), ours(), theirs("b")] }] },
+  });
+  assert.deepEqual(out.hooks.Stop, [{ matcher: "*", hooks: [theirs(), theirs("b")] }]);
+});
+
+test("an event that becomes empty is dropped, and so is an empty hooks key", () => {
+  const out = stripManagedHooks({ model: "opus", hooks: { SessionStart: [{ hooks: [ours()] }] } });
+  assert.deepEqual(out, { model: "opus" });
+  assert.ok(!("hooks" in out), "an empty hooks object must not be left behind");
+});
+
+test("stripping a settings file with no hooks at all is a no-op", () => {
+  assert.deepEqual(stripManagedHooks({ model: "opus" }), { model: "opus" });
+  assert.deepEqual(stripManagedHooks({}), {});
+});
+
+test("merging appends our entries after the project's own, preserving event order", () => {
+  const settings = {
+    hooks: {
+      PreToolUse: [{ hooks: [theirs("./guard.sh")] }],
+      SessionStart: [{ hooks: [theirs("./welcome.sh")] }],
+    },
+  };
+  const managed = { SessionStart: [{ hooks: [ours()] }], Stop: [{ hooks: [ours("2")] }] };
+  const out = mergeManagedHooks(settings, managed);
+
+  assert.deepEqual(Object.keys(out.hooks), ["PreToolUse", "SessionStart", "Stop"]);
+  assert.deepEqual(out.hooks.SessionStart, [{ hooks: [theirs("./welcome.sh")] }, { hooks: [ours()] }]);
+  assert.deepEqual(out.hooks.PreToolUse, settings.hooks.PreToolUse);
+});
+
+test("merging is idempotent — running the installer twice cannot duplicate hooks", () => {
+  const managed = { SessionStart: [{ hooks: [ours()] }] };
+  const once = mergeManagedHooks({ hooks: { SessionStart: [{ hooks: [theirs()] }] } }, managed);
+  const twice = mergeManagedHooks(once, managed);
+  assert.deepEqual(twice, once);
+});
+
+test("an upgrade replaces our old entries rather than accumulating them", () => {
+  const before = mergeManagedHooks({}, { SessionStart: [{ hooks: [ours("old")] }] });
+  const after = mergeManagedHooks(before, { SessionStart: [{ hooks: [ours("new")] }] });
+  assert.equal(after.hooks.SessionStart.length, 1);
+  assert.ok(after.hooks.SessionStart[0].hooks[0].command.includes("snew.sh"));
+});
+
+test("merging into a null settings file produces a minimal valid object", () => {
+  const out = mergeManagedHooks(null, { SessionStart: [{ hooks: [ours()] }] });
+  assert.deepEqual(out, { hooks: { SessionStart: [{ hooks: [ours()] }] } });
+});
+
+test("a malformed hooks.<event> is refused rather than silently replaced", () => {
+  assert.throws(
+    () => mergeManagedHooks({ hooks: { SessionStart: "oops" } }, { SessionStart: [{ hooks: [ours()] }] }),
+    /not an array/
+  );
+});
+
+test("extract returns exactly the entries an upgrade would replace", () => {
+  const settings = mergeManagedHooks(
+    { hooks: { SessionStart: [{ hooks: [theirs()] }] } },
+    { SessionStart: [{ hooks: [ours()] }] }
+  );
+  assert.deepEqual(extractManagedHooks(settings), { SessionStart: [{ hooks: [ours()] }] });
+});
+
+test("extract sees a hand-edited managed hook, which is what --check reports", () => {
+  const settings = mergeManagedHooks({}, { SessionStart: [{ hooks: [ours()] }] });
+  settings.hooks.SessionStart[0].hooks[0].timeout = 999;
+  assert.equal(sameManagedHooks(extractManagedHooks(settings), { SessionStart: [{ hooks: [ours()] }] }), false);
+});
+
+test("hook comparison ignores event ordering", () => {
+  const a = { Stop: [{ hooks: [ours()] }], SessionStart: [{ hooks: [ours("2")] }] };
+  const b = { SessionStart: [{ hooks: [ours("2")] }], Stop: [{ hooks: [ours()] }] };
+  assert.equal(sameManagedHooks(a, b), true);
+});

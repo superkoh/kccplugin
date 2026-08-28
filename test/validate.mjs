@@ -21,7 +21,7 @@
  * Exit code: 0 when everything passes, 1 otherwise. Output is a terse
  * per-artifact table plus a list of failures.
  */
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { spawn } from "node:child_process";
@@ -37,6 +37,7 @@ import {
   loadMarketplace,
 } from "./lib/discover.mjs";
 import { parseFrontmatterFile } from "./lib/frontmatter.mjs";
+import { projectPath } from "../installer/lib/projection.mjs";
 
 const SCHEMAS_DIR = path.join(REPO_ROOT, "test", "schemas");
 
@@ -263,6 +264,18 @@ async function validatePlugin(ajv, plugin, marketplace) {
     );
   }
 
+  const modulePath = path.join(plugin.root, "kcc.module.json");
+  if (existsSync(modulePath)) {
+    const label = `plugins/${plugin.name}/kcc.module.json`;
+    try {
+      const validate = await getValidator(ajv, "kcc-module.schema.json");
+      const data = JSON.parse(await readFile(modulePath, "utf-8"));
+      record(label, validate(data), formatAjvErrors(validate.errors));
+    } catch (err) {
+      record(label, false, err.message);
+    }
+  }
+
   for (const wrong of assets.misplaced) {
     record(
       `plugins/${plugin.name}: misplaced directory`,
@@ -270,6 +283,102 @@ async function validatePlugin(ajv, plugin, marketplace) {
       `${wrong} must live at the plugin root, not under .claude-plugin/`
     );
   }
+}
+
+/**
+ * Projection invariants.
+ *
+ * These are the rules the *installer* depends on but the plugin spec knows
+ * nothing about, so nothing else would catch a violation until a project
+ * silently lost a capability:
+ *
+ *  - Project-level agents are flat and their name comes from frontmatter, so
+ *    two modules shipping `agents/pm.md` would overwrite each other, and an
+ *    agent whose name contains a colon fails to register at all (verified
+ *    against a live CLI). Requiring `name` to start with the module name and
+ *    to match the filename makes both impossible.
+ *  - No two modules may project onto the same target path, for any asset.
+ */
+async function validateProjection(plugins, filtered) {
+  const seen = new Map(); // target path → module
+  for (const plugin of plugins) {
+    const assets = await inventoryPluginAssets(plugin);
+
+    for (const agent of assets.agents) {
+      const label = `plugins/${plugin.name}/agents/${agent.name}.md (projection)`;
+      const parsed = await parseFrontmatterFile(agent.path);
+      const name = parsed?.frontmatter?.name;
+      if (typeof name !== "string") {
+        record(label, false, "missing frontmatter `name`");
+        continue;
+      }
+      if (name.includes(":")) {
+        record(label, false, `agent name "${name}" contains ":" — such agents never register`);
+      } else if (name !== agent.name) {
+        record(label, false, `frontmatter name "${name}" must match the filename "${agent.name}.md"`);
+      } else if (name !== plugin.name && !name.startsWith(`${plugin.name}-`)) {
+        record(
+          label,
+          false,
+          `agent name "${name}" must be "${plugin.name}" or start with "${plugin.name}-" — ` +
+            "project-level agents are flat, so an unprefixed name can collide across modules"
+        );
+      } else {
+        record(label, true);
+      }
+    }
+
+    for (const skill of assets.skills) {
+      if (skill.name.includes(":")) {
+        record(
+          `plugins/${plugin.name}/skills/${skill.name} (projection)`,
+          false,
+          "a skill directory name must not contain ':' — the installer adds the module namespace"
+        );
+      }
+    }
+
+    for (const rel of await collectShippedPaths(plugin)) {
+      const target = projectPath(plugin.name, rel);
+      if (!target) continue;
+      if (seen.has(target) && seen.get(target) !== plugin.name) {
+        record(
+          `projection collision: ${target}`,
+          false,
+          `both ${seen.get(target)} and ${plugin.name} project onto it`
+        );
+      }
+      seen.set(target, plugin.name);
+    }
+  }
+
+  if (filtered) {
+    skip(
+      "projection: cross-module collisions",
+      "PLUGIN filter is set — run without it to check every module against every other"
+    );
+  } else {
+    record(`projection: ${seen.size} target paths, no collisions`, true);
+  }
+}
+
+async function collectShippedPaths(plugin) {
+  const out = [];
+  const walk = async (dir, base) => {
+    let entries;
+    try {
+      entries = await readdir(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const e of entries) {
+      const abs = path.join(dir, e.name);
+      if (e.isDirectory()) await walk(abs, base);
+      else if (e.isFile()) out.push(path.relative(base, abs).split(path.sep).join("/"));
+    }
+  };
+  await walk(plugin.root, plugin.root);
+  return out;
 }
 
 async function runOfficialValidators(marketplace, plugins) {
@@ -337,6 +446,8 @@ async function main() {
   for (const p of plugins) {
     await validatePlugin(ajv, p, marketplace);
   }
+
+  await validateProjection(plugins, !!process.env.PLUGIN);
 
   await runOfficialValidators(marketplace, plugins);
 

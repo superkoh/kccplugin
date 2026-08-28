@@ -3,7 +3,7 @@ name: run-plugin-tests
 description: Run the four-layer kccplugin test framework and interpret its results, after editing any file in a plugin under plugins/ and before reporting the task complete. Also use when the user asks to test, verify, or regression-test a plugin (跑测试 / 验证 / 回归测试 / 测一下). Honors PLUGIN=<name> to scope to a single plugin.
 ---
 
-# Running plugin tests in this marketplace
+# Running the module tests in this repo
 
 This repo ships a four-layer test framework under `test/`. Layers:
 
@@ -12,11 +12,13 @@ This repo ships a four-layer test framework under `test/`. Layers:
 - **L2** — per-plugin unit tests, dispatched by file extension:
   `.bats` → bats, `*.test.mjs` / `*.test.js` → `node --test`,
   `test_*.py` → `python3 -m pytest`. Offline, free, deterministic.
-- **L3** — declarative YAML e2e cases calling `claude -p` with loose
-  matchers. Real API cost. Non-deterministic (model output drift).
-- **L4** — load-time assertions: start the CLI with `--plugin-dir`,
-  read the init system message, assert that required slash commands
-  and MCP servers registered. Tiny API cost; SIGKILL after init.
+- **L3** — declarative YAML e2e cases calling `claude -p` inside a
+  throwaway project that has the module installed, with loose matchers.
+  Real API cost. Non-deterministic (model output drift).
+- **L4** — load-time assertions: install every module into a throwaway
+  project, start the CLI there, read the init system message, assert that
+  each module's commands, skills and agents registered under their
+  projected names. Tiny API cost; SIGKILL after init.
 
 ## Determining the target plugin
 
@@ -89,7 +91,7 @@ the edit can't possibly change model behavior.
 
 | Edited                             | Run                       |
 |------------------------------------|---------------------------|
-| plugin.json / marketplace.json     | L1                        |
+| plugin.json / kcc.module.json      | L1                        |
 | commands/*.md frontmatter          | L1 + L4                   |
 | skills/<x>/SKILL.md frontmatter    | L1 + L4                   |
 | agents/*.md frontmatter            | L1 + L4                   |
@@ -153,7 +155,7 @@ the test, don't retry.
 ### L3 — e2e YAML cases
 
 ```
-L3  End-to-end  (1 case, fallback (user keychain / OAuth; --bare dropped))
+L3  End-to-end  (1 case, project install, isolated CLAUDE_CONFIG_DIR, auth: user keychain / OAuth)
 ------------------------------------------------------------------------
   ✓ <plugin>  <case-name>  (5888ms)
       cost=$0.008675  in=18  out=428  cache_r=57080  cache_w=324  api=6287ms
@@ -177,10 +179,10 @@ L3  End-to-end  (1 case, fallback (user keychain / OAuth; --bare dropped))
 …the CLI errored out before reaching the model. Inspect `parsedJson.is_error`
 and the stderr tail that L3 prints under the failure. Common causes:
 
-- `Not logged in · Please run /login` — auth. If `ANTHROPIC_API_KEY` is
-  unset, `--bare` is auto-dropped and the user's keychain OAuth is used;
-  if neither works, log in with `claude` or set the env var.
-- Bad `--plugin-dir` path, bad command name, bad JSON schema argument.
+- `Not logged in · Please run /login` — auth. Either `ANTHROPIC_API_KEY`
+  or the user's keychain OAuth works; if neither does, log in with
+  `claude` or set the env var.
+- Bad command name, bad JSON schema argument.
 
 Common behavioral failures (real call, wrong result):
 
@@ -218,7 +220,10 @@ Common failures:
   crashed during plugin load. Reproduce by hand to see the real error:
 
   ```bash
-  claude --debug --plugin-dir plugins/<name> -p "ping"
+  # install into a scratch project, then reproduce there
+  t=$(mktemp -d); git -C "$t" init -q
+  node installer/install.mjs --target "$t" --all -y
+  (cd "$t" && CLAUDE_CONFIG_DIR=$(mktemp -d) claude --debug -p "ping")
   ```
 
 ## Budget discipline
@@ -242,17 +247,14 @@ L3 is the only layer with real cost. Rules:
 
 The L3 header line tells you which mode is active:
 
-- `hermetic (--bare + ANTHROPIC_API_KEY)` — env var is set, CLI runs
-  with `--bare` (skips hooks, LSP, auto-memory, CLAUDE.md discovery,
-  plugin sync). Fully reproducible; ideal for CI.
-- `fallback (user keychain / OAuth; --bare dropped)` — no env var; the
-  CLI falls back to the user's `claude auth` login. Slightly less
-  hermetic because user environment can leak in, but works for local
-  dev without an API key.
+- `auth: ANTHROPIC_API_KEY` — env var is set. Ideal for CI.
+- `auth: user keychain / OAuth` — no env var; the CLI uses the user's
+  `claude auth` login. Equally valid, and the normal local-dev mode.
 
-Both are valid. CI should set `ANTHROPIC_API_KEY` as a secret for
-reproducibility. Local dev can use either.
+Both are real runs, not skips. Do not read "user keychain / OAuth" as a
+degraded mode.
 
-L4 always uses `--bare` regardless of auth mode — it only cares about
-the init message, which is emitted before auth, and the child is
-SIGKILL'd before any real API traffic.
+Isolation is separate from auth and comes from `CLAUDE_CONFIG_DIR`
+pointing at an empty directory, so none of the developer's own plugins
+or skills leak in. **Never reach for `--bare` here**: it also drops the
+project's `.claude/`, which is exactly what L3 and L4 are testing.

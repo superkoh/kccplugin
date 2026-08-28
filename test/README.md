@@ -1,17 +1,21 @@
 # kccplugin test framework
 
-Layered, convention-driven automated tests for every plugin in this
-marketplace. New plugins plug in by dropping files into known locations —
-the framework discovers them. Nothing here is plugin-specific.
+Layered, convention-driven automated tests for every module in this repo.
+New modules plug in by dropping files into known locations — the framework
+discovers them. Nothing here is module-specific.
+
+L3 and L4 run against the **shipped form**: modules installed into a
+throwaway project's `.claude/`, exactly as `install.sh` would. See
+`test/lib/project-fixture.mjs`.
 
 ## Layers
 
 | Layer | Runner | What it proves | Cost | API key? |
 |------:|--------|----------------|------|:--:|
-| **L1** | `test/validate.mjs`  | marketplace.json / plugin.json / all frontmatter / hooks.json are structurally valid against strict schemas, plus the official `claude plugin validate` | none | no |
-| **L2** | `test/run-unit.mjs`  | Plugin-owned unit tests (bats, `node --test`, pytest) | none | no |
-| **L3** | `test/run-e2e.mjs`   | Declarative YAML cases driving `claude -p --bare` with loose matchers on the output | API tokens | yes |
-| **L4** | `test/run-sdk.mjs`   | The CLI can actually *load* each plugin and the expected slash commands / MCP servers appear in its init message | tiny API spend | yes |
+| **L1** | `test/validate.mjs`  | plugin.json / kcc.module.json / all frontmatter / hooks.json are structurally valid against strict schemas; the projection invariants hold (flat agent names, no target-path collisions); plus the official `claude plugin validate` | none | no |
+| **L2** | `test/run-unit.mjs`  | Module-owned unit tests (bats, `node --test`, pytest) plus the installer's own suite at `installer/tests/` | none | no |
+| **L3** | `test/run-e2e.mjs`   | Declarative YAML cases driving `claude -p` inside a project that has the module installed, with loose matchers on the output | API tokens | yes |
+| **L4** | `test/run-sdk.mjs`   | Every module's commands, skills and agents register under their projected names after a real install, with no user-level leakage | tiny API spend | yes |
 
 Run everything:
 
@@ -43,8 +47,9 @@ PLUGIN=my-plugin npm run test:l1
 
 L3 and L4 self-skip only when **no auth is available at all** — any of
 `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN`, `CLAUDE_CODE_OAUTH_TOKEN`,
-or an existing `claude auth` keychain login lets them run (without the
-env key they drop `--bare` and use the keychain fallback).
+or an existing `claude auth` keychain login lets them run. Isolation
+comes from `CLAUDE_CONFIG_DIR`, never `--bare` — `--bare` would also drop
+the project's own `.claude/`, hiding the very thing under test.
 
 ## How a plugin opts into each layer
 

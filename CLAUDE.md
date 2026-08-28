@@ -4,10 +4,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this repo is
 
-`kccplugin` is a **Claude Code plugin marketplace** with a convention-driven,
-four-layer automated test framework. Plugins live under `plugins/<name>/` and
-are auto-discovered — the framework hardcodes no plugin names. The marketplace
-manifest is `.claude-plugin/marketplace.json`.
+`kccplugin` ships Claude Code capabilities that are **installed into a
+project's `.claude/`**, not into a user's `~/.claude`. `install.sh` (curl
+one-liner) → `installer/install.mjs` does install, upgrade, verify and
+uninstall as one reconciling operation. A convention-driven, four-layer
+test framework covers it.
+
+Modules are authored in Claude Code **plugin shape** under `plugins/<name>/`
+and are auto-discovered — nothing hardcodes a module name. The plugin shape
+is kept because it is exactly what the installer needs and because it keeps
+`claude plugin validate` as a free L1 correctness oracle; it is *not* a
+statement that these ship as plugins. `.claude-plugin/marketplace.json` is
+retained only as a deprecation window for people still on the old
+marketplace install, and is not the supported distribution path.
+
+Read `README.md` for the user-facing install story.
 
 ## Common commands
 
@@ -32,12 +43,23 @@ PLUGIN=hello-world npm test
 PLUGIN=hello-world npm run test:l1
 ```
 
+`PLUGIN=installer` scopes L2 to the installer's own unit tests, which live
+at `installer/tests/` rather than under a plugin.
+
+The installer itself:
+
+```bash
+node installer/install.mjs --help
+node installer/install.mjs --target /path/to/project --all --dry-run
+node installer/install.mjs --target /path/to/project --check
+```
+
 L3 and L4 only skip when **no auth is available at all**. "Auth" means
 any of `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN`,
 `CLAUDE_CODE_OAUTH_TOKEN`, or an existing `claude auth` keychain login.
 Don't infer a skip from a missing env var — run the layer and read its
-output. A banner saying `fallback (user keychain / OAuth; --bare
-dropped)` is a normal successful run, not a skip.
+output. A banner saying `auth: user keychain / OAuth` is a normal
+successful run, not a skip.
 
 CI runs `test:offline` on every push/PR; the full L3+L4 suite runs
 nightly and on manual dispatch — see `.github/workflows/test.yml`.
@@ -48,8 +70,14 @@ Layer semantics are in the npm-script comments above; runners live in
 `test/`. Full layer reference: `test/README.md`.
 
 Shared helpers live in `test/lib/`. `test/lib/discover.mjs` is the **single
-source of truth** for directory conventions — to move or rename a convention,
-edit that file and nothing else needs to change.
+source of truth** for source-side directory conventions;
+`installer/lib/projection.mjs` is the single source of truth for how those
+map onto an installed project.
+
+L3 and L4 run against a **real project install**, not `--plugin-dir`:
+`test/lib/project-fixture.mjs` installs modules into a throwaway git repo
+and runs the CLI there. Hermeticity comes from `CLAUDE_CONFIG_DIR`, never
+`--bare` — see the gotchas below.
 
 Strict schemas in `test/schemas/*.json` use `additionalProperties: false` by
 design, so typos in manifests fail loudly at L1 rather than silently
@@ -66,6 +94,10 @@ field and becomes the slash-command namespace. Names must be kebab-case
 ```
 plugins/<name>/
 ├── .claude-plugin/plugin.json           # manifest (L1)
+├── kcc.module.json                      # optional; installer-only metadata
+│                                        #   ({"requires": [...]}) — kept out of
+│                                        #   plugin.json, whose official
+│                                        #   validator rejects unknown keys
 ├── commands/*.md                        # slash commands (YAML frontmatter, L1)
 ├── agents/*.md                          # sub-agents (YAML frontmatter, L1)
 ├── skills/<skill>/SKILL.md              # skills (YAML frontmatter, L1)
@@ -103,13 +135,60 @@ for free.
   model the prompt actually serves (Opus-class), never a cheaper one.
 - **Triage offline first.** Run L1+L2+L4 before L3. If any are red, fix
   them first — don't burn L3 money on a known-broken plugin.
-- **Hermetic vs. fallback auth.** L3 uses `claude --bare` when
-  `ANTHROPIC_API_KEY` is set (ignores user `.claude/` and `~/.claude`).
-  Without the env var it drops `--bare` and falls back to the user's
-  keychain OAuth. Both are valid; CI should set the secret.
+- **`--bare` is useless for testing an install.** Verified against a live
+  CLI: `--bare` drops the *project's* `.claude/` as well as the user's, so
+  every project-installed command, skill and agent vanishes. L3/L4 isolate
+  with `CLAUDE_CONFIG_DIR=<empty dir>` instead, which gives `plugins: []`
+  and none of the developer's own skills while leaving the project tree
+  intact.
 - **Frontmatter `description` is required** on commands, skills, and
   agents — missing it both fails L1 frontmatter schemas and prevents the
   plugin from registering at L4.
+
+### Project-level registration rules (all verified against a live CLI)
+
+These are what `installer/lib/projection.mjs` encodes. They are not in the
+plugin docs and they are not symmetric — get one wrong and a capability
+disappears silently.
+
+- **Commands namespace by subdirectory.** `.claude/commands/<ns>/<f>.md`
+  registers as `/<ns>:<f>`.
+- **Skills do NOT namespace by subdirectory.** A nested
+  `.claude/skills/<a>/<b>/SKILL.md` registers as *nothing at all*. A skill's
+  name is its directory name **verbatim** — frontmatter `name:` is ignored —
+  and a colon in that directory name survives. So
+  `.claude/skills/kcc-dev-core:spec/` is what preserves the namespace.
+- **Agent names come from frontmatter and may not contain a colon.** An
+  agent named `kcc-pm:pm` silently fails to register. Agents are therefore
+  flat, and L1 requires an agent's name to equal its filename and to start
+  with its module name — otherwise two modules would overwrite each other.
+- **`extraKnownMarketplaces` is ignored in project settings**, while
+  `enabledPlugins` is honored. So an in-repo marketplace still needs a
+  per-machine `claude plugin marketplace add`, which is why the installer
+  projects files instead.
+- **`$CLAUDE_PROJECT_DIR` expands in hook commands** in project
+  `settings.json`, but **not** in a marketplace `path`.
+- Hook scripts self-locate via `$0` and read `../context/*.md`, so keeping
+  `scripts/` and `context/` adjacent under `.claude/kcc/<module>/` means
+  they run unmodified. Only `${CLAUDE_PLUGIN_ROOT}` in `hooks.json` is
+  rewritten.
+
+### Installer invariants
+
+- **The projection is a pure byte copy.** No installed file's content is
+  ever rewritten, which is what keeps drift hashes exact and keeps shipped
+  prompts byte-identical to the ones the ablation campaigns measured. If a
+  name has to change, change it *at the source*.
+- **`--modules` is declarative**, not additive: an installed module that is
+  not listed gets uninstalled.
+- **The lockfile is written last**, so a run that dies partway leaves the
+  lock describing the old state and the next run reconciles.
+- **A hook entry is kcc-owned iff its command contains `/.claude/kcc/`.**
+  That predicate is the entire settings.json merge strategy: strip ours,
+  append the current truth, never touch the project's own entries.
+- **`.claude/` is config, not source.** `stop-test-audit.sh` excludes it —
+  without that, the first turn after an install blocks on kcc's own
+  freshly-untracked payload.
 
 ## Pointers to existing workflow skills
 

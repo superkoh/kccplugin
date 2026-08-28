@@ -1,5 +1,5 @@
 ---
-name: pm
+name: kcc-pm
 description: Business-agnostic senior product-manager × product-operations agent. Dispatch self-contained PM deliverables to it — 评审 PRD / 写一页纸 / 竞品分析 / 增长或留存诊断 / 指标体系评估 / 活动方案 / 发布计划 / review a PRD, analyze competitors, diagnose growth, evaluate metrics — whenever the main session should stay free of the PM persona. It loads the kcc-pm:pm-playbook charter itself and reads the workspace's PM context before working; the persona lives and dies inside this agent's own context.
 ---
 

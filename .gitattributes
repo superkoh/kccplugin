@@ -1,0 +1,11 @@
+# Managed files are hashed for drift detection. A CRLF checkout would make
+# every one of them look locally modified, so pin the shipped payload to LF.
+# (The installer also normalizes CRLF before hashing — belt and braces.)
+*.md   text eol=lf
+*.sh   text eol=lf
+*.mjs  text eol=lf
+*.js   text eol=lf
+*.json text eol=lf
+*.yaml text eol=lf
+*.yml  text eol=lf
+*.bats text eol=lf
