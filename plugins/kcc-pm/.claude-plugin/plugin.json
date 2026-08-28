@@ -1,10 +1,19 @@
 {
   "name": "kcc-pm",
-  "version": "0.3.1",
-  "description": "Business-agnostic senior PM × product-ops capability with zero session-start footprint: a task-scoped playbook skill carrying the role charter (iron laws, evidence discipline, output spec — per-rule A/B ablated on Opus-class arms) and the workflow router, a dispatchable pm agent that keeps the persona out of the main session entirely, and an interview-driven onboarding command that builds per-project PM context files.",
-  "author": { "name": "koh", "email": "koh.718@gmail.com" },
+  "version": "0.4.0",
+  "description": "Business-agnostic senior PM \u00d7 product-ops capability with zero session-start footprint: a task-scoped playbook skill carrying the role charter (iron laws, evidence discipline, output spec \u2014 per-rule A/B ablated on Opus-class arms) and the workflow router, a dispatchable pm agent that keeps the persona out of the main session entirely, and an interview-driven onboarding command that builds per-project PM context files.",
+  "author": {
+    "name": "koh",
+    "email": "koh.718@gmail.com"
+  },
   "homepage": "https://github.com/superkoh/kccplugin",
   "repository": "https://github.com/superkoh/kccplugin.git",
   "license": "MIT",
-  "keywords": ["pm", "product-management", "product-operations", "onboarding", "charter"]
+  "keywords": [
+    "pm",
+    "product-management",
+    "product-operations",
+    "onboarding",
+    "charter"
+  ]
 }

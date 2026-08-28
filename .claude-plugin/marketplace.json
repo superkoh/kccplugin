@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "A Claude Code plugin marketplace",
-    "version": "0.4.0"
+    "version": "0.5.0"
   },
   "plugins": [
     {
@@ -29,8 +29,14 @@
     {
       "name": "kcc-pm",
       "source": "./plugins/kcc-pm",
-      "description": "Business-agnostic senior PM × product-ops capability with zero session-start footprint: a task-scoped playbook skill carrying the role charter (iron laws, evidence discipline, output spec — per-rule A/B ablated on Opus-class arms) and the workflow router, a dispatchable pm agent that keeps the persona out of the main session entirely, and an interview-driven onboarding command that builds per-project PM context files.",
-      "version": "0.3.1"
+      "description": "Business-agnostic senior PM \u00d7 product-ops capability with zero session-start footprint: a task-scoped playbook skill carrying the role charter (iron laws, evidence discipline, output spec \u2014 per-rule A/B ablated on Opus-class arms) and the workflow router, a dispatchable pm agent that keeps the persona out of the main session entirely, and an interview-driven onboarding command that builds per-project PM context files.",
+      "version": "0.4.0"
+    },
+    {
+      "name": "kcc-guard",
+      "source": "./plugins/kcc-guard",
+      "description": "Enforcement for the kcc install: a PreToolUse hook that refuses edits to kcc-managed files, so the project's own agent cannot drift them. Detection (the lockfile and `--check`) says what changed after the fact; this says no at the moment of the edit \u2014 and it holds even under bypassPermissions.",
+      "version": "0.1.0"
     }
   ]
 }

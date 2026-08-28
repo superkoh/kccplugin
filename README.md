@@ -51,7 +51,7 @@ From a clone, the same flags work without the download step:
 node installer/install.mjs --all
 ```
 
-Requires Node ≥ 18 and `jq` on PATH (the principle-injection hooks degrade
+Requires Node ≥ 20 and `jq` on PATH (the principle-injection hooks degrade
 to a silent no-op without `jq`; the installer warns when it is missing).
 
 **Install and upgrade are the same command.** It reconciles what is in the
@@ -66,6 +66,7 @@ tell "upstream changed this" apart from "somebody edited this".
 | `kcc-dev-core` | Code-discipline principles (injected only inside a software project), plus the `spec`, `unit-tests` and `blackbox-tests` skills and a post-turn test audit. Requires `kcc-core`. | conditional |
 | `kcc-pm` | Senior PM × product-ops playbook skill, a dispatchable `kcc-pm` agent, and an onboarding command | none |
 | `kcc-ablation` | Sealed A/B prompt-ablation campaigns — measures what each rule in an injected prompt is actually worth | none |
+| `kcc-guard` | A PreToolUse hook that refuses edits to kcc-managed files, so the project's own agent cannot drift them | none |
 
 Selecting a module pulls in whatever it requires, and says so.
 
@@ -98,14 +99,32 @@ the whole point is that the capability set is identical for everyone. Your
 previous content is copied to `.claude/kcc/.backup/<timestamp>/` first and
 the paths are printed, so nothing disappears silently.
 
-To make that a rule rather than a request, gate it in CI:
+Three layers make that hold, in increasing order of how early they act:
+
+**Recover.** Because the projection is a byte copy and the lockfile has a
+hash per file, any change is exactly reversible: re-running the installer
+restores the file and backs up what was there.
+
+**Detect.** `--check` exits non-zero if any managed file was edited or
+deleted, or if the kcc hook entries in `settings.json` were changed. Gate it
+in CI:
 
 ```yaml
 - run: curl -fsSL .../install.sh | bash -s -- --check
 ```
 
-`--check` exits non-zero if any managed file was edited, deleted, or if the
-kcc hook entries in `settings.json` were changed.
+**Refuse.** The `kcc-guard` module installs a `PreToolUse` hook that denies
+`Edit` / `Write` / `NotebookEdit` on any path the lockfile claims, and denies
+`Bash` commands that both name a managed path and look like they write. The
+agent gets told why and where to make the change instead. The deny holds even
+under `--permission-mode bypassPermissions`.
+
+In a repo where an agent edits files all day, that agent is the most likely
+source of drift, which is why refusing beats detecting. Be clear about the
+limit, though: a shell one-liner in a form the heuristic misses can still get
+through, and nothing stops a human in an editor. It raises the cost and makes
+the intent explicit; it is not a sandbox. That is what the other two layers
+are for.
 
 Want a change? Make it in this repo and re-run the installer.
 

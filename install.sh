@@ -29,11 +29,11 @@ die() { printf 'error: %s\n' "$*" >&2; exit 1; }
 command -v curl >/dev/null 2>&1 || die "curl is required"
 command -v tar >/dev/null 2>&1 || die "tar is required"
 command -v node >/dev/null 2>&1 || die \
-  "node is required (>= 18). Install Node, or clone the repo and run installer/install.mjs."
+  "node is required (>= 20). Install Node, or clone the repo and run installer/install.mjs."
 
 node_major="$(node -p 'process.versions.node.split(".")[0]')"
-if [ "$node_major" -lt 18 ]; then
-  die "node >= 18 required, found $(node -v)"
+if [ "$node_major" -lt 20 ]; then
+  die "node >= 20 required, found $(node -v)"
 fi
 
 tmp="$(mktemp -d "${TMPDIR:-/tmp}/kcc-install.XXXXXX")"
@@ -48,8 +48,18 @@ fi
 
 [ -f "$tmp/installer/install.mjs" ] || die "downloaded archive has no installer/install.mjs"
 
-exec node "$tmp/installer/install.mjs" \
+# Deliberately NOT `exec`: exec would replace this shell and the EXIT trap
+# would never run, leaving a full checkout in $TMPDIR after every install.
+# `set -e` would abort before $? could be captured, so branch explicitly.
+if node "$tmp/installer/install.mjs" \
   --source "$tmp" \
   --target "$KCC_TARGET" \
   --ref "$KCC_REF" \
-  "$@"
+  "$@"; then
+  status=0
+else
+  status=$?
+fi
+cleanup
+trap - EXIT INT TERM
+exit "$status"

@@ -37,7 +37,9 @@ import {
   loadMarketplace,
 } from "./lib/discover.mjs";
 import { parseFrontmatterFile } from "./lib/frontmatter.mjs";
+import { isNonPluginFilter } from "./lib/discover.mjs";
 import { projectPath } from "../installer/lib/projection.mjs";
+import { walkFiles } from "../installer/lib/fsops.mjs";
 
 const SCHEMAS_DIR = path.join(REPO_ROOT, "test", "schemas");
 
@@ -338,7 +340,7 @@ async function validateProjection(plugins, filtered) {
       }
     }
 
-    for (const rel of await collectShippedPaths(plugin)) {
+    for (const rel of await walkFiles(plugin.root)) {
       const target = projectPath(plugin.name, rel);
       if (!target) continue;
       if (seen.has(target) && seen.get(target) !== plugin.name) {
@@ -360,25 +362,6 @@ async function validateProjection(plugins, filtered) {
   } else {
     record(`projection: ${seen.size} target paths, no collisions`, true);
   }
-}
-
-async function collectShippedPaths(plugin) {
-  const out = [];
-  const walk = async (dir, base) => {
-    let entries;
-    try {
-      entries = await readdir(dir, { withFileTypes: true });
-    } catch {
-      return;
-    }
-    for (const e of entries) {
-      const abs = path.join(dir, e.name);
-      if (e.isDirectory()) await walk(abs, base);
-      else if (e.isFile()) out.push(path.relative(base, abs).split(path.sep).join("/"));
-    }
-  };
-  await walk(plugin.root, plugin.root);
-  return out;
 }
 
 async function runOfficialValidators(marketplace, plugins) {
@@ -434,6 +417,13 @@ function printReport() {
 }
 
 async function main() {
+  if (isNonPluginFilter()) {
+    console.log(`\nL1  Schema & manifest validation`);
+    console.log("-".repeat(72));
+    console.log(`  - skipped: "${process.env.PLUGIN}" is not a plugin (it has no L1 surface)`);
+    console.log("");
+    process.exit(0);
+  }
   const ajv = makeAjv();
 
   const marketplace = await validateMarketplace(ajv);

@@ -98,3 +98,32 @@ test("a module with no hooks projects to an empty object", () => {
   assert.deepEqual(projectHooks({}, "kcc-pm"), {});
   assert.deepEqual(projectHooks(null, "kcc-pm"), {});
 });
+
+test("a hook command without the ownership marker is refused at authoring time", () => {
+  // Without this, the entry is appended on every install (it can never be
+  // recognized as ours again), settings.json grows without bound, --check
+  // reports drift forever, and uninstall leaves it behind.
+  assert.throws(
+    () =>
+      projectHooks(
+        { hooks: { SessionStart: [{ hooks: [{ type: "command", command: "echo hi" }] }] } },
+        "kcc-core"
+      ),
+    /could never recognize or remove it/
+  );
+});
+
+test("a command that reaches outside the module root is refused too", () => {
+  assert.throws(
+    () =>
+      projectHooks(
+        {
+          hooks: {
+            Stop: [{ hooks: [{ type: "command", command: 'bash "$CLAUDE_PROJECT_DIR/tools/x.sh"' }] }],
+          },
+        },
+        "kcc-dev-core"
+      ),
+    /could never recognize or remove it/
+  );
+});

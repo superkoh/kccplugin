@@ -42,10 +42,22 @@
  */
 function classifyFile({ sourceHash, lockHash, diskHash }) {
   if (diskHash === null) return lockHash == null ? "new" : "restored";
+  // A directory or symlink sitting at a managed path is never something we
+  // may quietly replace, even if the lockfile claims the path: we have no way
+  // to know what it is or what points at it.
+  if (isIrregularHash(diskHash)) return "conflict";
   if (diskHash === sourceHash) return "unchanged";
   if (lockHash == null) return "conflict"; // unmanaged file already there
   if (diskHash === lockHash) return "updated"; // clean file, upstream moved
   return "clobbered"; // locally modified AND different from what we ship
+}
+
+/**
+ * Kept local rather than imported from fsops.mjs so this module stays free of
+ * I/O imports; the marker format is a two-line contract.
+ */
+function isIrregularHash(hash) {
+  return typeof hash === "string" && hash.startsWith("irregular:");
 }
 
 /**
@@ -156,7 +168,12 @@ export function computePlan({ sourceModules, selection, lock, diskHashes, opts =
       if (status === "conflict") {
         if (adopt) status = "clobbered";
         else {
-          conflicts.push({ path, module: name, diskHash });
+          conflicts.push({
+            path,
+            module: name,
+            diskHash,
+            kind: isIrregularHash(diskHash) ? diskHash.slice("irregular:".length) : "file",
+          });
           continue;
         }
       }
@@ -165,6 +182,7 @@ export function computePlan({ sourceModules, selection, lock, diskHashes, opts =
         module: name,
         sourceAbs: src.sourceAbs,
         hash: src.hash,
+        mode: src.mode,
         status,
         diskHash,
       });

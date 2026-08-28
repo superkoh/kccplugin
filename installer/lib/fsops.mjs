@@ -4,16 +4,20 @@
  * plan.mjs.
  */
 import { createHash } from "node:crypto";
-import { existsSync } from "node:fs";
+import { existsSync, statSync } from "node:fs";
 import {
+  chmod,
   copyFile,
+  cp,
   lstat,
   mkdir,
   readFile,
   readdir,
+  readlink,
   rename,
   rm,
   rmdir,
+  symlink,
   writeFile,
 } from "node:fs/promises";
 import path from "node:path";
@@ -86,7 +90,11 @@ export async function inventorySource(sourceRoot) {
       const target = projectPath(name, rel);
       if (!target) continue;
       const abs = path.join(root, rel);
-      files.set(target, { sourceAbs: abs, hash: await hashFile(abs) });
+      files.set(target, {
+        sourceAbs: abs,
+        hash: await hashFile(abs),
+        mode: statSync(abs).mode & 0o777,
+      });
     }
 
     let hooks = {};
@@ -119,8 +127,30 @@ export async function inventorySource(sourceRoot) {
 }
 
 /**
+ * Marker hashes for things occupying a managed path that are not regular
+ * files. A sha256 is 64 hex characters, so these can never collide with a
+ * real hash.
+ *
+ * They exist because "not a regular file" must not be confused with "not
+ * there": treating a directory or a symlink as absent classifies it as a new
+ * file, which skips the conflict gate and then either destroys the symlink or
+ * dies mid-apply on `rename` with EISDIR.
+ */
+export const IRREGULAR = {
+  dir: "irregular:directory",
+  symlink: "irregular:symlink",
+  other: "irregular:other",
+};
+
+export function isIrregular(hash) {
+  return typeof hash === "string" && hash.startsWith("irregular:");
+}
+
+/**
  * Hash the target-side state of a set of paths. Paths that do not exist are
- * simply absent from the result (which is how plan.mjs recognizes them).
+ * simply absent from the result (which is how plan.mjs recognizes them);
+ * paths occupied by something that is not a regular file get an IRREGULAR
+ * marker so the planner can refuse them.
  */
 export async function readDiskHashes(targetRoot, paths) {
   const out = new Map();
@@ -128,8 +158,10 @@ export async function readDiskHashes(targetRoot, paths) {
     const abs = path.join(targetRoot, rel);
     try {
       const st = await lstat(abs);
-      if (!st.isFile()) continue;
-      out.set(rel, await hashFile(abs));
+      if (st.isSymbolicLink()) out.set(rel, IRREGULAR.symlink);
+      else if (st.isDirectory()) out.set(rel, IRREGULAR.dir);
+      else if (!st.isFile()) out.set(rel, IRREGULAR.other);
+      else out.set(rel, await hashFile(abs));
     } catch {
       /* absent */
     }
@@ -137,18 +169,41 @@ export async function readDiskHashes(targetRoot, paths) {
   return out;
 }
 
-/** Write a file atomically: temp file in the same directory, then rename. */
-async function writeAtomic(abs, data) {
+/**
+ * Write a file atomically: temp file in the same directory, then rename.
+ *
+ * `mode` is applied explicitly because the default would be 0644, which
+ * silently drops the executable bit off every shipped script — the installed
+ * tree would then differ from the source in a way `--check` cannot see, since
+ * it hashes content only.
+ */
+async function writeAtomic(abs, data, mode) {
   await mkdir(path.dirname(abs), { recursive: true });
   const tmp = `${abs}.kcc-tmp-${process.pid}`;
-  await writeFile(tmp, data);
-  await rename(tmp, abs);
+  try {
+    await writeFile(tmp, data);
+    if (mode !== undefined) await chmod(tmp, mode);
+    await rename(tmp, abs);
+  } catch (err) {
+    await rm(tmp, { force: true }).catch(() => {});
+    throw err;
+  }
 }
 
-/** Remove directories that became empty, walking up to (not past) `stopAt`. */
+/**
+ * Remove directories that became empty, walking up to (not past) `stopAt`.
+ *
+ * The bound is a path-boundary test, not a string prefix: `<t>/.claude-plugin`
+ * starts with `<t>/.claude` but is a different tree, and this guard is the
+ * only thing standing between a removal and an unbounded upward `rmdir`.
+ */
+function isInside(child, parent) {
+  return child === parent || child.startsWith(parent + path.sep);
+}
+
 async function pruneEmptyDirs(dir, stopAt) {
   let cur = dir;
-  while (cur.startsWith(stopAt) && cur !== stopAt) {
+  while (isInside(cur, stopAt) && cur !== stopAt) {
     try {
       await rmdir(cur); // fails unless empty — exactly the guard we want
     } catch {
@@ -170,20 +225,34 @@ export async function applyPlan({ plan, targetRoot, backupStamp }) {
   const backupRoot = path.join(targetRoot, KCC_DIR, ".backup", backupStamp);
   let backupUsed = false;
 
+  // Back up whatever is there, preserving its kind: a symlink is copied as a
+  // symlink (following it would silently duplicate its target instead of
+  // preserving the thing being replaced), a directory recursively.
   const backup = async (rel) => {
     const from = path.join(targetRoot, rel);
-    if (!existsSync(from)) return;
+    let st;
+    try {
+      st = await lstat(from);
+    } catch {
+      return;
+    }
     const to = path.join(backupRoot, rel);
     await mkdir(path.dirname(to), { recursive: true });
-    await copyFile(from, to);
+    if (st.isSymbolicLink()) await symlink(await readlink(from), to);
+    else if (st.isDirectory()) await cp(from, to, { recursive: true });
+    else await copyFile(from, to);
     backupUsed = true;
   };
 
   let written = 0;
   for (const f of plan.files) {
     if (f.status === "unchanged") continue;
+    const abs = path.join(targetRoot, f.path);
     if (f.status === "clobbered") await backup(f.path);
-    await writeAtomic(path.join(targetRoot, f.path), await readFile(f.sourceAbs));
+    // A directory or symlink cannot be renamed over; it has already been
+    // backed up above, so clear it before writing the real file.
+    if (isIrregular(f.diskHash)) await rm(abs, { recursive: true, force: true });
+    await writeAtomic(abs, await readFile(f.sourceAbs), f.mode);
     written++;
   }
 

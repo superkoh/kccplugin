@@ -135,5 +135,26 @@ export function projectHooks(hooksJson, moduleName) {
   };
   const hooks = hooksJson?.hooks;
   if (!hooks || typeof hooks !== "object") return {};
-  return remap(hooks);
+  const projected = remap(hooks);
+
+  // Every projected command MUST carry the ownership marker, because that
+  // substring is the only thing that lets a later run find its own entries
+  // again. A module whose hook command never mentions the module root (say a
+  // bare `echo hi`) would be appended to settings.json on every install —
+  // growing without bound, permanently failing --check, and surviving
+  // uninstall. Fail loudly at authoring time instead.
+  for (const [event, entries] of Object.entries(projected)) {
+    for (const entry of entries ?? []) {
+      for (const hook of entry?.hooks ?? []) {
+        if (typeof hook?.command === "string" && !hook.command.includes(MANAGED_HOOK_MARKER)) {
+          throw new Error(
+            `module "${moduleName}": hooks.${event} command does not reference ` +
+              `\${CLAUDE_PLUGIN_ROOT}, so kcc could never recognize or remove it ` +
+              `again: ${hook.command}`
+          );
+        }
+      }
+    }
+  }
+  return projected;
 }

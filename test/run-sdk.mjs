@@ -39,9 +39,10 @@ import {
   discoverPlugins,
   discoverTestArtifacts,
   inventoryPluginAssets,
+  isNonPluginFilter,
 } from "./lib/discover.mjs";
 import { createInstalledProject } from "./lib/project-fixture.mjs";
-import { DEFAULT_MODEL } from "./lib/claude-runner.mjs";
+import { DEFAULT_MODEL, assertClaudeAvailable } from "./lib/claude-runner.mjs";
 
 const TINY_PROMPT = "ping";
 const LOAD_BUDGET_USD = 0.02;
@@ -193,6 +194,24 @@ function printReport(results) {
 }
 
 async function main() {
+  if (isNonPluginFilter()) {
+    console.log(`\nL4  Load-time / registration`);
+    console.log("-".repeat(72));
+    console.log(`  - skipped: "${process.env.PLUGIN}" is not a plugin (nothing to register)`);
+    console.log("");
+    process.exit(0);
+  }
+
+  // Distinguish "the CLI is missing/broken" from "there is no auth" BEFORE
+  // guessing at stderr wording: an ENOENT must not be reported as a skip, and
+  // a CLI error-message reword must not turn a no-auth machine into a failure.
+  try {
+    await assertClaudeAvailable();
+  } catch (err) {
+    console.error("L4: cannot run —", err.message);
+    process.exit(2);
+  }
+
   const plugins = await discoverPlugins();
   if (plugins.length === 0) {
     console.log("L4: no modules found under plugins/");

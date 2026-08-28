@@ -157,11 +157,19 @@ async function runInstallerTests() {
   if (filter && filter !== "installer") return;
   const dir = path.join(REPO_ROOT, "installer", "tests");
   if (!existsSync(dir)) return;
-  const files = (await readdir(dir))
-    .filter((f) => f.endsWith(".test.mjs"))
-    .sort()
-    .map((f) => path.join(dir, f));
-  await runNodeTest({ name: "installer" }, files);
+  const entries = (await readdir(dir)).sort();
+  const plugin = { name: "installer" };
+  await runNodeTest(
+    plugin,
+    entries.filter((f) => f.endsWith(".test.mjs")).map((f) => path.join(dir, f))
+  );
+  // The installer's end-to-end behaviour (argument parsing, the planner/
+  // filesystem seam, the shell wrapper) is shell-shaped, so it lives in bats
+  // alongside the pure-function suites.
+  await runBats(
+    plugin,
+    entries.filter((f) => f.endsWith(".bats")).map((f) => path.join(dir, f))
+  );
 }
 
 async function main() {

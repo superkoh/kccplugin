@@ -81,7 +81,21 @@ function parseArgs(argv) {
     switch (a) {
       case "--source": opts.source = path.resolve(takes(a)); break;
       case "--target": opts.target = path.resolve(takes(a)); break;
-      case "--modules": opts.modules = takes(a).split(",").map((s) => s.trim()).filter(Boolean); break;
+      case "--modules": {
+        const raw = takes(a);
+        const list = raw.split(",").map((s) => s.trim()).filter(Boolean);
+        // An empty list is almost always an unset shell variable, not an
+        // intent to remove everything. Silently taking the uninstall branch
+        // here would wipe a repo's whole .claude/ from a CI typo.
+        if (list.length === 0) {
+          fail(
+            `--modules got an empty list (${JSON.stringify(raw)}) — ` +
+              "use --uninstall to remove everything"
+          );
+        }
+        opts.modules = list;
+        break;
+      }
       case "--ref": opts.ref = takes(a); break;
       case "--all": opts.all = true; break;
       case "--check": opts.check = true; break;
@@ -364,7 +378,10 @@ async function main() {
       `${C.r("✗")} files already exist at ${plan.conflicts.length} managed path(s) and are ` +
         `not tracked by a kcc lockfile:`
     );
-    for (const c of plan.conflicts) console.error(`    ${c.path}`);
+    for (const c of plan.conflicts) {
+      const kind = c.kind && c.kind !== "file" ? ` (${c.kind})` : "";
+      console.error(`    ${c.path}${kind}`);
+    }
     console.error(
       `\n  Refusing to overwrite files kcc did not install. Re-run with ${C.c("--adopt")} ` +
         `to take ownership of them (their current contents are backed up first).`
@@ -410,11 +427,16 @@ async function main() {
     plan.selection.length === 0
       ? stripManagedHooks(settings ?? {})
       : mergeManagedHooks(settings ?? {}, plan.managedHooks);
-  // An empty object means the file holds nothing but what we just removed, so
-  // uninstalling should not leave a `{}` behind that the project never had.
-  if (Object.keys(nextSettings).length === 0) {
+  // Removing the file is only correct when it held nothing but our hooks —
+  // i.e. we are the reason it exists. A project that already had an empty (or
+  // hook-less) settings.json keeps it: kcc must never delete a file it did
+  // not create.
+  const weOwnedTheWholeFile =
+    Object.keys(nextSettings).length === 0 &&
+    Object.keys(extractManagedHooks(settings ?? {})).length > 0;
+  if (weOwnedTheWholeFile) {
     await rm(settingsAbs, { force: true });
-  } else {
+  } else if (Object.keys(nextSettings).length > 0 || existsSync(settingsAbs)) {
     await writeAtomic(settingsAbs, JSON.stringify(nextSettings, null, 2) + "\n");
   }
 

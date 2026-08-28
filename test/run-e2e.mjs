@@ -61,6 +61,7 @@ import {
   assertClaudeAvailable,
 } from "./lib/claude-runner.mjs";
 import { createInstalledProject } from "./lib/project-fixture.mjs";
+import { isNonPluginFilter } from "./lib/discover.mjs";
 import { evaluate } from "./lib/matchers.mjs";
 
 const DEFAULT_BUDGET = 0.25;
@@ -182,6 +183,13 @@ function printResult(plugin, out) {
 }
 
 async function main() {
+  if (isNonPluginFilter()) {
+    console.log(`\nL3  End-to-end`);
+    console.log("-".repeat(72));
+    console.log(`  - skipped: "${process.env.PLUGIN}" is not a plugin (it has no e2e cases)`);
+    console.log("");
+    process.exit(0);
+  }
   try {
     await assertClaudeAvailable();
   } catch (err) {

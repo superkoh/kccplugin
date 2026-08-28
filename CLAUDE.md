@@ -189,6 +189,22 @@ disappears silently.
 - **`.claude/` is config, not source.** `stop-test-audit.sh` excludes it —
   without that, the first turn after an install blocks on kcc's own
   freshly-untracked payload.
+- **Anything that is not a regular file at a managed path is a conflict**, and
+  never "absent". Treating a directory or symlink as absent classifies it as
+  a new file, which skips the conflict gate and then destroys the symlink or
+  dies mid-`rename` with EISDIR. `readDiskHashes` returns an `IRREGULAR`
+  marker for these.
+- **An empty `--modules` list is an error**, not an uninstall. `--modules
+  "$UNSET"` in CI would otherwise wipe a repo's whole `.claude/`.
+- **Every projected hook command must contain the ownership marker.**
+  `projectHooks` throws otherwise: an unrecognizable entry is appended on
+  every install, grows settings.json without bound, and survives uninstall.
+- **kcc never deletes a file it did not create.** `settings.json` is removed
+  only when it held nothing but our hooks.
+- **Enforcement is three layers, not one**: recover (byte copy + hashes),
+  detect (`--check` in CI), refuse (`kcc-guard`'s PreToolUse deny, which
+  holds even under `bypassPermissions`). The guard's Bash matching is a
+  heuristic and is documented as such — it is not a sandbox.
 
 ## Pointers to existing workflow skills
 

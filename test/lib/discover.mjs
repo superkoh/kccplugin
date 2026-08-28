@@ -44,6 +44,18 @@ async function isDir(p) {
 }
 
 /**
+ * Filters that name something real but not a plugin directory. The installer
+ * has unit tests but no plugin surface, so `PLUGIN=installer` must scope L2 to
+ * it and make L1/L3/L4 say "nothing to do" rather than hard-error — otherwise
+ * the documented `PLUGIN=<name> npm test` idiom cannot be used for it.
+ */
+export const NON_PLUGIN_FILTERS = new Set(["installer"]);
+
+export function isNonPluginFilter(name = process.env.PLUGIN) {
+  return !!name && NON_PLUGIN_FILTERS.has(name);
+}
+
+/**
  * Error thrown when the PLUGIN filter refers to a plugin that doesn't
  * exist. Runners recognize this class and print it as a one-line user
  * error rather than a stack trace.
