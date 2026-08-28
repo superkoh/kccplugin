@@ -71,6 +71,18 @@ if [[ -z "$changed" ]]; then
   exit 0
 fi
 
+# Claude Code configuration is not product source. Everything under
+# `.claude/` is prompts, hooks and installed capability files — including
+# every script kcc itself installs. Without this exclusion, the first turn
+# after installing kcc into a project blocks on its own payload: dozens of
+# freshly untracked .sh/.mjs files and no test in sight.
+is_config_file() {
+  case "/$1" in
+    */.claude/*) return 0 ;;
+  esac
+  return 1
+}
+
 is_test_file() {
   local p="$1" base="${1##*/}"
   case "/$p/" in
@@ -96,7 +108,9 @@ sources=()
 tests=0
 while IFS= read -r f; do
   [[ -z "$f" ]] && continue
-  if is_test_file "$f"; then
+  if is_config_file "$f"; then
+    continue
+  elif is_test_file "$f"; then
     tests=$((tests + 1))
   elif is_source_file "$f"; then
     sources+=("$f")

@@ -18,7 +18,7 @@
       "name": "kcc-dev-core",
       "source": "./plugins/kcc-dev-core",
       "description": "Development-focused plugin: conditionally injects code-discipline principles when the session is inside a software project (with a subagent variant injected into every spawned subagent), and hosts standalone dev skills (spec, blackbox-tests, unit-tests) and hooks.",
-      "version": "0.11.0"
+      "version": "0.12.0"
     },
     {
       "name": "kcc-ablation",

@@ -71,6 +71,29 @@ run_hook() {
   [ -z "$output" ]
 }
 
+@test "ALLOW: a freshly installed .claude/ payload is config, not source" {
+  # Installing kcc into a project drops dozens of untracked .sh/.mjs files
+  # under .claude/. They are Claude Code configuration, not product code, and
+  # blocking on them would fire on the very first turn after an install.
+  mkdir -p "$TMPROOT/.claude/kcc/kcc-core/scripts" "$TMPROOT/.claude/skills/kcc-ablation:ablate/scripts"
+  echo '#!/usr/bin/env bash' >"$TMPROOT/.claude/kcc/kcc-core/scripts/session-start.sh"
+  echo 'export const x = 1;' >"$TMPROOT/.claude/skills/kcc-ablation:ablate/scripts/score.mjs"
+  run_hook
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "BLOCK: real source still fires when a .claude/ payload is also present" {
+  mkdir -p "$TMPROOT/.claude/kcc/kcc-core/scripts" "$TMPROOT/src"
+  echo '#!/usr/bin/env bash' >"$TMPROOT/.claude/kcc/kcc-core/scripts/session-start.sh"
+  echo 'export const x = 1;' >"$TMPROOT/src/logic.mjs"
+  run_hook
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.decision == "block"'
+  echo "$output" | jq -e '.reason | contains("src/logic.mjs")'
+  echo "$output" | jq -e '.reason | contains(".claude/") | not'
+}
+
 @test "ALLOW: loop guard on stop_hook_active" {
   mkdir -p "$TMPROOT/src"
   echo 'export const x = 1;' >"$TMPROOT/src/logic.mjs"
