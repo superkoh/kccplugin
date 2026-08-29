@@ -54,6 +54,7 @@ import {
   PluginFilterError,
   discoverPlugins,
   discoverTestArtifacts,
+  isNonPluginFilter,
 } from "./lib/discover.mjs";
 import {
   DEFAULT_MODEL,
@@ -61,7 +62,6 @@ import {
   assertClaudeAvailable,
 } from "./lib/claude-runner.mjs";
 import { createInstalledProject } from "./lib/project-fixture.mjs";
-import { isNonPluginFilter } from "./lib/discover.mjs";
 import { evaluate } from "./lib/matchers.mjs";
 
 const DEFAULT_BUDGET = 0.25;
@@ -90,6 +90,16 @@ async function loadCase(file) {
     throw new Error(`${file}: expected a YAML mapping at top level`);
   }
   if (!doc.prompt) throw new Error(`${file}: missing required field "prompt"`);
+  // `bare` was meaningful when cases ran through --plugin-dir. Now isolation
+  // comes from CLAUDE_CONFIG_DIR and `--bare` would hide the project install
+  // entirely, so silently ignoring the key would leave an author debugging a
+  // phantom leak.
+  if ("bare" in doc) {
+    throw new Error(
+      `${file}: "bare" is no longer supported — cases run against a project ` +
+        "install isolated by CLAUDE_CONFIG_DIR, and --bare would drop it"
+    );
+  }
   return doc;
 }
 

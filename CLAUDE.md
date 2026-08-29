@@ -203,8 +203,19 @@ disappears silently.
   only when it held nothing but our hooks.
 - **Enforcement is three layers, not one**: recover (byte copy + hashes),
   detect (`--check` in CI), refuse (`kcc-guard`'s PreToolUse deny, which
-  holds even under `bypassPermissions`). The guard's Bash matching is a
-  heuristic and is documented as such — it is not a sandbox.
+  holds even under `bypassPermissions`).
+- **The guard denies Bash by default once a managed path is named**, and
+  allows only recognized read-only forms. The first version asked "does this
+  look like a write?" and was wrong in both directions — `rm -rf <managed>`
+  passed (the pattern needed a leading space) while `cat <managed> | grep x >
+  /tmp/o` was blocked. Enumerating mutating forms is a losing game; enumerate
+  the safe ones instead.
+- **`--check` compares hooks structurally, key order and all.** A team that
+  runs prettier over `settings.json` must not get a permanently red CI gate.
+- **Test fixtures drive `installer/install.mjs`, never its libraries.** A
+  fixture that re-implemented the apply sequence skipped the lockfile, which
+  silently disabled kcc-guard inside the fixture — so L4 "covered" a module
+  that could not do anything.
 
 ## Pointers to existing workflow skills
 

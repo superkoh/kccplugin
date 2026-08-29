@@ -4,14 +4,14 @@
       "kcc-pm:onboard",
       "kcc-pm:pm-playbook"
     ],
-    "forbids": [
-      "onboard",
-      "pm-playbook"
-    ]
+    "forbids": []
   },
   "skills": {
     "requires": [
       "kcc-pm:pm-playbook"
+    ],
+    "forbids": [
+      "pm-playbook"
     ]
   },
   "agents": {

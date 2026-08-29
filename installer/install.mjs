@@ -391,11 +391,20 @@ async function main() {
 
   reportPlan(plan);
 
+  // "Nothing to do" has to include the lockfile itself: a module can change
+  // version (or the install can move to a new --ref) without any projected
+  // file's bytes moving, and the lock must still record the truth.
+  const lockIsCurrent =
+    !!lock &&
+    plan.modules.upgraded.length === 0 &&
+    plan.modules.added.length === 0 &&
+    plan.modules.removed.length === 0 &&
+    (!opts.ref || lock.source?.ref === opts.ref);
   const nothingToDo =
     plan.writes.length === 0 &&
     plan.removals.length === 0 &&
     sameManagedHooks(extractManagedHooks(settings ?? {}), plan.managedHooks) &&
-    !!lock;
+    lockIsCurrent;
   if (nothingToDo) {
     console.log(`\n${C.g("✓")} already up to date.`);
     process.exit(0);
@@ -443,16 +452,18 @@ async function main() {
   // The lockfile is written LAST, so a run that dies partway leaves the lock
   // describing the old state and the next run reconciles the difference.
   if (plan.selection.length === 0) {
-    // Uninstall removes the lock and the module payloads, but never the
-    // backup directory — it holds the only copy of whatever local edits the
-    // overwrite policy displaced.
+    // Uninstall removes the lock and the payload directory of each module the
+    // lock actually claims — never everything under .claude/kcc/. Without a
+    // lockfile we know of nothing we created, so we remove nothing: "kcc never
+    // deletes a file it did not create" has to hold here too, and the removals
+    // the plan already performed are the whole story.
     await rm(lockAbs, { force: true });
     const kccAbs = path.join(opts.target, KCC_DIR);
-    for (const entry of await safeReadDir(kccAbs)) {
-      if (entry === ".backup") continue;
-      await rm(path.join(kccAbs, entry), { recursive: true, force: true });
+    for (const name of Object.keys(lock?.modules ?? {})) {
+      await rm(path.join(kccAbs, name), { recursive: true, force: true });
     }
-    if ((await safeReadDir(kccAbs)).length === 0) await rm(kccAbs, { recursive: true, force: true });
+    const left = await safeReadDir(kccAbs);
+    if (left.length === 0) await rm(kccAbs, { recursive: true, force: true });
   } else {
     const nextLock = lockFromPlan({
       plan,

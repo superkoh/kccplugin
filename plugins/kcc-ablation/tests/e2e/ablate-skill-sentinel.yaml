@@ -1,6 +1,6 @@
 # L3 activation case for kcc-ablation's ablate skill.
 #
-# Proves the chain: `claude --plugin-dir <kcc-ablation>` loads the plugin,
+# Proves the chain: the project install registers the skill,
 # the slash invocation expands the skill, and the skill's body (carrying
 # the version sentinel) reaches the model's context.
 #

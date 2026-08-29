@@ -109,6 +109,30 @@ test("extract sees a hand-edited managed hook, which is what --check reports", (
   assert.equal(sameManagedHooks(extractManagedHooks(settings), { SessionStart: [{ hooks: [ours()] }] }), false);
 });
 
+test("hook comparison ignores key order INSIDE an entry, not just event order", () => {
+  // A team running prettier or `jq -S` over settings.json reorders the keys
+  // inside every hook entry. A stringify-based comparison would then report
+  // drift forever, so the documented CI gate would fail on a cosmetic change.
+  const a = { SessionStart: [{ matcher: "*", hooks: [{ type: "command", command: "x/.claude/kcc/y", timeout: 5 }] }] };
+  const b = { SessionStart: [{ hooks: [{ timeout: 5, command: "x/.claude/kcc/y", type: "command" }], matcher: "*" }] };
+  assert.equal(sameManagedHooks(a, b), true);
+});
+
+test("hook comparison still sees a real difference under reordering", () => {
+  const a = { SessionStart: [{ hooks: [{ type: "command", command: "x/.claude/kcc/y", timeout: 5 }] }] };
+  const b = { SessionStart: [{ hooks: [{ timeout: 9, command: "x/.claude/kcc/y", type: "command" }] }] };
+  assert.equal(sameManagedHooks(a, b), false);
+});
+
+test("hook comparison respects array order, which is execution order", () => {
+  const one = { type: "command", command: "a/.claude/kcc/1" };
+  const two = { type: "command", command: "b/.claude/kcc/2" };
+  assert.equal(
+    sameManagedHooks({ S: [{ hooks: [one, two] }] }, { S: [{ hooks: [two, one] }] }),
+    false
+  );
+});
+
 test("hook comparison ignores event ordering", () => {
   const a = { Stop: [{ hooks: [ours()] }], SessionStart: [{ hooks: [ours("2")] }] };
   const b = { SessionStart: [{ hooks: [ours("2")] }], Stop: [{ hooks: [ours()] }] };

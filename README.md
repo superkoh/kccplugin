@@ -114,17 +114,21 @@ in CI:
 ```
 
 **Refuse.** The `kcc-guard` module installs a `PreToolUse` hook that denies
-`Edit` / `Write` / `NotebookEdit` on any path the lockfile claims, and denies
-`Bash` commands that both name a managed path and look like they write. The
-agent gets told why and where to make the change instead. The deny holds even
-under `--permission-mode bypassPermissions`.
+`Edit` / `Write` / `NotebookEdit` on any path the lockfile claims. For `Bash`
+it works the other way round: once a command names a managed path it is denied
+*unless* every part of it leads with a known read-only command (`cat`, `grep`,
+`git diff`, …) and no managed path is a redirect target. Asking "does this look
+like a write?" is a losing game — enumerate the mutating forms and you will
+miss one — so unknown commands are refused. The agent is told why, and where
+to make the change instead. The deny holds even under
+`--permission-mode bypassPermissions`.
 
 In a repo where an agent edits files all day, that agent is the most likely
 source of drift, which is why refusing beats detecting. Be clear about the
-limit, though: a shell one-liner in a form the heuristic misses can still get
-through, and nothing stops a human in an editor. It raises the cost and makes
-the intent explicit; it is not a sandbox. That is what the other two layers
-are for.
+limits, though: a path assembled at runtime (`p=.claude/…; rm $p`) is invisible
+to the guard, and nothing stops a human in an editor. It raises the cost and
+makes the intent explicit; it is not a sandbox. That is what the other two
+layers are for.
 
 Want a change? Make it in this repo and re-run the installer.
 

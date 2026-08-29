@@ -21,7 +21,7 @@
  * Exit code: 0 when everything passes, 1 otherwise. Output is a terse
  * per-artifact table plus a list of failures.
  */
-import { readFile, readdir } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { spawn } from "node:child_process";
@@ -34,10 +34,10 @@ import {
   PluginFilterError,
   discoverPlugins,
   inventoryPluginAssets,
+  isNonPluginFilter,
   loadMarketplace,
 } from "./lib/discover.mjs";
 import { parseFrontmatterFile } from "./lib/frontmatter.mjs";
-import { isNonPluginFilter } from "./lib/discover.mjs";
 import { projectPath } from "../installer/lib/projection.mjs";
 import { walkFiles } from "../installer/lib/fsops.mjs";
 
@@ -303,6 +303,7 @@ async function validatePlugin(ajv, plugin, marketplace) {
  */
 async function validateProjection(plugins, filtered) {
   const seen = new Map(); // target path → module
+  let collisions = 0;
   for (const plugin of plugins) {
     const assets = await inventoryPluginAssets(plugin);
 
@@ -344,6 +345,7 @@ async function validateProjection(plugins, filtered) {
       const target = projectPath(plugin.name, rel);
       if (!target) continue;
       if (seen.has(target) && seen.get(target) !== plugin.name) {
+        collisions++;
         record(
           `projection collision: ${target}`,
           false,
@@ -359,8 +361,10 @@ async function validateProjection(plugins, filtered) {
       "projection: cross-module collisions",
       "PLUGIN filter is set — run without it to check every module against every other"
     );
-  } else {
+  } else if (collisions === 0) {
     record(`projection: ${seen.size} target paths, no collisions`, true);
+  } else {
+    record(`projection: ${seen.size} target paths`, false, `${collisions} collision(s)`);
   }
 }
 

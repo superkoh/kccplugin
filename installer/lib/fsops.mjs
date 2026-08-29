@@ -140,6 +140,7 @@ export const IRREGULAR = {
   dir: "irregular:directory",
   symlink: "irregular:symlink",
   other: "irregular:other",
+  unreadable: "irregular:unreadable",
 };
 
 export function isIrregular(hash) {
@@ -156,14 +157,24 @@ export async function readDiskHashes(targetRoot, paths) {
   const out = new Map();
   for (const rel of paths) {
     const abs = path.join(targetRoot, rel);
+    let st;
     try {
-      const st = await lstat(abs);
-      if (st.isSymbolicLink()) out.set(rel, IRREGULAR.symlink);
-      else if (st.isDirectory()) out.set(rel, IRREGULAR.dir);
-      else if (!st.isFile()) out.set(rel, IRREGULAR.other);
-      else out.set(rel, await hashFile(abs));
+      st = await lstat(abs);
     } catch {
-      /* absent */
+      continue; // genuinely absent
+    }
+    if (st.isSymbolicLink()) out.set(rel, IRREGULAR.symlink);
+    else if (st.isDirectory()) out.set(rel, IRREGULAR.dir);
+    else if (!st.isFile()) out.set(rel, IRREGULAR.other);
+    else {
+      // A file that exists but cannot be read (mode 0000, EPERM, a failing
+      // network mount) must not be reported as absent: that would classify
+      // it `new` and destroy its contents with no conflict and no backup.
+      try {
+        out.set(rel, await hashFile(abs));
+      } catch {
+        out.set(rel, IRREGULAR.unreadable);
+      }
     }
   }
   return out;
@@ -261,7 +272,10 @@ export async function applyPlan({ plan, targetRoot, backupStamp }) {
   for (const r of plan.removals) {
     if (r.locallyModified) await backup(r.path);
     const abs = path.join(targetRoot, r.path);
-    await rm(abs, { force: true });
+    // `recursive` matters: a directory standing at a managed path would
+    // otherwise throw ERR_FS_EISDIR here and abort the run mid-apply, after
+    // files were written and before the lockfile was rewritten.
+    await rm(abs, { recursive: true, force: true });
     await pruneEmptyDirs(path.dirname(abs), claudeRoot);
     removed++;
   }

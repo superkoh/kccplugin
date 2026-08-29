@@ -3,13 +3,14 @@
     "requires": [
       "kcc-ablation:ablate"
     ],
-    "forbids": [
-      "ablate"
-    ]
+    "forbids": []
   },
   "skills": {
     "requires": [
       "kcc-ablation:ablate"
+    ],
+    "forbids": [
+      "ablate"
     ]
   },
   "mcpServers": {

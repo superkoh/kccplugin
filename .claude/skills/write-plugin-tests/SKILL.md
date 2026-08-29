@@ -209,8 +209,10 @@ registered. Adding this file upgrades the module from L4 *implied* mode
 to *asserted* mode — recommended for every new module.
 
 Write one entry per user-facing command, skill, and agent. Put the
-un-namespaced form in `forbids` — that is what catches a projection
-regression where a skill lands flat and collides with a project's own.
+un-namespaced form in the `forbids` of the section it would actually
+appear in — a flat-registered skill lands in `skills`, never in
+`slashCommands`, so `slashCommands.forbids: ["spec"]` is a dead
+assertion that can never fire.
 Note agents are **flat**: the agent section takes the frontmatter name,
 which must start with the module name and must not contain a colon.
 Leave `mcpServers.requires` empty unless the module ships an MCP server.

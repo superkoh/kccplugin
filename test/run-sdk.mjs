@@ -219,11 +219,18 @@ async function main() {
   }
 
   const fixture = await createInstalledProject(plugins.map((p) => p.name));
+  try {
+    await runAssertions(plugins, fixture);
+  } finally {
+    await fixture.cleanup();
+  }
+}
+
+async function runAssertions(plugins, fixture) {
   let init;
   try {
     ({ init } = await captureInit(fixture));
   } catch (err) {
-    await fixture.cleanup();
     const msg = String(err.message);
     if (/credit balance|authentication|log ?in|API key/i.test(msg)) {
       console.log("");
@@ -292,7 +299,6 @@ async function main() {
     });
   }
 
-  await fixture.cleanup();
   const failed = printReport(results);
   process.exit(failed > 0 ? 1 : 0);
 }

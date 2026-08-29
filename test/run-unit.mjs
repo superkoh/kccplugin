@@ -35,6 +35,7 @@ import {
   REPO_ROOT,
   discoverPlugins,
   discoverTestArtifacts,
+  isNonPluginFilter,
 } from "./lib/discover.mjs";
 
 const results = []; // [{ plugin, runner, ok, output, skipped, reason }]
@@ -153,8 +154,8 @@ function printReport() {
  * `PLUGIN=installer` scopes to it; any other PLUGIN filter skips it.
  */
 async function runInstallerTests() {
-  const filter = process.env.PLUGIN;
-  if (filter && filter !== "installer") return;
+  // Runs unfiltered, or when the filter names the installer itself.
+  if (process.env.PLUGIN && !isNonPluginFilter()) return;
   const dir = path.join(REPO_ROOT, "installer", "tests");
   if (!existsSync(dir)) return;
   const entries = (await readdir(dir)).sort();
@@ -173,7 +174,7 @@ async function runInstallerTests() {
 }
 
 async function main() {
-  if (process.env.PLUGIN !== "installer") {
+  if (!isNonPluginFilter()) {
     const plugins = await discoverPlugins();
     for (const plugin of plugins) {
       const art = await discoverTestArtifacts(plugin);

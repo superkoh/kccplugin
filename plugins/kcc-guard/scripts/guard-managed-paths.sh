@@ -17,14 +17,25 @@
 # A deny here holds even under `--permission-mode bypassPermissions`
 # (verified), which is what makes it worth having at all.
 #
-# Scope and honest limits:
-#   - Edit / Write / NotebookEdit are matched exactly, by resolved path.
-#     This is the path an agent actually takes, and it is deterministic.
-#   - Bash is matched heuristically: the command must mention a managed path
-#     AND look like it writes. A determined shell one-liner can still get
-#     through (`python -c`, an unusual redirect form). This raises the cost;
-#     it is not a sandbox.
-#   - Nothing here stops a human in an editor. That is what `--check` is for.
+# ---------------------------------------------------------------------------
+# Bash policy: deny by default once a managed path is named.
+#
+# The first version of this guard asked "does the command look like it
+# writes?" and got the answer wrong in both directions — `rm -rf <managed>`
+# was allowed (the pattern required a leading space) while `cat <managed> |
+# grep x > /tmp/o` was denied (any `>` counted as a write). Enumerating the
+# ways a shell can mutate a file is a losing game.
+#
+# So the rule is inverted: if a command names a managed path, it is denied
+# unless every segment that names one *leads with a known read-only command*
+# and no managed path is the target of a redirect. Unknown commands deny.
+# The failure mode is a rejected read, which the agent can rephrase; the
+# alternative failure mode was a destroyed file.
+#
+# Honest limits: a managed path built up at runtime (`p=.claude/...; rm $p`)
+# is invisible here, and nothing stops a human in an editor. This raises the
+# cost and states the intent — it is not a sandbox. `--check` is the backstop.
+# ---------------------------------------------------------------------------
 #
 # Everything degrades to "allow": no jq, no lockfile, unparseable stdin.
 
@@ -81,29 +92,101 @@ case "$tool" in
     [[ "$rel" == "$target" && "$target" == /* ]] && allow # outside the project
     while IFS= read -r m; do
       [[ -z "$m" ]] && continue
-      if [[ "$rel" == "$m" ]]; then
-        deny "$(reason_for "$m")"
-      fi
+      [[ "$rel" == "$m" ]] && deny "$(reason_for "$m")"
     done <<<"$managed"
     allow
     ;;
+  Bash) ;;
+  *) allow ;;
 esac
 
-# --- heuristic: a shell command that both names a managed path and writes -
-if [[ "$tool" == "Bash" ]]; then
-  cmd=$(printf '%s' "$stdin_raw" | jq -r '.tool_input.command // empty' 2>/dev/null || true)
-  [[ -z "$cmd" ]] && allow
-  case "$cmd" in
-    *">"* | *"sed -i"* | *"tee "* | *" mv "* | *" cp "* | *" rm "* | \
-    *"truncate"* | *"dd "* | *"chmod"* | *"perl -i"* | *"python -c"*) ;;
-    *) allow ;;
+# --- Bash: deny by default once a managed path is named ------------------
+cmd=$(printf '%s' "$stdin_raw" | jq -r '.tool_input.command // empty' 2>/dev/null || true)
+[[ -z "$cmd" ]] && allow
+
+# Which managed paths does this command mention at all?
+mentioned=()
+while IFS= read -r m; do
+  [[ -z "$m" ]] && continue
+  [[ "$cmd" == *"$m"* ]] && mentioned+=("$m")
+done <<<"$managed"
+(( ${#mentioned[@]} == 0 )) && allow
+
+# Commands that cannot modify a file they are given. Anything not on this
+# list is treated as capable of writing.
+is_read_only_cmd() {
+  case "$1" in
+    cat | bat | head | tail | less | more | nl | od | xxd | strings | \
+    grep | egrep | fgrep | rg | ag | ack | \
+    wc | diff | cmp | stat | ls | file | find | realpath | dirname | basename | \
+    cut | sort | uniq | tr | column | fold | \
+    jq | yq | md5 | md5sum | shasum | sha1sum | sha256sum | cksum | \
+    echo | printf | test | true | false | pwd) return 0 ;;
+    # `sed`/`awk`/`perl` only when they are not editing in place.
+    sed | awk | gawk | perl) return 2 ;;
+    git) return 3 ;;
   esac
-  while IFS= read -r m; do
-    [[ -z "$m" ]] && continue
-    if [[ "$cmd" == *"$m"* ]]; then
-      deny "$(reason_for "$m")"
-    fi
-  done <<<"$managed"
-fi
+  return 1
+}
+
+# git subcommands that only read.
+is_read_only_git() {
+  case "$1" in
+    diff | log | show | status | blame | ls-files | cat-file | rev-parse | \
+    describe | grep | shortlog | check-ignore | config) return 0 ;;
+  esac
+  return 1
+}
+
+# A managed path immediately following a redirect operator is a write, full
+# stop, regardless of which command leads the segment.
+for m in "${mentioned[@]}"; do
+  if [[ "$cmd" =~ (\>\>?|\<\>)[[:space:]]*\"?\'?[^[:space:]\"\']*"$m" ]]; then
+    deny "$(reason_for "$m")"
+  fi
+done
+
+# Split into segments on ; && || | and newlines, then judge each segment that
+# names a managed path by its leading word.
+normalized=${cmd//&&/$'\n'}
+normalized=${normalized//||/$'\n'}
+normalized=${normalized//;/$'\n'}
+normalized=${normalized//|/$'\n'}
+
+while IFS= read -r segment; do
+  seg_hits=()
+  for m in "${mentioned[@]}"; do
+    [[ "$segment" == *"$m"* ]] && seg_hits+=("$m")
+  done
+  (( ${#seg_hits[@]} == 0 )) && continue
+
+  # Leading word, skipping env assignments and `sudo`/`command`/`time`.
+  read -r -a words <<<"$segment"
+  lead=""
+  for w in "${words[@]}"; do
+    case "$w" in
+      *=*) continue ;;
+      sudo | command | time | nohup | env | exec | builtin) continue ;;
+      *) lead="${w##*/}"; break ;;
+    esac
+  done
+  [[ -z "$lead" ]] && continue
+
+  is_read_only_cmd "$lead"
+  case $? in
+    0) continue ;;                                   # definitely read-only
+    2) [[ "$segment" == *" -i"* ]] && deny "$(reason_for "${seg_hits[0]}")"; continue ;;
+    3)
+      sub=""
+      for w in "${words[@]}"; do
+        [[ "$w" == git || "$w" == */git || "$w" == -* || "$w" == *=* ]] && continue
+        sub="$w"; break
+      done
+      is_read_only_git "$sub" && continue
+      deny "$(reason_for "${seg_hits[0]}")"
+      ;;
+    *) deny "$(reason_for "${seg_hits[0]}")" ;;      # unknown ⇒ assume it writes
+  esac
+done <<<"$normalized"
 
 allow

@@ -2,11 +2,11 @@
 #
 # Proves the full chain works when the session is inside a software
 # project:
-#   1. `claude --bare --plugin-dir <kcc-dev-core>` fires the
-#      SessionStart hook.
-#   2. The hook script detects the kccplugin repo as a "dev scene"
-#      (cwd inherits from the Node test runner, which runs from the
-#      repo root where .git/, CLAUDE.md, and package.json all live).
+#   1. The SessionStart hook fires from the project's own settings.json,
+#      in a throwaway project that has kcc-dev-core installed.
+#   2. The hook script detects that project as a "dev scene" (the fixture
+#      is a real git repo with a package.json, which is what makes the
+#      conditional injection fire at all).
 #   3. The hook emits valid JSON with a non-empty `additionalContext`
 #      containing dev-principles.md.
 #   4. The injected text actually lands in Claude's context before

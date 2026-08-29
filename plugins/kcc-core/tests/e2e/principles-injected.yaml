@@ -1,7 +1,8 @@
 # L3 end-to-end case for kcc-core's SessionStart hook.
 #
 # Proves the full chain works:
-#   1. `claude --bare --plugin-dir <kcc-core>` fires the SessionStart hook.
+#   1. The SessionStart hook fires from the project's own settings.json,
+#      in a throwaway project that has kcc-core installed.
 #   2. The hook script emits valid JSON with `additionalContext`.
 #   3. The injected text actually lands in Claude's context before the
 #      first turn, i.e. the model can read from it.

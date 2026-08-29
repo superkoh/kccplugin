@@ -122,3 +122,31 @@ EOF
   run bash -c "printf '%s' '$payload' | CLAUDE_PROJECT_DIR='$T' bash '$guard'"
   echo "$output" | jq -e '.hookSpecificOutput.permissionDecision == "deny"'
 }
+
+@test "uninstall without a lockfile removes nothing it did not create" {
+  "${I[@]}" --target "$T" --all -y >/dev/null 2>&1
+  # Something a project happened to keep in our directory, plus a lost lock.
+  echo "not ours" >"$T/.claude/kcc/notes.md"
+  rm -f "$T/.claude/kcc/kcc.lock.json"
+  "${I[@]}" --target "$T" --uninstall -y >/dev/null 2>&1
+  [ -f "$T/.claude/kcc/notes.md" ]
+}
+
+@test "uninstall with a lockfile removes exactly the modules it claims" {
+  "${I[@]}" --target "$T" --all -y >/dev/null 2>&1
+  echo "not ours" >"$T/.claude/kcc/notes.md"
+  "${I[@]}" --target "$T" --uninstall -y >/dev/null 2>&1
+  [ ! -e "$T/.claude/kcc/kcc-core" ]
+  [ ! -e "$T/.claude/skills" ]
+  [ -f "$T/.claude/kcc/notes.md" ]
+}
+
+@test "the lockfile records the ref even when no file content changed" {
+  "${I[@]}" --target "$T" --all --ref v-first -y >/dev/null 2>&1
+  run jq -r '.source.ref' "$T/.claude/kcc/kcc.lock.json"
+  [ "$output" = "v-first" ]
+  # Same bytes, new ref: the lock must still become truthful.
+  "${I[@]}" --target "$T" --all --ref v-second -y >/dev/null 2>&1
+  run jq -r '.source.ref' "$T/.claude/kcc/kcc.lock.json"
+  [ "$output" = "v-second" ]
+}

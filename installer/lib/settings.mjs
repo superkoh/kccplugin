@@ -131,13 +131,27 @@ export function mergeManagedHooks(settings, managed) {
 }
 
 /**
- * Deep structural equality for the managed-hook comparison in `--check`.
- * JSON round-tripping is enough: hook entries are plain data.
+ * Structural equality for the managed-hook comparison in `--check`.
+ *
+ * Key order must not matter anywhere, not just at the top level: a team that
+ * runs prettier (or `jq -S`) over `.claude/settings.json` reorders the keys
+ * inside every hook entry, and a stringify-based comparison would then report
+ * drift on every CI run forever — the documented CI gate failing on a purely
+ * cosmetic change is worse than no gate at all.
  */
 export function sameManagedHooks(a, b) {
-  return JSON.stringify(sortEvents(a)) === JSON.stringify(sortEvents(b));
+  return JSON.stringify(canonical(a ?? {})) === JSON.stringify(canonical(b ?? {}));
 }
 
-function sortEvents(obj) {
-  return Object.fromEntries(Object.entries(obj ?? {}).sort(([x], [y]) => (x < y ? -1 : 1)));
+/** Recursively sort object keys; arrays keep their order, which is meaningful. */
+function canonical(value) {
+  if (Array.isArray(value)) return value.map(canonical);
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value)
+        .sort(([x], [y]) => (x < y ? -1 : 1))
+        .map(([k, v]) => [k, canonical(v)])
+    );
+  }
+  return value;
 }

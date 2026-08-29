@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
 import { mkdtemp, mkdir, rm, symlink, writeFile } from "node:fs/promises";
-import { statSync } from "node:fs";
+import { existsSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 import { computePlan } from "../lib/plan.mjs";
 import { IRREGULAR, applyPlan, isIrregular, readDiskHashes } from "../lib/fsops.mjs";
+import { chmod } from "node:fs/promises";
 
 /**
  * These cover the seam where the planner meets the filesystem. A pure-function
@@ -140,6 +141,41 @@ test("the executable bit survives installation", async () => {
     await applyPlan({ plan, targetRoot: target, backupStamp: "t" });
     const mode = statSync(path.join(target, ".claude/kcc/m/scripts/hook.sh")).mode & 0o777;
     assert.equal(mode, 0o755, "a 0644 install silently breaks any directly-executed script");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("a file that exists but cannot be read is irregular, not absent", async () => {
+  const root = await scratch();
+  try {
+    const p = path.join(root, "secret.md");
+    await writeFile(p, "payload\n");
+    await chmod(p, 0o000);
+    const hashes = await readDiskHashes(root, ["secret.md"]);
+    // Reporting it absent would classify it `new` and destroy it with no
+    // conflict and no backup — the same class as the directory/symlink case.
+    assert.equal(hashes.get("secret.md"), IRREGULAR.unreadable);
+  } finally {
+    await chmod(path.join(root, "secret.md"), 0o644).catch(() => {});
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("removing a path occupied by a directory does not throw EISDIR", async () => {
+  const root = await scratch();
+  try {
+    const target = path.join(root, "project");
+    await mkdir(path.join(target, "gone/inner"), { recursive: true });
+    const plan = {
+      files: [],
+      removals: [{ path: "gone", module: "m", reason: "orphan", locallyModified: false }],
+    };
+    // The write path learned this lesson first; the removal path had the same
+    // defect, and it aborted the run after files had already been written.
+    const res = await applyPlan({ plan, targetRoot: target, backupStamp: "t" });
+    assert.equal(res.removed, 1);
+    assert.equal(existsSync(path.join(target, "gone")), false);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

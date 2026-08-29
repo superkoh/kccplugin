@@ -1,6 +1,6 @@
 # L3 activation case for kcc-dev-core's unit-tests skill.
 #
-# Proves the chain: `claude --plugin-dir <kcc-dev-core>` loads the plugin,
+# Proves the chain: the project install registers the skill,
 # the slash invocation expands the skill, and the skill's body (carrying
 # the version sentinel) reaches the model's context.
 #
