@@ -40,10 +40,9 @@ import {
   writeAtomic,
 } from "./lib/fsops.mjs";
 import {
+  decideSettingsWrite,
   extractManagedHooks,
-  mergeManagedHooks,
   sameManagedHooks,
-  stripManagedHooks,
 } from "./lib/settings.mjs";
 import {
   KCC_DIR,
@@ -495,34 +494,20 @@ async function main() {
     backupStamp: stamp,
   });
 
-  // settings.json last-but-one: hooks referencing scripts that are now in place.
-  const nextSettings =
-    plan.selection.length === 0
-      ? stripManagedHooks(settings ?? {})
-      : mergeManagedHooks(settings ?? {}, plan.managedHooks);
-  // Removing the file is only correct when it held nothing but our hooks —
-  // i.e. we are the reason it exists. A project that already had an empty (or
-  // hook-less) settings.json keeps it: kcc must never delete a file it did
-  // not create.
-  // "We created this file" cannot be inferred from its current contents —
-  // an empty settings.json the project committed looks identical after our
-  // hooks are stripped. The lockfile is the only thing that remembers.
-  const weOwnedTheWholeFile =
-    Object.keys(nextSettings).length === 0 &&
-    Object.keys(extractManagedHooks(settings ?? {})).length > 0 &&
-    lock?.createdSettings === true;
-  const settingsUnchanged = sameManagedHooks(
-    extractManagedHooks(settings ?? {}),
-    plan.managedHooks
-  );
-  if (weOwnedTheWholeFile) {
-    await rm(settingsAbs, { force: true });
-  } else if (settingsUnchanged && settingsExisted) {
-    // Nothing of ours to add or remove. Rewriting would reflow the whole
-    // file — 2-space indent, arrays exploded — and put an unrelated diff in
-    // the team's repo, which is exactly what "we own only our entries" rules
-    // out.
-  } else if (Object.keys(nextSettings).length > 0) {
+  // settings.json last-but-one: hooks referencing scripts that are now in
+  // place. The decision is a pure function — see decideSettingsWrite for why
+  // it stopped being an inline ladder of independent predicates.
+  const { action: settingsAction, next: nextSettings } = decideSettingsWrite({
+    settings,
+    managed: plan.managedHooks,
+    // "We created this file" cannot be inferred from its contents: an empty
+    // settings.json the project committed looks identical to one of ours
+    // after the hooks are stripped. The lockfile is the only record.
+    createdSettings: lock?.createdSettings === true,
+    existed: settingsExisted,
+  });
+  if (settingsAction === "remove") await rm(settingsAbs, { force: true });
+  else if (settingsAction === "write") {
     await writeAtomic(settingsAbs, JSON.stringify(nextSettings, null, 2) + "\n");
   }
 

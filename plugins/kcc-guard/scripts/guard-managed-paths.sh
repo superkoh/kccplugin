@@ -168,9 +168,13 @@ case "$tool" in
     [[ -z "$rel" ]] && allow # outside the project
 
     rel=$(normalize_rel "$rel") || allow
+    # Managed paths come from the lockfile already project-relative, so the
+    # comparison is a plain string test. Re-normalizing each one inside the
+    # loop forked a subshell per managed path per tool call — 35 of them
+    # today, on the hottest path in a session, against a 5s timeout.
     while IFS= read -r m; do
       [[ -z "$m" ]] && continue
-      [[ "$rel" == "$(normalize_rel "$m")" ]] && deny "$(reason_for "$m")"
+      [[ "$rel" == "$m" ]] && deny "$(reason_for "$m")"
     done <<<"$managed"
     allow
     ;;
@@ -242,6 +246,11 @@ normalized=${cmd_code//&&/$'\n'}
 normalized=${normalized//||/$'\n'}
 normalized=${normalized//;/$'\n'}
 normalized=${normalized//|/$'\n'}
+# A lone `&` backgrounds a job and starts the next command, so it separates
+# just as `;` does. Missing it let `echo hi & rm <managed>` launder the path
+# past the whole-command rule — and the first thing an agent would delete
+# that way is this script.
+normalized=${normalized//&/$'\n'}
 normalized=${normalized//\$\(/$'\n'}
 normalized=${normalized//\`/$'\n'}
 normalized=${normalized//)/$'\n'}

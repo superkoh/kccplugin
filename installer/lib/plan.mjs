@@ -1,3 +1,5 @@
+import { IRREGULAR_PREFIX, isIrregular } from "./projection.mjs";
+
 /**
  * Planning — the pure core of the installer.
  *
@@ -52,12 +54,8 @@ function classifyFile({ sourceHash, lockHash, diskHash }) {
   return "clobbered"; // locally modified AND different from what we ship
 }
 
-/**
- * Kept local rather than imported from fsops.mjs so this module stays free of
- * I/O imports; the marker format is a two-line contract.
- */
 function isIrregularHash(hash) {
-  return typeof hash === "string" && hash.startsWith("irregular:");
+  return isIrregular(hash);
 }
 
 /**
@@ -178,7 +176,7 @@ export function computePlan({ sourceModules, selection, lock, diskHashes, opts =
             path,
             module: name,
             diskHash,
-            kind: isIrregularHash(diskHash) ? diskHash.slice("irregular:".length) : "file",
+            kind: isIrregularHash(diskHash) ? diskHash.slice(IRREGULAR_PREFIX.length) : "file",
           });
           continue;
         }
@@ -204,6 +202,20 @@ export function computePlan({ sourceModules, selection, lock, diskHashes, opts =
       if (claimed.has(path)) continue;
       const diskHash = diskHashes.has(path) ? diskHashes.get(path) : null;
       if (diskHash === null) continue; // already gone
+      // The install side refuses to overwrite a directory or symlink at a
+      // managed path; the removal side must refuse to `rm -rf` one. Without
+      // this, deselecting a module destroys whatever the user put there —
+      // backed up, but with no conflict, no prompt and a zero exit.
+      if (isIrregularHash(diskHash)) {
+        conflicts.push({
+          path,
+          module: name,
+          diskHash,
+          kind: diskHash.slice(IRREGULAR_PREFIX.length),
+          removal: true,
+        });
+        continue;
+      }
       removals.push({
         path,
         module: name,

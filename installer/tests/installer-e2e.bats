@@ -172,12 +172,17 @@ EOF
   [[ "$output" != *"required by your selection"* ]]
 }
 
-@test "uninstall keeps a settings.json the project created" {
+@test "uninstall keeps a settings.json the project created, and strips our hooks" {
+  # Asserting only that the file survives was green against a bug that left
+  # live `.claude/kcc/...` hook commands in it, pointing at scripts uninstall
+  # had just deleted — and with the lockfile gone, unrepairable.
   mkdir -p "$T/.claude"
   echo '{}' >"$T/.claude/settings.json"
   "${I[@]}" --target "$T" --modules kcc-core -y >/dev/null 2>&1
   "${I[@]}" --target "$T" --uninstall -y >/dev/null 2>&1
   [ -f "$T/.claude/settings.json" ]
+  run grep -c 'claude/kcc/' "$T/.claude/settings.json"
+  [ "$output" = "0" ]
 }
 
 @test "uninstall removes a settings.json that only ever held our hooks" {
@@ -241,6 +246,8 @@ EOF
   "${I[@]}" --target "$T" --modules kcc-core,kcc-pm -y >/dev/null 2>&1
   "${I[@]}" --target "$T" --uninstall -y >/dev/null 2>&1
   [ -f "$T/.claude/settings.json" ]
+  run grep -c 'claude/kcc/' "$T/.claude/settings.json"
+  [ "$output" = "0" ]
 }
 
 @test "an empty hooks object the project wrote is preserved" {
@@ -334,4 +341,16 @@ EOF
   [ -f "$T/.claude/settings.json" ]
   "${I[@]}" --target "$T" --uninstall -y >/dev/null 2>&1
   [ ! -f "$T/.claude/settings.json" ]
+}
+
+@test "deselecting a module refuses to rm -rf a directory the user put there" {
+  # The install side refuses to overwrite an irregular entry; the removal
+  # side used to `rm -rf` one with no conflict, no prompt and a zero exit.
+  "${I[@]}" --target "$T" --all -y >/dev/null 2>&1
+  rm -f "$T/.claude/agents/kcc-pm.md"
+  mkdir -p "$T/.claude/agents/kcc-pm.md/my-notes"
+  echo keep >"$T/.claude/agents/kcc-pm.md/my-notes/x.txt"
+  run "${I[@]}" --target "$T" --modules kcc-core -y
+  [ "$status" -ne 0 ]
+  [ -f "$T/.claude/agents/kcc-pm.md/my-notes/x.txt" ]
 }

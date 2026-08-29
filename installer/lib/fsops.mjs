@@ -22,7 +22,18 @@ import {
   writeFile,
 } from "node:fs/promises";
 import path from "node:path";
-import { KCC_DIR, isSafeTargetPath, projectHooks, projectPath } from "./projection.mjs";
+import {
+  IRREGULAR,
+  KCC_DIR,
+  isIrregular,
+  isSafeTargetPath,
+  projectHooks,
+  projectPath,
+} from "./projection.mjs";
+
+// Re-exported so callers can keep importing the marker contract from the
+// module they already use for disk state; projection.mjs owns the definition.
+export { IRREGULAR, isIrregular };
 
 /**
  * Every path that reaches the filesystem passes through here. The lockfile is
@@ -51,9 +62,14 @@ const TEXT_EXT = new Set([
 ]);
 
 export function isTextPath(p) {
-  const base = p.split("/").pop() ?? "";
+  const base = (p.split("/").pop() ?? "").toLowerCase();
+  // `dot > 0` skipped every dotfile, so `.gitignore` and `.env` were hashed
+  // as binary — no CRLF normalization — which is the permanently-red
+  // `--check` this normalization exists to prevent. A bare dotfile IS its
+  // extension.
+  if (TEXT_EXT.has(base)) return true;
   const dot = base.lastIndexOf(".");
-  return dot > 0 && TEXT_EXT.has(base.slice(dot).toLowerCase());
+  return dot > 0 && TEXT_EXT.has(base.slice(dot));
 }
 
 /**
@@ -77,9 +93,27 @@ export async function hashFile(abs) {
   return hashContent(await readFile(abs), { text: isTextPath(abs) });
 }
 
-/** Recursively list files under `dir`, as POSIX-relative paths. */
-export async function walkFiles(dir, base = dir) {
+/**
+ * Recursively list files under `dir`, as POSIX-relative paths.
+ *
+ * `seen` bounds the walk: a symlink pointing at an ancestor is a real
+ * directory to `stat`, so following one without a visited set recurses until
+ * the stack overflows — and since L1 and L4 both call this now, a single bad
+ * symlink in one module would take down the installer and two test layers
+ * with a stack trace instead of a message.
+ */
+export async function walkFiles(dir, base = dir, seen = new Set()) {
   const out = [];
+  let key;
+  try {
+    const st = await stat(dir);
+    key = `${st.dev}:${st.ino}`;
+  } catch {
+    return out;
+  }
+  if (seen.has(key)) return out;
+  seen.add(key);
+
   let entries;
   try {
     entries = await readdir(dir, { withFileTypes: true });
@@ -89,7 +123,7 @@ export async function walkFiles(dir, base = dir) {
   for (const e of entries) {
     const abs = path.join(dir, e.name);
     if (e.isDirectory()) {
-      out.push(...(await walkFiles(abs, base)));
+      out.push(...(await walkFiles(abs, base, seen)));
       continue;
     }
     // A symlink is neither isFile() nor isDirectory() here, and skipping it
@@ -100,7 +134,7 @@ export async function walkFiles(dir, base = dir) {
       try {
         const st = await stat(abs);
         if (st.isDirectory()) {
-          out.push(...(await walkFiles(abs, base)));
+          out.push(...(await walkFiles(abs, base, seen)));
           continue;
         }
         isFile = st.isFile();
@@ -184,27 +218,6 @@ export async function inventorySource(sourceRoot) {
 }
 
 /**
- * Marker hashes for things occupying a managed path that are not regular
- * files. A sha256 is 64 hex characters, so these can never collide with a
- * real hash.
- *
- * They exist because "not a regular file" must not be confused with "not
- * there": treating a directory or a symlink as absent classifies it as a new
- * file, which skips the conflict gate and then either destroys the symlink or
- * dies mid-apply on `rename` with EISDIR.
- */
-export const IRREGULAR = {
-  dir: "irregular:directory",
-  symlink: "irregular:symlink",
-  other: "irregular:other",
-  unreadable: "irregular:unreadable",
-};
-
-export function isIrregular(hash) {
-  return typeof hash === "string" && hash.startsWith("irregular:");
-}
-
-/**
  * Hash the target-side state of a set of paths. Paths that do not exist are
  * simply absent from the result (which is how plan.mjs recognizes them);
  * paths occupied by something that is not a regular file get an IRREGULAR
@@ -214,6 +227,9 @@ export function isIrregular(hash) {
 export async function readDiskModes(targetRoot, paths) {
   const out = new Map();
   for (const rel of paths) {
+    // Same filter as readDiskHashes: this layer refuses on its own rather
+    // than trusting that a caller already validated the lockfile.
+    if (!isSafeTargetPath(rel)) continue;
     try {
       const st = await lstat(path.join(targetRoot, rel));
       if (st.isFile()) out.set(rel, st.mode & 0o777);
@@ -356,6 +372,17 @@ export async function applyPlan({ plan, targetRoot, backupStamp }) {
     }
   };
 
+  // Every backup happens before the first write. `backup` can fail (an
+  // unreadable file cannot be copied), and failing after files were already
+  // written is exactly the half-applied tree the comment used to claim this
+  // avoided while the code did the opposite.
+  for (const f of plan.files) {
+    if (f.status === "clobbered") await backup(f.path);
+  }
+  for (const r of plan.removals) {
+    if (r.locallyModified) await backup(r.path);
+  }
+
   let written = 0;
   for (const f of plan.files) {
     if (f.status === "unchanged") {
@@ -380,7 +407,6 @@ export async function applyPlan({ plan, targetRoot, backupStamp }) {
       continue;
     }
     const abs = safeJoin(targetRoot, f.path);
-    if (f.status === "clobbered") await backup(f.path);
     // A directory or symlink cannot be renamed over; it has already been
     // backed up above, so clear it before writing the real file.
     if (isIrregular(f.diskHash)) await rm(abs, { recursive: true, force: true });
@@ -391,7 +417,6 @@ export async function applyPlan({ plan, targetRoot, backupStamp }) {
   let removed = 0;
   const claudeRoot = path.join(targetRoot, ".claude");
   for (const r of plan.removals) {
-    if (r.locallyModified) await backup(r.path);
     const abs = safeJoin(targetRoot, r.path);
     // `recursive` matters: a directory standing at a managed path would
     // otherwise throw ERR_FS_EISDIR here and abort the run mid-apply, after

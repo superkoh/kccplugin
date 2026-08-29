@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  decideSettingsWrite,
   extractManagedHooks,
   isManagedHook,
   mergeManagedHooks,
@@ -144,4 +145,93 @@ test("hook comparison ignores event ordering", () => {
   const a = { Stop: [{ hooks: [ours()] }], SessionStart: [{ hooks: [ours("2")] }] };
   const b = { SessionStart: [{ hooks: [ours("2")] }], Stop: [{ hooks: [ours()] }] };
   assert.equal(sameManagedHooks(a, b), true);
+});
+
+// --- decideSettingsWrite: one total function, so the missing case is a test
+
+const managedOne = { SessionStart: [{ hooks: [ours()] }] };
+
+test("installing into a project-owned settings.json writes our hooks in", () => {
+  const d = decideSettingsWrite({
+    settings: {},
+    managed: managedOne,
+    createdSettings: false,
+    existed: true,
+  });
+  assert.equal(d.action, "write");
+  assert.deepEqual(extractManagedHooks(d.next), managedOne);
+});
+
+test("uninstalling from a project-owned settings.json REWRITES it, stripped", () => {
+  // The case that fell through the old three-branch ladder: nothing of ours
+  // is left, but the project owns the file — so it must still be written, or
+  // our hook commands stay behind pointing at scripts we just deleted, with
+  // the lockfile gone so no later run can repair it.
+  const withOurs = mergeManagedHooks({}, managedOne);
+  const d = decideSettingsWrite({
+    settings: withOurs,
+    managed: {},
+    createdSettings: false,
+    existed: true,
+  });
+  assert.equal(d.action, "write");
+  assert.deepEqual(d.next, {});
+});
+
+test("uninstalling a settings.json we created removes it", () => {
+  const withOurs = mergeManagedHooks({}, managedOne);
+  const d = decideSettingsWrite({
+    settings: withOurs,
+    managed: {},
+    createdSettings: true,
+    existed: true,
+  });
+  assert.equal(d.action, "remove");
+});
+
+test("a hookless install into a project with no settings.json creates none", () => {
+  const d = decideSettingsWrite({
+    settings: null,
+    managed: {},
+    createdSettings: false,
+    existed: false,
+  });
+  assert.equal(d.action, "leave");
+});
+
+test("a hookless install leaves a hand-formatted settings.json untouched", () => {
+  const d = decideSettingsWrite({
+    settings: { model: "opus", permissions: { allow: ["Bash(npm test)"] } },
+    managed: {},
+    createdSettings: false,
+    existed: true,
+  });
+  assert.equal(d.action, "leave");
+});
+
+test("re-installing the same hooks leaves the file untouched", () => {
+  const withOurs = mergeManagedHooks({ model: "opus" }, managedOne);
+  const d = decideSettingsWrite({
+    settings: withOurs,
+    managed: managedOne,
+    createdSettings: true,
+    existed: true,
+  });
+  assert.equal(d.action, "leave");
+});
+
+test("the decision is total: every input combination yields an action", () => {
+  const actions = new Set();
+  for (const settings of [null, {}, { model: "opus" }, mergeManagedHooks({}, managedOne)]) {
+    for (const managed of [{}, managedOne]) {
+      for (const createdSettings of [true, false]) {
+        for (const existed of [true, false]) {
+          const d = decideSettingsWrite({ settings, managed, createdSettings, existed });
+          assert.ok(["write", "remove", "leave"].includes(d.action), JSON.stringify(d));
+          actions.add(d.action);
+        }
+      }
+    }
+  }
+  assert.deepEqual([...actions].sort(), ["leave", "remove", "write"]);
 });

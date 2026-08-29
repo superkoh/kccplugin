@@ -246,6 +246,16 @@ disappears silently.
   `../victim.txt` entry otherwise made the removal loop delete files outside
   the project on every teammate's machine. `applyPlan` re-checks at the
   boundary rather than trusting its caller.
+- **Decisions with more than two branches are pure functions, not inline
+  ladders.** `decideSettingsWrite` exists because three independent
+  predicates in `main()` had no proof of exhaustiveness — and were not:
+  "nothing of ours is left but the project owns the file" fell through all
+  three, so uninstall left dead hook commands behind. In `main()` the only
+  way to test that is to script a scenario nobody thought of; as a total
+  function it is one unit test.
+- **Assert the effect, not the artifact.** The bats case that should have
+  caught it checked only that settings.json still existed, never that our
+  hooks were gone — green against the bug.
 - **Only text is CRLF-normalized before hashing.** Collapsing `0x0D 0x0A`
   inside a binary payload makes two different files hash the same, so real
   drift would pass `--check` and never be restored.

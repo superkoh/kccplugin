@@ -49,6 +49,26 @@ export const SETTINGS_PATH = ".claude/settings.json";
  * exact, and it survives the user reordering or reformatting the file.
  */
 export const MANAGED_HOOK_MARKER = "/.claude/kcc/";
+/**
+ * Markers for something occupying a managed path that is not a regular file.
+ * A sha256 is 64 hex characters, so these can never collide with a real hash.
+ *
+ * They live here — the one module with no I/O and no dependencies — because
+ * both the planner and the filesystem layer need the same contract, and it
+ * was previously written out three times with the prefix hard-coded a fourth.
+ */
+export const IRREGULAR_PREFIX = "irregular:";
+export const IRREGULAR = {
+  dir: `${IRREGULAR_PREFIX}directory`,
+  symlink: `${IRREGULAR_PREFIX}symlink`,
+  other: `${IRREGULAR_PREFIX}other`,
+  unreadable: `${IRREGULAR_PREFIX}unreadable`,
+};
+
+export function isIrregular(hash) {
+  return typeof hash === "string" && hash.startsWith(IRREGULAR_PREFIX);
+}
+
 /** Lockfile format version. A newer lock than the installer is refused. */
 export const LOCK_VERSION = 1;
 

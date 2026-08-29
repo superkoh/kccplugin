@@ -139,6 +139,42 @@ export function mergeManagedHooks(settings, managed) {
 }
 
 /**
+ * Decide what to do with `.claude/settings.json`.
+ *
+ * This used to be three independent predicates in the installer's `main()`,
+ * evaluated in sequence with nothing proving they covered every case — and
+ * they did not: "the stripped result is empty but we did not create the
+ * file" fell through all three, so `--uninstall` left kcc's hook commands in
+ * a project-owned settings.json, pointing at scripts it had just deleted,
+ * with the lockfile gone so a second run could not repair it.
+ *
+ * As one total function over its four inputs, that case is a line of code and
+ * a unit test instead of a scenario someone has to think to script.
+ *
+ * @param {object|null} settings   parsed settings.json, or null when absent
+ * @param {Record<string, object[]>} managed  hook entries this install wants
+ * @param {boolean} createdSettings  did kcc create this file?
+ * @param {boolean} existed          was the file there before this run?
+ * @returns {{action: 'write'|'remove'|'leave', next: object}}
+ */
+export function decideSettingsWrite({ settings, managed, createdSettings, existed }) {
+  const next = mergeManagedHooks(settings ?? {}, managed);
+  const empty = Object.keys(next).length === 0;
+  const unchanged = sameManagedHooks(extractManagedHooks(settings ?? {}), managed);
+
+  // Nothing left, and the file is ours: remove it rather than leave a `{}`.
+  if (empty && createdSettings) return { action: "remove", next };
+  // Nothing left, and there was no file: do not create an empty one.
+  if (empty && !existed) return { action: "leave", next };
+  // Nothing of ours to add or remove: rewriting would reflow a file we do not
+  // own into an unrelated diff.
+  if (unchanged && existed) return { action: "leave", next };
+  // Everything else — including "all that is left is empty, but the project
+  // owns the file" — must be written, or our entries stay behind.
+  return { action: "write", next };
+}
+
+/**
  * Structural equality for the managed-hook comparison in `--check`.
  *
  * Key order must not matter anywhere, not just at the top level: a team that
