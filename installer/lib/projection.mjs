@@ -159,11 +159,14 @@ export function projectHooks(hooksJson, moduleName) {
         );
       }
       for (const hook of entry.hooks) {
-        if (typeof hook?.command === "string" && !hook.command.includes(MANAGED_HOOK_MARKER)) {
+        // A non-string (or missing) command is just as unrecognizable later
+        // as a marker-less one: `isManagedHook` requires a string, so such an
+        // entry would be appended on every install and survive uninstall.
+        if (typeof hook?.command !== "string" || !hook.command.includes(MANAGED_HOOK_MARKER)) {
           throw new Error(
             `module "${moduleName}": hooks.${event} command does not reference ` +
               `\${CLAUDE_PLUGIN_ROOT}, so kcc could never recognize or remove it ` +
-              `again: ${hook.command}`
+              `again: ${JSON.stringify(hook?.command)}`
           );
         }
       }

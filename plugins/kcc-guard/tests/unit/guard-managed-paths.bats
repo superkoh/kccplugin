@@ -275,8 +275,69 @@ assert_allowed() {
   assert_denied
 }
 
-@test "DENY: rewriting settings.json, which would unregister the hook" {
+@test "ALLOW: settings.json is the project's file, not ours" {
+  # The installer owns only the hook entries inside it. Guarding the whole
+  # file would permanently block the team from adding their own hooks,
+  # permissions or env — drift in our entries there is `--check`'s job.
   run_guard "$(jq -nc --arg c "$TMPROOT" \
     '{tool_name:"Write", cwd:$c, tool_input:{file_path:".claude/settings.json"}}')"
+  assert_allowed
+}
+
+@test "DENY: an Edit issued from a subdirectory, with a relative path" {
+  # file_path is relative to the tool call's cwd, not the project root.
+  run_guard "$(jq -nc --arg c "$TMPROOT/.claude/skills/kcc-dev-core:spec" \
+    '{tool_name:"Write", cwd:$c, tool_input:{file_path:"SKILL.md"}}')"
   assert_denied
+}
+
+@test "DENY: a path that walks out of the project and back in" {
+  local base
+  base=$(basename "$TMPROOT")
+  run_guard "$(jq -nc --arg c "$TMPROOT" --arg p "../$base/$MANAGED" \
+    '{tool_name:"Write", cwd:$c, tool_input:{file_path:$p}}')"
+  assert_denied
+}
+
+@test "DENY: a write hidden inside a command substitution" {
+  run_guard "$(bash_cmd "echo \$(rm $MANAGED)")"
+  assert_denied
+}
+
+@test "DENY: a write hidden inside backticks" {
+  run_guard "$(bash_cmd "echo \`rm $MANAGED\`")"
+  assert_denied
+}
+
+@test "ALLOW: git add, which the installer itself tells the user to run" {
+  run_guard "$(bash_cmd "git add $MANAGED")"
+  assert_allowed
+}
+
+@test "ALLOW: a managed path named only in a trailing comment" {
+  run_guard "$(bash_cmd "npm test  # touches $MANAGED")"
+  assert_allowed
+}
+
+@test "a Bash call with no file_path still guards the command" {
+  # The fields arrive as one record; a tab separator collapsed the empty
+  # file_path and shifted the command out of its variable, which disabled
+  # Bash guarding entirely while every Write test stayed green.
+  run_guard "$(bash_cmd "rm -rf $MANAGED")"
+  assert_denied
+}
+
+@test "no stderr noise on a degenerate path" {
+  local payload
+  payload=$(jq -nc --arg c "$TMPROOT" '{tool_name:"Write", cwd:$c, tool_input:{file_path:".."}}')
+  run bash -c "printf '%s' '$payload' | CLAUDE_PROJECT_DIR='$TMPROOT' bash '$SCRIPT' 2>&1 1>/dev/null"
+  [ -z "$output" ]
+}
+
+@test "a path segment containing a glob is not expanded" {
+  # `for seg in $p` word-splits with globbing on unless it is disabled, which
+  # turned a `*` segment into a directory listing.
+  run_guard "$(jq -nc --arg c "$TMPROOT" \
+    '{tool_name:"Write", cwd:$c, tool_input:{file_path:"a/*/b"}}')"
+  assert_allowed
 }

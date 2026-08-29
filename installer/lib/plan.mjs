@@ -258,23 +258,22 @@ export function lockFromPlan({ plan, sourceModules, source, lockVersion, now, cr
     for (const f of plan.files) {
       if (f.module === name) files[f.path] = f.hash;
     }
-    // Modes are recorded only where they differ from a plain 0644, so the
-            // lock stays readable and the common case adds nothing. Without
-            // them `--check` hashes content only, and a script that lost its
-            // executable bit stays green forever.
-    const modes = {};
+    // Only the *executable bit* is recorded, never the absolute mode. Raw
+    // permission bits come from the source checkout's umask and git does not
+    // preserve them, so a lock written under `umask 077` would make `--check`
+    // — the documented CI gate — fail on every teammate's machine with no
+    // way to fix it. The exec bit is the one git carries.
+    const exec = [];
     for (const f of plan.files) {
-      if (f.module === name && f.mode !== undefined && f.mode !== 0o644) {
-        modes[f.path] = f.mode;
+      if (f.module === name && f.mode !== undefined && (f.mode & 0o111) !== 0) {
+        exec.push(f.path);
       }
     }
     modules[name] = {
       version: mod.version,
       description: mod.description,
       files: Object.fromEntries(Object.entries(files).sort(([a], [b]) => (a < b ? -1 : 1))),
-      ...(Object.keys(modes).length > 0
-        ? { modes: Object.fromEntries(Object.entries(modes).sort(([a], [b]) => (a < b ? -1 : 1))) }
-        : {}),
+      ...(exec.length > 0 ? { exec: exec.sort() } : {}),
     };
   }
   return {
@@ -307,13 +306,20 @@ export function verifyAgainstLock({
   const missing = [];
   const modeDrift = [];
   for (const entry of Object.values(lock?.modules ?? {})) {
+    const shouldExec = new Set(entry.exec ?? []);
     for (const [path, hash] of Object.entries(entry.files ?? {})) {
-      if (!diskHashes.has(path)) missing.push(path);
-      else if (diskHashes.get(path) !== hash) modified.push(path);
-    }
-    for (const [path, mode] of Object.entries(entry.modes ?? {})) {
-      if (!diskModes || !diskModes.has(path)) continue; // absence is `missing`
-      if (diskModes.get(path) !== mode) modeDrift.push(path);
+      if (!diskHashes.has(path)) {
+        missing.push(path);
+        continue;
+      }
+      if (diskHashes.get(path) !== hash) modified.push(path);
+      // Both directions: a script that lost its executable bit, and a plain
+      // file that gained one. Checking only the recorded set would miss the
+      // second, since a non-executable file has no entry to compare against.
+      if (diskModes && diskModes.has(path)) {
+        const isExec = (diskModes.get(path) & 0o111) !== 0;
+        if (isExec !== shouldExec.has(path)) modeDrift.push(path);
+      }
     }
   }
   const hookDrift = !sameHooks(lock?.managedHooks ?? {}, actualManagedHooks ?? {});

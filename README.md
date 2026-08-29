@@ -114,14 +114,20 @@ in CI:
 ```
 
 **Refuse.** The `kcc-guard` module installs a `PreToolUse` hook that denies
-`Edit` / `Write` / `NotebookEdit` on any path the lockfile claims. For `Bash`
-it works the other way round: once a command names a managed path it is denied
-*unless* every part of it leads with a known read-only command (`cat`, `grep`,
-`git diff`, …) and no managed path is a redirect target. Asking "does this look
-like a write?" is a losing game — enumerate the mutating forms and you will
-miss one — so unknown commands are refused. The agent is told why, and where
-to make the change instead. The deny holds even under
+`Edit` / `Write` / `NotebookEdit` on any path the lockfile claims, plus the
+lockfile itself — a guard whose kill switch is unguarded is not a guard. For
+`Bash` it works the other way round: once a command names a managed path it is
+denied *unless* every part of it leads with a command that cannot write the
+file it is given (`cat`, `grep`, `git diff`, `git add`, …). Asking "does this
+look like a write?" is a losing game — enumerate the mutating forms and you
+will miss one — so unknown commands are refused. The agent is told why, and
+where to make the change instead. The deny holds even under
 `--permission-mode bypassPermissions`.
+
+`.claude/settings.json` is deliberately **not** guarded: it is the project's
+file and kcc owns only the hook entries inside it, so the team stays free to
+add their own hooks, permissions and env. Drift in our entries there is what
+`--check` reports.
 
 In a repo where an agent edits files all day, that agent is the most likely
 source of drift, which is why refusing beats detecting. Be clear about the

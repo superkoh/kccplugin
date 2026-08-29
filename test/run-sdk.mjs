@@ -7,8 +7,11 @@
  * L4 answers that by installing the modules into a throwaway project and
  * asking the CLI what it sees.
  *
- *   1. install the selected modules into a temp project (installer libs,
- *      not a subprocess — the same code path a user's `install.sh` runs)
+ *   1. install the selected modules into a temp project by running
+ *      `installer/install.mjs` — the same code path `install.sh` runs. The
+ *      fixture deliberately shells out rather than calling the libraries;
+ *      see project-fixture.mjs for why (a library-level install skipped the
+ *      lockfile and silently disarmed kcc-guard inside the fixture)
  *   2. spawn `claude -p ping` with cwd = that project and CLAUDE_CONFIG_DIR
  *      pointed at an empty directory, so nothing of the developer's own
  *      setup leaks in

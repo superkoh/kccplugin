@@ -210,6 +210,52 @@ EOF
   [ ! -f "$T/gone.md" ]
 }
 
+@test "--check catches a gained executable bit too" {
+  # Only the losing direction was covered; a plain file that gains +x has no
+  # entry in the recorded set, so a one-directional check stays green.
+  "${I[@]}" --target "$T" --all -y >/dev/null 2>&1
+  chmod 755 "$T/.claude/skills/kcc-dev-core:spec/SKILL.md"
+  run "${I[@]}" --target "$T" --check
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"mode:"* ]]
+}
+
+@test "the lockfile records an exec flag, never umask-dependent mode bits" {
+  # Raw modes come from the source checkout's umask and git does not carry
+  # them, so recording them made --check red on every teammate's machine.
+  "${I[@]}" --target "$T" --all -y >/dev/null 2>&1
+  run jq -r '.modules["kcc-core"] | has("modes")' "$T/.claude/kcc/kcc.lock.json"
+  [ "$output" = "false" ]
+  run jq -r '.modules["kcc-core"].exec | length' "$T/.claude/kcc/kcc.lock.json"
+  [ "$output" -gt 0 ]
+}
+
+@test "uninstall keeps a settings.json written after a hookless install" {
+  # createdSettings must mean "we wrote it", not "none existed at the time":
+  # a hookless module writes no settings file, so marking it created makes a
+  # later uninstall delete one the project authored in between.
+  "${I[@]}" --target "$T" --modules kcc-pm -y >/dev/null 2>&1
+  [ ! -f "$T/.claude/settings.json" ]
+  mkdir -p "$T/.claude"
+  echo '{}' >"$T/.claude/settings.json"
+  "${I[@]}" --target "$T" --modules kcc-core,kcc-pm -y >/dev/null 2>&1
+  "${I[@]}" --target "$T" --uninstall -y >/dev/null 2>&1
+  [ -f "$T/.claude/settings.json" ]
+}
+
+@test "an empty hooks object the project wrote is preserved" {
+  mkdir -p "$T/.claude"
+  printf '{"model":"opus","hooks":{}}\n' >"$T/.claude/settings.json"
+  "${I[@]}" --target "$T" --modules kcc-pm -y >/dev/null 2>&1
+  run jq -e 'has("hooks")' "$T/.claude/settings.json"
+  [ "$status" -eq 0 ]
+}
+
+@test "--help documents --ref, which install.sh always passes" {
+  run "${I[@]}" --help
+  [[ "$output" == *"--ref"* ]]
+}
+
 @test "--check catches a lost executable bit, and the installer repairs it" {
   "${I[@]}" --target "$T" --all -y >/dev/null 2>&1
   local script="$T/.claude/kcc/kcc-core/scripts/session-start-principles.sh"

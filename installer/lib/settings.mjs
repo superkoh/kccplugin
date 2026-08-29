@@ -64,8 +64,14 @@ export function stripManagedHooks(settings) {
     if (keptEntries.length > 0 || entries.length === 0) cleanedEvents[event] = keptEntries;
   }
 
-  if (Object.keys(cleanedEvents).length === 0) delete next.hooks;
-  else next.hooks = cleanedEvents;
+  // Drop `hooks` only when it had content and everything in it was ours.
+  // A project that wrote `"hooks": {}` keeps it — removing the key would put
+  // a change in their diff that kcc had no reason to make.
+  if (Object.keys(cleanedEvents).length === 0 && Object.keys(hooks).length > 0) {
+    delete next.hooks;
+  } else {
+    next.hooks = cleanedEvents;
+  }
   return next;
 }
 

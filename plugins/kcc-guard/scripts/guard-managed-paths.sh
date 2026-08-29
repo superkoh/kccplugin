@@ -20,21 +20,21 @@
 # ---------------------------------------------------------------------------
 # What is protected
 #
-# Every path in the lockfile, PLUS the two files that arm this guard:
-# `.claude/kcc/kcc.lock.json` and `.claude/settings.json`. Neither appears in
-# `modules[].files`, and without them the guard is a no-op — deleting the lock
-# disarms it in one command, and rewriting settings.json unregisters the hook.
-# A protection whose own kill switch is unprotected is not a protection.
+# Every path in the lockfile, plus `.claude/kcc/kcc.lock.json` itself — the
+# lock is wholly ours, and deleting it disarms this guard in one command.
+#
+# `.claude/settings.json` is deliberately NOT protected. It is the project's
+# file; the installer owns only the hook entries inside it, and guarding the
+# whole file would permanently block the team from adding their own hooks,
+# permissions or env. Drift in our entries there is `--check`'s job.
 #
 # Bash policy: deny by default once a managed path is named.
 #
-# Asking "does this command look like a write?" loses: the first version
-# allowed `rm -rf <managed>` (its pattern needed a leading space) while
-# denying `cat <managed> | grep x > /tmp/o` (any `>` counted). The second
-# version inverted that but still shipped `find` and `sort` on the read-only
-# list — `find <managed> -delete` and `sort -o <managed>` both destroy a file
-# — and its in-place probe only matched the literal " -i", so
-# `sed --in-place` and `perl -pi` walked through.
+# Asking "does this look like a write?" loses. Two earlier versions tried and
+# both shipped holes: `rm -rf <managed>` allowed because a pattern needed a
+# leading space; `find <managed> -delete` and `sort -o <managed>` allowed
+# because both commands were on a read-only list; `sed --in-place` and
+# `perl -pi` allowed because the probe matched the literal " -i".
 #
 # So: a command naming a managed path is denied unless every segment naming
 # one leads with a command that has no way to write the file it is given.
@@ -48,6 +48,10 @@
 # Everything degrades to "allow": no jq, no lockfile, unparseable stdin.
 
 set -uo pipefail
+# Globbing off for the whole script: normalize_rel splits paths on `/` with
+# word splitting, and a segment containing `*` would otherwise be expanded
+# against the hook's cwd, turning a path into a directory listing.
+set -f
 
 allow() { exit 0; }
 
@@ -56,11 +60,26 @@ command -v jq >/dev/null 2>&1 || allow
 stdin_raw=$(cat 2>/dev/null || true)
 [[ -z "$stdin_raw" ]] && allow
 
-tool=$(printf '%s' "$stdin_raw" | jq -r '.tool_name // empty' 2>/dev/null || true)
-[[ -z "$tool" ]] && allow
+# One jq spawn for everything we need. This is the hottest path in a session
+# — it runs before every Edit, Write and Bash — against a 5s hook timeout.
+#
+# The separator is US (\x1f), not a tab: tab is IFS *whitespace*, so `read`
+# collapses runs of it and an empty field silently shifts every later one.
+# With a file_path-less Bash call that put the command in the wrong variable
+# and disabled Bash guarding entirely. `read -d ''` so an embedded newline in
+# a command does not truncate the record.
+fields=$(printf '%s' "$stdin_raw" | jq -j '
+  [ .tool_name // ""
+  , .cwd // ""
+  , (.tool_input.file_path // .tool_input.notebook_path // "")
+  , (.tool_input.command // "")
+  ] | join("\u001f")' 2>/dev/null) || allow
+[[ -z "$fields" ]] && allow
 
-cwd=$(printf '%s' "$stdin_raw" | jq -r '.cwd // empty' 2>/dev/null || true)
-project_root="${CLAUDE_PROJECT_DIR:-$cwd}"
+IFS=$'\037' read -r -d '' tool cwd target cmd <<<"$fields" || true
+[[ -z "${tool:-}" ]] && allow
+
+project_root="${CLAUDE_PROJECT_DIR:-${cwd:-}}"
 [[ -z "$project_root" || ! -d "$project_root" ]] && allow
 
 lock="$project_root/.claude/kcc/kcc.lock.json"
@@ -68,8 +87,8 @@ lock="$project_root/.claude/kcc/kcc.lock.json"
 
 managed=$(jq -r '[.modules[]?.files // {} | keys[]] | .[]' "$lock" 2>/dev/null || true)
 [[ -z "$managed" ]] && allow
-# The guard's own arming files, which the lockfile never lists.
-managed=$(printf '%s\n.claude/kcc/kcc.lock.json\n.claude/settings.json\n' "$managed")
+# The lockfile arms this guard, and the lockfile never lists itself.
+managed=$(printf '%s\n.claude/kcc/kcc.lock.json\n' "$managed")
 
 deny() {
   jq -n --arg r "$1" '{
@@ -91,49 +110,57 @@ and re-run the installer. If you genuinely need a project-local variant, that is
 a decision for the human to make, not an edit to make silently."
 }
 
-# Collapse `./`, `//` and `x/../` so that a non-canonical spelling of a
-# managed path cannot walk past an exact string comparison. Pure string work:
-# the target of a Write need not exist yet, so realpath is not an option.
+# Collapse `.` and `x/..` segments. Returns non-zero when the path still
+# escapes upward after collapsing, because such a path cannot be compared
+# against a project-relative managed path and must not be silently rewritten
+# into one that happens to match nothing.
 normalize_rel() {
-  local p="$1" out=() seg
+  local p="$1" seg
+  local -a out=()
   local IFS=/
   for seg in $p; do
     case "$seg" in
       "" | ".") continue ;;
-      "..") [[ ${#out[@]} -gt 0 ]] && unset 'out[${#out[@]}-1]' ;;
+      "..")
+        if (( ${#out[@]} == 0 )); then
+          return 1 # escapes above the base
+        fi
+        unset 'out[${#out[@]}-1]'
+        ;;
       *) out+=("$seg") ;;
     esac
   done
+  (( ${#out[@]} == 0 )) && return 1
   printf '%s' "${out[*]}"
 }
 
 # --- exact match: the tools an agent uses to edit a file -----------------
 case "$tool" in
   Edit | Write | NotebookEdit | MultiEdit)
-    target=$(printf '%s' "$stdin_raw" \
-      | jq -r '.tool_input.file_path // .tool_input.notebook_path // empty' 2>/dev/null || true)
-    [[ -z "$target" ]] && allow
-    # Compare canonical project-relative forms. Both the project root and the
-    # target are normalized, so `/var` vs `/private/var` on macOS and a
-    # trailing slash cannot slip a path through.
-    # The root may be reachable under more than one spelling (on macOS a
-    # temp dir is both /var/... and /private/var/...), and the target need
-    # not exist yet, so try every prefix rather than resolving the target.
+    [[ -z "${target:-}" ]] && allow
+    # A relative file_path is relative to the tool call's cwd, which is not
+    # necessarily the project root — an Edit issued from a subdirectory would
+    # otherwise sail straight past the comparison.
+    [[ "$target" != /* ]] && target="${cwd:-$project_root}/$target"
+    # Collapse the absolute path BEFORE comparing. `<root>/../<root-basename>/x`
+    # literally starts with `<root>/`, so a prefix test alone would hand back a
+    # relative path that still walks out and back in, matching nothing.
+    target="/$(normalize_rel "$target")" || allow
+
+    # The root may be reachable under more than one spelling (on macOS a temp
+    # dir is both /var/... and /private/var/...), so try each prefix.
     root_real=$(cd "$project_root" 2>/dev/null && pwd -P) || root_real="$project_root"
-    if [[ "$target" == /* ]]; then
-      rel=""
-      for root in "$root_real" "$project_root"; do
-        if [[ "$target" == "$root"/* ]]; then
-          rel="${target#"$root"/}"
-          break
-        fi
-      done
-      [[ -z "$rel" ]] && allow # outside the project
-    else
-      rel="$target"
-    fi
-    rel=$(normalize_rel "$rel")
-    [[ -z "$rel" ]] && allow
+    rel=""
+    for root in "$root_real" "$project_root"; do
+      root="/$(normalize_rel "$root")"
+      if [[ "$target" == "$root"/* ]]; then
+        rel="${target#"$root"/}"
+        break
+      fi
+    done
+    [[ -z "$rel" ]] && allow # outside the project
+
+    rel=$(normalize_rel "$rel") || allow
     while IFS= read -r m; do
       [[ -z "$m" ]] && continue
       [[ "$rel" == "$(normalize_rel "$m")" ]] && deny "$(reason_for "$m")"
@@ -145,13 +172,16 @@ case "$tool" in
 esac
 
 # --- Bash: deny by default once a managed path is named ------------------
-cmd=$(printf '%s' "$stdin_raw" | jq -r '.tool_input.command // empty' 2>/dev/null || true)
-[[ -z "$cmd" ]] && allow
+[[ -z "${cmd:-}" ]] && allow
+
+# A trailing comment is not part of the command, and treating it as one both
+# denies harmless commands and tells the user nothing useful.
+cmd_code=$(printf '%s\n' "$cmd" | sed 's/[[:space:]]#[^"'"'"']*$//')
 
 mentioned=()
 while IFS= read -r m; do
   [[ -z "$m" ]] && continue
-  [[ "$cmd" == *"$m"* ]] && mentioned+=("$m")
+  [[ "$cmd_code" == *"$m"* ]] && mentioned+=("$m")
 done <<<"$managed"
 (( ${#mentioned[@]} == 0 )) && allow
 
@@ -184,16 +214,18 @@ has_in_place_flag() {
       --in-place | --in-place=*) return 0 ;;
       -i | -i.* | -i=*) return 0 ;;
       --*) continue ;;
-      -*i | -*i.*) return 0 ;; # clustered short flags, e.g. -pi, -npi.bak
+      -*i | -*i.*) return 0 ;;
     esac
   done
   return 1
 }
 
+# `add` is here because the installer's own closing line tells the user to
+# commit the payload; staging cannot modify the working-tree file.
 is_read_only_git() {
   case "$1" in
-    diff | log | show | status | blame | ls-files | cat-file | rev-parse | \
-    describe | grep | shortlog | check-ignore) return 0 ;;
+    add | diff | log | show | status | blame | ls-files | cat-file | \
+    rev-parse | describe | grep | shortlog | check-ignore) return 0 ;;
   esac
   return 1
 }
@@ -201,15 +233,21 @@ is_read_only_git() {
 # A managed path immediately following a redirect operator is a write, full
 # stop, regardless of which command leads the segment.
 for m in "${mentioned[@]}"; do
-  if [[ "$cmd" =~ (\>\>?|\<\>)[[:space:]]*\"?\'?[^[:space:]\"\']*"$m" ]]; then
+  if [[ "$cmd_code" =~ (\>\>?|\<\>)[[:space:]]*\"?\'?[^[:space:]\"\']*"$m" ]]; then
     deny "$(reason_for "$m")"
   fi
 done
 
-normalized=${cmd//&&/$'\n'}
+# Split into segments. Command substitutions become segments of their own —
+# `echo $(rm <managed>)` leads with a read-only `echo`, but the body is the
+# part that matters.
+normalized=${cmd_code//&&/$'\n'}
 normalized=${normalized//||/$'\n'}
 normalized=${normalized//;/$'\n'}
 normalized=${normalized//|/$'\n'}
+normalized=${normalized//\$\(/$'\n'}
+normalized=${normalized//\`/$'\n'}
+normalized=${normalized//)/$'\n'}
 
 while IFS= read -r segment; do
   seg_hits=()
@@ -219,6 +257,7 @@ while IFS= read -r segment; do
   (( ${#seg_hits[@]} == 0 )) && continue
 
   read -r -a words <<<"$segment"
+  (( ${#words[@]} == 0 )) && continue
   lead=""
   lead_idx=0
   for w in "${words[@]}"; do

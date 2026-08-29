@@ -220,12 +220,19 @@ disappears silently.
   selection" report was dead at runtime while its unit test stayed green. A
   green unit test on a call shape the product does not make is worse than no
   test.
-- **The guard protects its own arming files.** `.claude/kcc/kcc.lock.json`
-  and `.claude/settings.json` are not in `modules[].files`, and without them
-  the guard is a no-op — `rm` the lock and everything is writable again.
-- **`--check` covers permission bits, not just content.** Modes that differ
-  from 0644 are recorded per module in the lock, and an install repairs a
-  drifted bit even when the content is unchanged.
+- **The guard protects the lockfile, and nothing else it does not own.**
+  The lock is not in `modules[].files` yet arms the guard — `rm` it and
+  everything is writable again. `.claude/settings.json` is the opposite case:
+  it is the *project's* file, so guarding it wholesale would block the team
+  from ever adding their own hooks or permissions. That one is `--check`'s.
+- **The lock records an exec flag, never absolute mode bits.** Raw modes come
+  from the source checkout's umask and git does not carry them, so recording
+  them turns `--check` red on every teammate's machine. Only the executable
+  bit is portable — and it is checked in both directions.
+- **The guard reads its input in one `jq` call, separated by `\x1f`.** Tab is
+  IFS *whitespace*, so `read` collapses runs of it: with a tab separator an
+  empty `file_path` shifted the command out of its variable and disabled Bash
+  guarding entirely, while every Write test stayed green.
 
 ## Pointers to existing workflow skills
 

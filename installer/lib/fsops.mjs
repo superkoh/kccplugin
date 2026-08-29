@@ -297,7 +297,14 @@ export async function applyPlan({ plan, targetRoot, backupStamp }) {
       if (f.mode !== undefined) {
         const abs = path.join(targetRoot, f.path);
         try {
-          if (((await lstat(abs)).mode & 0o777) !== f.mode) await chmod(abs, f.mode);
+          // Only the executable bit is normative — the rest of the mode comes
+          // from the checkout's umask and is not portable.
+          const current = (await lstat(abs)).mode & 0o777;
+          const wantExec = (f.mode & 0o111) !== 0;
+          const hasExec = (current & 0o111) !== 0;
+          if (wantExec !== hasExec) {
+            await chmod(abs, wantExec ? current | 0o111 : current & ~0o111);
+          }
         } catch {
           /* the verify path reports a missing file */
         }

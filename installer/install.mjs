@@ -125,6 +125,8 @@ ${C.b("kcc installer")} — install / upgrade kcc modules into a project's .clau
   --adopt              take ownership of pre-existing files at the target paths
   --dry-run            print the plan, change nothing
   -y, --yes            no prompts
+  --ref <ref>          record this source ref in the lockfile (install.sh
+                       passes KCC_REF here)
   --target <dir>       project to install into (default: cwd)
   --source <dir>       source checkout (default: this repo)
 `);
@@ -435,7 +437,7 @@ async function main() {
       f.status === "unchanged" &&
       f.mode !== undefined &&
       diskModes.has(f.path) &&
-      diskModes.get(f.path) !== f.mode
+      ((diskModes.get(f.path) & 0o111) !== 0) !== ((f.mode & 0o111) !== 0)
   );
   const nothingToDo =
     plan.writes.length === 0 &&
@@ -519,7 +521,13 @@ async function main() {
       now: new Date().toISOString(),
       // Remembered so uninstall knows whether removing settings.json would
       // be deleting a file kcc created or one the project already had.
-      createdSettings: lock ? lock.createdSettings === true : !settingsExisted,
+      // True only when *this* run (or an earlier one) actually wrote the
+            // file. Inferring it from "no settings.json existed at install
+            // time" marks it true for a hookless module that never wrote one,
+            // and uninstall then deletes a settings.json the project authored.
+      createdSettings: lock
+        ? lock.createdSettings === true
+        : !settingsExisted && Object.keys(plan.managedHooks).length > 0,
     });
     await mkdir(path.dirname(lockAbs), { recursive: true });
     await writeAtomic(lockAbs, JSON.stringify(nextLock, null, 2) + "\n");
