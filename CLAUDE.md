@@ -204,12 +204,16 @@ disappears silently.
 - **Enforcement is three layers, not one**: recover (byte copy + hashes),
   detect (`--check` in CI), refuse (`kcc-guard`'s PreToolUse deny, which
   holds even under `bypassPermissions`).
-- **The guard denies Bash by default once a managed path is named**, and
-  allows only recognized read-only forms. The first version asked "does this
-  look like a write?" and was wrong in both directions — `rm -rf <managed>`
-  passed (the pattern needed a leading space) while `cat <managed> | grep x >
-  /tmp/o` was blocked. Enumerating mutating forms is a losing game; enumerate
-  the safe ones instead.
+- **The guard is a guardrail, not a boundary — and the error costs are
+  asymmetric the other way.** Its job is the agent that edits a managed file
+  *without knowing it is managed*. Because `--check` plus overwrite-on-upgrade
+  already recover from a miss, a false denial (blocking `git add <managed>`,
+  `[ -f <managed> ]`, `npm test`) costs more than a miss does. So the Bash
+  deny list is short and explicit and everything else is allowed, unknown
+  commands included. Five rewrites went the other way — "unknown therefore
+  dangerous" — chasing `perl -e`, `xargs` laundering and `../` escapes that
+  nobody reaches by accident, while making daily use worse. Before hardening
+  this further, check the finding is in scope.
 - **`--check` compares hooks structurally, key order and all.** A team that
   runs prettier over `settings.json` must not get a permanently red CI gate.
 - **Test the product's entry point, not its libraries.** This has now bitten

@@ -115,28 +115,30 @@ in CI:
 
 **Refuse.** The `kcc-guard` module installs a `PreToolUse` hook that denies
 `Edit` / `Write` / `NotebookEdit` on any path the lockfile claims, plus the
-lockfile itself — a guard whose kill switch is unguarded is not a guard. For
-`Bash` it works the other way round: once a command names a managed path,
-**every** command on that line must be one that cannot write a file (`cat`,
-`grep`, `git diff`, `git add`, `[ -f … ]`, …). Judging only the part that
-names the path is not enough — `echo <managed> | xargs rm` launders it — and
-anything that takes a program (`sed`, `perl`, `python`, `xargs`) is refused
-outright, because no flag tells you what it will do. Unknown commands are
-refused. The agent is told why, and
-where to make the change instead. The deny holds even under
+lockfile itself. For `Bash` it denies a short, unambiguous list: an output
+redirect into a managed path, and `rm` / `mv` / `cp` / `tee` / `chmod` /
+`sed -i` / `git checkout` naming one. Everything else is allowed, including
+commands it does not recognise. The deny holds even under
 `--permission-mode bypassPermissions`.
+
+This is a guardrail against an agent editing a managed file **without
+realising it is managed**, mid-task. It is not a security boundary and does
+not try to be — someone who wants past it can, and that is fine, because the
+other two layers already handle it: `--check` reports the drift and the next
+install restores the file byte-for-byte with a backup.
+
+That fallback is what sets the trade. A miss costs an edit that survives
+until the next upgrade; a false denial costs an agent blocked on a legitimate
+command during exactly the daily work this is meant to protect. So the guard
+errs toward allowing. An earlier version reasoned the other way — unknown
+commands denied — and ended up refusing `git add <managed>`, `[ -f <managed> ]`,
+`npm test`, and reading a managed file with python, while five rewrites chased
+shell-semantics bypasses nobody hits by accident.
 
 `.claude/settings.json` is deliberately **not** guarded: it is the project's
 file and kcc owns only the hook entries inside it, so the team stays free to
 add their own hooks, permissions and env. Drift in our entries there is what
 `--check` reports.
-
-In a repo where an agent edits files all day, that agent is the most likely
-source of drift, which is why refusing beats detecting. Be clear about the
-limits, though: a path assembled at runtime (`p=.claude/…; rm $p`) is invisible
-to the guard, and nothing stops a human in an editor. It raises the cost and
-makes the intent explicit; it is not a sandbox. That is what the other two
-layers are for.
 
 Want a change? Make it in this repo and re-run the installer.
 

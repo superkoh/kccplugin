@@ -2,16 +2,24 @@
 #
 # L2 behavioural tests for the kcc-guard PreToolUse hook.
 #
-# The hook answers one question — "is this tool call about to modify a file
-# the lockfile says kcc manages?" — and must be wrong only in the safe
-# direction.
+# What this guard is for: stopping an agent from modifying a managed file
+# *without realising it is managed*, during ordinary work. It is not a
+# security boundary. Someone who wants to get past it can, and that is fine —
+# `--check` reports the drift and the next install restores the file exactly.
 #
-# The Bash matrix below is the important part. The first version of this
-# guard asked "does this look like a write?" and was wrong in BOTH
-# directions: `rm -rf <managed>` was allowed because the pattern required a
-# leading space, while `cat <managed> | grep x > /tmp/o` was denied because
-# any `>` counted. Only the redirect form was ever tested, so nothing caught
-# it. Every row here is a form that must be judged correctly.
+# That makes the error costs asymmetric, and in the opposite direction from
+# what a security mindset assumes:
+#
+#   a miss          → the edit survives until the next upgrade overwrites it,
+#                     with a backup. Cheap.
+#   a false denial  → an agent is blocked mid-task on a legitimate command,
+#                     during the daily use this feature exists to protect.
+#                     Expensive, and confusing.
+#
+# So: the DENY list is small and unambiguous, and everything else is allowed,
+# including commands the guard does not recognise. The ALLOW half of this
+# matrix is therefore the more important half — it is the part that keeps the
+# guard from being worse than not having one.
 
 PLUGIN_ROOT="$BATS_TEST_DIRNAME/../.."
 SCRIPT="$PLUGIN_ROOT/scripts/guard-managed-paths.sh"
@@ -59,6 +67,11 @@ bash_cmd() {
     '{tool_name:"Bash", cwd:$c, tool_input:{command:$k}}'
 }
 
+write_to() {
+  jq -nc --arg c "${2:-$TMPROOT}" --arg p "$1" \
+    '{tool_name:"Write", cwd:$c, tool_input:{file_path:$p}}'
+}
+
 assert_denied() {
   [ "$status" -eq 0 ]
   echo "$output" | jq -e '.hookSpecificOutput.permissionDecision == "deny"'
@@ -73,11 +86,10 @@ assert_allowed() {
   [ -x "$SCRIPT" ]
 }
 
-# --- file-editing tools: exact, deterministic ---------------------------
+# --- the file-editing tools: exact, and the main path an agent takes -----
 
 @test "DENY: Write to a managed path" {
-  run_guard "$(jq -nc --arg p "$MANAGED" --arg c "$TMPROOT" \
-    '{tool_name:"Write", cwd:$c, tool_input:{file_path:$p}}')"
+  run_guard "$(write_to "$MANAGED")"
   assert_denied
 }
 
@@ -87,9 +99,28 @@ assert_allowed() {
   assert_denied
 }
 
+@test "DENY: an edit issued from a subdirectory with a relative path" {
+  run_guard "$(write_to "SKILL.md" "$TMPROOT/.claude/skills/kcc-dev-core:spec")"
+  assert_denied
+}
+
+@test "DENY: a managed path spelled with a leading ./" {
+  run_guard "$(write_to "./$MANAGED")"
+  assert_denied
+}
+
+@test "DENY: writing the lockfile, which is wholly ours" {
+  run_guard "$(write_to ".claude/kcc/kcc.lock.json")"
+  assert_denied
+}
+
+@test "ALLOW: settings.json is the project's file, not ours" {
+  run_guard "$(write_to ".claude/settings.json")"
+  assert_allowed
+}
+
 @test "ALLOW: Write to an unmanaged path in the same project" {
-  run_guard "$(jq -nc --arg c "$TMPROOT" \
-    '{tool_name:"Write", cwd:$c, tool_input:{file_path:"src/app.ts"}}')"
+  run_guard "$(write_to "src/app.ts")"
   assert_allowed
 }
 
@@ -100,35 +131,14 @@ assert_allowed() {
 }
 
 @test "ALLOW: an absolute path outside the project" {
-  run_guard "$(jq -nc --arg c "$TMPROOT" \
-    '{tool_name:"Write", cwd:$c, tool_input:{file_path:"/etc/hosts"}}')"
+  run_guard "$(write_to "/etc/hosts")"
   assert_allowed
 }
 
-# --- Bash: every destructive form must be denied ------------------------
+# --- Bash: the shapes an agent actually writes a file with by accident ---
 
-@test "DENY: rm -rf leading the command" {
+@test "DENY: rm on a managed path" {
   run_guard "$(bash_cmd "rm -rf $MANAGED")"
-  assert_denied
-}
-
-@test "DENY: plain rm leading the command" {
-  run_guard "$(bash_cmd "rm $MANAGED")"
-  assert_denied
-}
-
-@test "DENY: mv onto a managed path" {
-  run_guard "$(bash_cmd "mv /tmp/a $MANAGED")"
-  assert_denied
-}
-
-@test "DENY: cp onto a managed path" {
-  run_guard "$(bash_cmd "cp /tmp/a $MANAGED")"
-  assert_denied
-}
-
-@test "DENY: git checkout restoring over a managed path" {
-  run_guard "$(bash_cmd "git checkout -- $MANAGED")"
   assert_denied
 }
 
@@ -142,8 +152,25 @@ assert_allowed() {
   assert_denied
 }
 
-@test "DENY: sed -i on a managed path" {
+@test "DENY: sed -i, the bulk-edit-across-the-repo shape" {
   run_guard "$(bash_cmd "sed -i '' s/a/b/ $MANAGED")"
+  assert_denied
+}
+
+@test "DENY: sed --in-place and clustered perl -pi spellings" {
+  run_guard "$(bash_cmd "sed --in-place s/a/b/ $MANAGED")"
+  assert_denied
+  run_guard "$(bash_cmd "perl -pi -e s/a/b/ $MANAGED")"
+  assert_denied
+}
+
+@test "DENY: mv onto a managed path" {
+  run_guard "$(bash_cmd "mv /tmp/a $MANAGED")"
+  assert_denied
+}
+
+@test "DENY: cp onto a managed path" {
+  run_guard "$(bash_cmd "cp /tmp/a $MANAGED")"
   assert_denied
 }
 
@@ -152,14 +179,8 @@ assert_allowed() {
   assert_denied
 }
 
-@test "DENY: a destructive segment after a harmless one" {
-  run_guard "$(bash_cmd "ls -la && rm -f $MANAGED")"
-  assert_denied
-}
-
-@test "DENY: an unrecognized command touching a managed path" {
-  # Unknown commands are assumed to write. The safe direction is to refuse.
-  run_guard "$(bash_cmd "my-formatter --write $MANAGED")"
+@test "DENY: git checkout restoring over a managed path" {
+  run_guard "$(bash_cmd "git checkout -- $MANAGED")"
   assert_denied
 }
 
@@ -168,55 +189,65 @@ assert_allowed() {
   assert_denied
 }
 
-# --- Bash: reads must survive ------------------------------------------
+@test "DENY: a write in a later segment of a compound command" {
+  run_guard "$(bash_cmd "npm test && rm -f $MANAGED")"
+  assert_denied
+}
+
+# --- Bash: everything else, which is the half that matters most ----------
+#
+# Each of these was denied by the previous deny-by-default design. Every one
+# of them is something an agent does in ordinary work.
+
+@test "ALLOW: git add, which the installer itself tells the user to run" {
+  run_guard "$(bash_cmd "git add $MANAGED")"
+  assert_allowed
+}
+
+@test "ALLOW: git status and git diff on a managed path" {
+  run_guard "$(bash_cmd "git status --short $MANAGED")"
+  assert_allowed
+  run_guard "$(bash_cmd "git diff -- $MANAGED")"
+  assert_allowed
+}
+
+@test "ALLOW: the shell test builtins" {
+  run_guard "$(bash_cmd "[ -f $MANAGED ] && echo yes")"
+  assert_allowed
+}
+
+@test "ALLOW: reading with an interpreter" {
+  run_guard "$(bash_cmd "python3 -c \"print(open('$MANAGED').read())\"")"
+  assert_allowed
+}
+
+@test "ALLOW: an unrecognized command that merely names a managed path" {
+  # "Unknown therefore dangerous" is what produced the false denials. A miss
+  # here costs an overwrite at the next upgrade; a denial costs the user a
+  # blocked task today.
+  run_guard "$(bash_cmd "npm test -- --filter=$MANAGED")"
+  assert_allowed
+}
 
 @test "ALLOW: reading a managed file into a pipeline that redirects elsewhere" {
   run_guard "$(bash_cmd "cat $MANAGED | grep -c x > /tmp/out")"
   assert_allowed
 }
 
-@test "ALLOW: grepping a managed file" {
-  run_guard "$(bash_cmd "grep -n sentinel $MANAGED")"
-  assert_allowed
-}
-
-@test "ALLOW: git diff on a managed file" {
-  run_guard "$(bash_cmd "git diff -- $MANAGED")"
-  assert_allowed
-}
-
-@test "DENY: sed at all — it writes with `w`, needing no flag" {
-  # Deliberately conservative. `sed -n 'w <path>'` truncates and overwrites
-  # with no in-place flag anywhere, so no flag inspection can make sed safe.
-  # The cost is that a read-only sed is refused; `Read` and `grep` cover it.
+@test "ALLOW: sed and perl when they are not editing in place" {
   run_guard "$(bash_cmd "sed -n 1,5p $MANAGED")"
-  assert_denied
+  assert_allowed
 }
 
-@test "DENY: sed's w command writing to a managed path" {
-  run_guard "$(bash_cmd "sed -n 'w $MANAGED' /etc/hosts")"
-  assert_denied
+@test "ALLOW: an input redirect from a managed file" {
+  run_guard "$(bash_cmd "xargs ls < $MANAGED")"
+  assert_allowed
 }
 
-@test "DENY: perl -e, which writes without any flag the guard could read" {
-  run_guard "$(bash_cmd "perl -e 'open(F,\">\",\"$MANAGED\")'")"
-  assert_denied
-}
-
-@test "DENY: ruby -e writing a managed path" {
-  run_guard "$(bash_cmd "ruby -e 'File.write(\"$MANAGED\",\"x\")'")"
-  assert_denied
-}
-
-@test "DENY: a path laundered through a pipe into xargs" {
-  # The segment naming the path is a harmless `echo`; the segment that
-  # deletes never mentions it. Judging per segment allowed this.
-  run_guard "$(bash_cmd "echo $MANAGED | xargs rm")"
-  assert_denied
-}
-
-@test "ALLOW: the shell test builtins, so an agent can check a file exists" {
-  run_guard "$(bash_cmd "[ -f $MANAGED ]")"
+@test "ALLOW: a destructive command in a different segment than the path" {
+  # `rm` is present, but it operates on build/ — denying this would block a
+  # perfectly ordinary two-part command.
+  run_guard "$(bash_cmd "rm -rf build/ && cat $MANAGED")"
   assert_allowed
 }
 
@@ -225,127 +256,21 @@ assert_allowed() {
   assert_allowed
 }
 
-@test "ALLOW: env prefixes and sudo do not hide the leading command" {
-  run_guard "$(bash_cmd "FOO=1 cat $MANAGED")"
+@test "ALLOW: a managed path named only in a trailing comment" {
+  run_guard "$(bash_cmd "npm test  # touches $MANAGED")"
   assert_allowed
 }
 
-# --- degradation --------------------------------------------------------
+# --- degradation: a broken guard must never wedge a session --------------
 
 @test "ALLOW: no lockfile means nothing is managed yet" {
   rm -f "$TMPROOT/.claude/kcc/kcc.lock.json"
-  run_guard "$(jq -nc --arg p "$MANAGED" --arg c "$TMPROOT" \
-    '{tool_name:"Write", cwd:$c, tool_input:{file_path:$p}}')"
+  run_guard "$(write_to "$MANAGED")"
   assert_allowed
 }
 
-@test "ALLOW: unparseable stdin degrades open, never wedges the session" {
+@test "ALLOW: unparseable stdin" {
   run_guard "not json at all"
-  assert_allowed
-}
-
-@test "the deny reason names the file and points at the source" {
-  run_guard "$(jq -nc --arg p "$MANAGED" --arg c "$TMPROOT" \
-    '{tool_name:"Write", cwd:$c, tool_input:{file_path:$p}}')"
-  echo "$output" | jq -e '.hookSpecificOutput.permissionDecisionReason | contains("kcc-dev-core:spec")'
-  echo "$output" | jq -e '.hookSpecificOutput.permissionDecisionReason | contains("kcc source repository")'
-}
-
-# --- forms a "does this look like a write?" heuristic misses -------------
-
-@test "DENY: find -delete on a managed path" {
-  run_guard "$(bash_cmd "find $MANAGED -delete")"
-  assert_denied
-}
-
-@test "DENY: sort -o writing back over a managed path" {
-  run_guard "$(bash_cmd "sort -o $MANAGED /etc/hosts")"
-  assert_denied
-}
-
-@test "DENY: sed --in-place (long form) on a managed path" {
-  run_guard "$(bash_cmd "sed --in-place s/a/b/ $MANAGED")"
-  assert_denied
-}
-
-@test "DENY: perl -pi with clustered short flags" {
-  run_guard "$(bash_cmd "perl -pi -e s/a/b/ $MANAGED")"
-  assert_denied
-}
-
-@test "DENY: sed -i.bak on a managed path" {
-  run_guard "$(bash_cmd "sed -i.bak s/a/b/ $MANAGED")"
-  assert_denied
-}
-
-# --- non-canonical spellings of the same path ---------------------------
-
-@test "DENY: Write to a managed path spelled with a leading ./" {
-  run_guard "$(jq -nc --arg p "./$MANAGED" --arg c "$TMPROOT" \
-    '{tool_name:"Write", cwd:$c, tool_input:{file_path:$p}}')"
-  assert_denied
-}
-
-@test "DENY: Write to a managed path with an interior /./" {
-  run_guard "$(jq -nc --arg p ".claude/./skills/kcc-dev-core:spec/SKILL.md" --arg c "$TMPROOT" \
-    '{tool_name:"Write", cwd:$c, tool_input:{file_path:$p}}')"
-  assert_denied
-}
-
-@test "DENY: Write to a managed path reached through .." {
-  run_guard "$(jq -nc --arg p ".claude/kcc/../skills/kcc-dev-core:spec/SKILL.md" --arg c "$TMPROOT" \
-    '{tool_name:"Write", cwd:$c, tool_input:{file_path:$p}}')"
-  assert_denied
-}
-
-# --- the guard's own arming files ---------------------------------------
-
-@test "DENY: deleting the lockfile, which would disarm the guard entirely" {
-  run_guard "$(bash_cmd "rm .claude/kcc/kcc.lock.json")"
-  assert_denied
-}
-
-@test "ALLOW: settings.json is the project's file, not ours" {
-  # The installer owns only the hook entries inside it. Guarding the whole
-  # file would permanently block the team from adding their own hooks,
-  # permissions or env — drift in our entries there is `--check`'s job.
-  run_guard "$(jq -nc --arg c "$TMPROOT" \
-    '{tool_name:"Write", cwd:$c, tool_input:{file_path:".claude/settings.json"}}')"
-  assert_allowed
-}
-
-@test "DENY: an Edit issued from a subdirectory, with a relative path" {
-  # file_path is relative to the tool call's cwd, not the project root.
-  run_guard "$(jq -nc --arg c "$TMPROOT/.claude/skills/kcc-dev-core:spec" \
-    '{tool_name:"Write", cwd:$c, tool_input:{file_path:"SKILL.md"}}')"
-  assert_denied
-}
-
-@test "DENY: a path that walks out of the project and back in" {
-  local base
-  base=$(basename "$TMPROOT")
-  run_guard "$(jq -nc --arg c "$TMPROOT" --arg p "../$base/$MANAGED" \
-    '{tool_name:"Write", cwd:$c, tool_input:{file_path:$p}}')"
-  assert_denied
-}
-
-@test "DENY: a write hidden inside a command substitution" {
-  run_guard "$(bash_cmd "echo \$(rm $MANAGED)")"
-  assert_denied
-}
-
-@test "DENY: a write hidden inside backticks" {
-  run_guard "$(bash_cmd "echo \`rm $MANAGED\`")"
-  assert_denied
-}
-
-@test "ALLOW: git add, which the installer itself tells the user to run" {
-  run_guard "$(bash_cmd "git add $MANAGED")"
-  assert_allowed
-}
-
-@test "ALLOW: a managed path named only in a trailing comment" {
-  run_guard "$(bash_cmd "npm test  # touches $MANAGED")"
   assert_allowed
 }
 
@@ -359,15 +284,13 @@ assert_allowed() {
 
 @test "no stderr noise on a degenerate path" {
   local payload
-  payload=$(jq -nc --arg c "$TMPROOT" '{tool_name:"Write", cwd:$c, tool_input:{file_path:".."}}')
+  payload=$(write_to "..")
   run bash -c "printf '%s' '$payload' | CLAUDE_PROJECT_DIR='$TMPROOT' bash '$SCRIPT' 2>&1 1>/dev/null"
   [ -z "$output" ]
 }
 
-@test "a path segment containing a glob is not expanded" {
-  # `for seg in $p` word-splits with globbing on unless it is disabled, which
-  # turned a `*` segment into a directory listing.
-  run_guard "$(jq -nc --arg c "$TMPROOT" \
-    '{tool_name:"Write", cwd:$c, tool_input:{file_path:"a/*/b"}}')"
-  assert_allowed
+@test "the deny reason names the file and points at the source" {
+  run_guard "$(write_to "$MANAGED")"
+  echo "$output" | jq -e '.hookSpecificOutput.permissionDecisionReason | contains("kcc-dev-core:spec")'
+  echo "$output" | jq -e '.hookSpecificOutput.permissionDecisionReason | contains("kcc source repository")'
 }

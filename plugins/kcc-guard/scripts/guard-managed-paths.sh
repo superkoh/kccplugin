@@ -1,10 +1,30 @@
 #!/usr/bin/env bash
-# kcc PreToolUse guard: refuse edits to kcc-managed files.
+# kcc PreToolUse guard: stop an agent from modifying a managed file by
+# accident.
 #
-# The lockfile says these files are managed and `--check` says so after the
-# fact, but neither stops the project's own agent from editing one mid-task —
-# and in a repo where an agent edits files all day, that agent is the single
-# most likely source of drift. This hook turns "please don't" into "cannot".
+# ---------------------------------------------------------------------------
+# What this is, and what it is deliberately not
+#
+# It is a guardrail against an agent editing a kcc-managed file *without
+# realising it is managed*, in the middle of ordinary work. It is NOT a
+# security boundary, and it does not try to be: anyone who wants to get past
+# it can, trivially, and that costs nothing — `--check` reports the drift and
+# the next install restores the file byte-for-byte, with a backup.
+#
+# That fallback is what makes the error costs asymmetric, in the opposite
+# direction from what a security mindset assumes:
+#
+#   a miss         → the edit survives until the next upgrade overwrites it.
+#                    Cheap, and recoverable by design.
+#   a false denial → an agent is blocked mid-task on a legitimate command,
+#                    during exactly the daily use this feature protects.
+#
+# So the deny list is small and unambiguous, and everything else is allowed —
+# including commands this script does not recognise. An earlier version
+# reasoned the other way ("unknown therefore dangerous") and spent five
+# rewrites chasing shell-semantics bypasses that nobody hits by accident,
+# while denying `git add <managed>`, `[ -f <managed> ]`, `npm test`, and
+# reading a managed file with python. That trade was backwards.
 #
 # Contract (verified against a live CLI):
 #   stdin  — JSON; fields used: .tool_name, .tool_input.file_path,
@@ -14,50 +34,19 @@
 #             "permissionDecision":"deny","permissionDecisionReason":"<text>"}}
 #   exit 0 always — a broken guard must never wedge a session.
 #
-# A deny here holds even under `--permission-mode bypassPermissions`
-# (verified), which is what makes it worth having at all.
+# A deny holds even under `--permission-mode bypassPermissions` (verified),
+# which is what makes it worth having for the accidental case at all.
 #
+# Scope of protection: every path in the lockfile, plus the lockfile itself
+# (wholly ours, and deleting it disarms this hook). `.claude/settings.json`
+# is deliberately NOT protected — it is the project's file, kcc owns only the
+# hook entries inside it, and guarding it would block the team from ever
+# adding their own hooks or permissions.
 # ---------------------------------------------------------------------------
-# What is protected
-#
-# Every path in the lockfile, plus `.claude/kcc/kcc.lock.json` itself — the
-# lock is wholly ours, and deleting it disarms this guard in one command.
-#
-# `.claude/settings.json` is deliberately NOT protected. It is the project's
-# file; the installer owns only the hook entries inside it, and guarding the
-# whole file would permanently block the team from adding their own hooks,
-# permissions or env. Drift in our entries there is `--check`'s job.
-#
-# Bash policy: deny by default once a managed path is named, and judge the
-# WHOLE command, not the segment the path happens to sit in.
-#
-# Asking "does this look like a write?" lost repeatedly: `rm -rf <managed>`
-# passed because a pattern needed a leading space; `find <managed> -delete`
-# and `sort -o <managed>` passed because both were on a read-only list;
-# `sed --in-place` and `perl -pi` passed because the probe matched a literal
-# " -i"; `sed -n 'w <managed>'` and `perl -e 'open(...)'` write with no flag
-# at all. Reasoning about what each command *can* do is a losing game.
-#
-# Judging per segment lost too: `echo <managed> | xargs rm` launders the path
-# — the segment naming it is a harmless `echo`, and the segment that deletes
-# never mentions it.
-#
-# So the rule is: if a command names a managed path, EVERY command in it must
-# be one that cannot write a file — no exceptions for flags, no per-segment
-# reasoning. Unknown commands deny. `sed`, `perl`, `ruby`, `python`, `node`
-# and `xargs` are not on the list precisely because they take a program.
-#
-# Honest limits: a managed path built up at runtime (`p=.claude/...; rm $p`)
-# is invisible here, and nothing stops a human in an editor. This raises the
-# cost and states the intent — it is not a sandbox. `--check` is the backstop.
-# ---------------------------------------------------------------------------
-#
-# Everything degrades to "allow": no jq, no lockfile, unparseable stdin.
 
 set -uo pipefail
-# Globbing off for the whole script: normalize_rel splits paths on `/` with
-# word splitting, and a segment containing `*` would otherwise be expanded
-# against the hook's cwd, turning a path into a directory listing.
+# Globbing off: normalize_rel word-splits paths on `/`, and a segment holding
+# a `*` would otherwise be expanded against the hook's cwd.
 set -f
 
 allow() { exit 0; }
@@ -67,14 +56,11 @@ command -v jq >/dev/null 2>&1 || allow
 stdin_raw=$(cat 2>/dev/null || true)
 [[ -z "$stdin_raw" ]] && allow
 
-# One jq spawn for everything we need. This is the hottest path in a session
-# — it runs before every Edit, Write and Bash — against a 5s hook timeout.
-#
-# The separator is US (\x1f), not a tab: tab is IFS *whitespace*, so `read`
-# collapses runs of it and an empty field silently shifts every later one.
-# With a file_path-less Bash call that put the command in the wrong variable
-# and disabled Bash guarding entirely. `read -d ''` so an embedded newline in
-# a command does not truncate the record.
+# One jq spawn. The separator is US (\x1f), not a tab: tab is IFS
+# *whitespace*, so `read` collapses runs of it and an empty field silently
+# shifts every later one — which once put the command in the wrong variable
+# and disabled Bash guarding entirely. `read -d ''` so a newline inside a
+# command cannot truncate the record.
 fields=$(printf '%s' "$stdin_raw" | jq -j '
   [ .tool_name // ""
   , .cwd // ""
@@ -94,7 +80,6 @@ lock="$project_root/.claude/kcc/kcc.lock.json"
 
 managed=$(jq -r '[.modules[]?.files // {} | keys[]] | .[]' "$lock" 2>/dev/null || true)
 [[ -z "$managed" ]] && allow
-# The lockfile arms this guard, and the lockfile never lists itself.
 managed=$(printf '%s\n.claude/kcc/kcc.lock.json\n' "$managed")
 
 deny() {
@@ -117,10 +102,8 @@ and re-run the installer. If you genuinely need a project-local variant, that is
 a decision for the human to make, not an edit to make silently."
 }
 
-# Collapse `.` and `x/..` segments. Returns non-zero when the path still
-# escapes upward after collapsing, because such a path cannot be compared
-# against a project-relative managed path and must not be silently rewritten
-# into one that happens to match nothing.
+# Collapse `.` and `x/..` segments. Non-zero when the path still escapes
+# upward, which cannot be compared against a project-relative managed path.
 normalize_rel() {
   local p="$1" seg
   local -a out=()
@@ -129,9 +112,7 @@ normalize_rel() {
     case "$seg" in
       "" | ".") continue ;;
       "..")
-        if (( ${#out[@]} == 0 )); then
-          return 1 # escapes above the base
-        fi
+        (( ${#out[@]} == 0 )) && return 1
         unset 'out[${#out[@]}-1]'
         ;;
       *) out+=("$seg") ;;
@@ -141,21 +122,17 @@ normalize_rel() {
   printf '%s' "${out[*]}"
 }
 
-# --- exact match: the tools an agent uses to edit a file -----------------
+# --- the file-editing tools: exact, and the path an agent actually takes --
 case "$tool" in
   Edit | Write | NotebookEdit | MultiEdit)
     [[ -z "${target:-}" ]] && allow
-    # A relative file_path is relative to the tool call's cwd, which is not
-    # necessarily the project root — an Edit issued from a subdirectory would
-    # otherwise sail straight past the comparison.
+    # A relative file_path is relative to the tool call's cwd, not the project
+    # root — an edit issued from a subdirectory would otherwise sail past.
     [[ "$target" != /* ]] && target="${cwd:-$project_root}/$target"
-    # Collapse the absolute path BEFORE comparing. `<root>/../<root-basename>/x`
-    # literally starts with `<root>/`, so a prefix test alone would hand back a
-    # relative path that still walks out and back in, matching nothing.
     target="/$(normalize_rel "$target")" || allow
 
     # The root may be reachable under more than one spelling (on macOS a temp
-    # dir is both /var/... and /private/var/...), so try each prefix.
+    # dir is both /var/… and /private/var/…), so try each prefix.
     root_real=$(cd "$project_root" 2>/dev/null && pwd -P) || root_real="$project_root"
     rel=""
     for root in "$root_real" "$project_root"; do
@@ -167,11 +144,6 @@ case "$tool" in
     done
     [[ -z "$rel" ]] && allow # outside the project
 
-    rel=$(normalize_rel "$rel") || allow
-    # Managed paths come from the lockfile already project-relative, so the
-    # comparison is a plain string test. Re-normalizing each one inside the
-    # loop forked a subshell per managed path per tool call — 35 of them
-    # today, on the hottest path in a session, against a 5s timeout.
     while IFS= read -r m; do
       [[ -z "$m" ]] && continue
       [[ "$rel" == "$m" ]] && deny "$(reason_for "$m")"
@@ -182,11 +154,10 @@ case "$tool" in
   *) allow ;;
 esac
 
-# --- Bash: deny by default once a managed path is named ------------------
+# --- Bash: only the unambiguous ways a file gets written by accident -----
 [[ -z "${cmd:-}" ]] && allow
 
-# A trailing comment is not part of the command, and treating it as one both
-# denies harmless commands and tells the user nothing useful.
+# A trailing comment is not part of the command.
 cmd_code=$(printf '%s\n' "$cmd" | sed 's/[[:space:]]#[^"'"'"']*$//')
 
 mentioned=()
@@ -196,96 +167,71 @@ while IFS= read -r m; do
 done <<<"$managed"
 (( ${#mentioned[@]} == 0 )) && allow
 
-# Commands with no way to modify a file they are given as an argument.
-#
-# `find` and `sort` are deliberately NOT here: `find <path> -delete` and
-# `sort -o <path>` both write. Nor is anything that takes a script (`python`,
-# `node`, `xargs`) — the argument is not the whole story for those.
-# Commands that cannot write a file, whatever arguments they are given.
-#
-# `sed`, `perl`, `ruby`, `python`, `node` and `xargs` are deliberately absent:
-# each takes a program, so no flag inspection can decide what it will do.
-# `find` and `sort` are absent for the same reason in miniature (`-delete`,
-# `-o`). The shell test builtins are present because an agent checking whether
-# a managed file exists is doing exactly what this guard wants to allow.
-is_read_only_cmd() {
-  case "$1" in
-    cat | bat | head | tail | less | more | nl | od | xxd | strings | \
-    grep | egrep | fgrep | rg | ag | ack | \
-    wc | diff | cmp | stat | ls | file | realpath | dirname | basename | \
-    cut | column | fold | \
-    jq | yq | md5 | md5sum | shasum | sha1sum | sha256sum | cksum | \
-    echo | printf | test | true | false | pwd | "[" | "[[") return 0 ;;
-    git) return 3 ;;
-  esac
-  return 1
-}
-
-# `add` is here because the installer's own closing line tells the user to
-# commit the payload; staging cannot modify the working-tree file.
-is_read_only_git() {
-  case "$1" in
-    add | diff | log | show | status | blame | ls-files | cat-file | \
-    rev-parse | describe | grep | shortlog | check-ignore) return 0 ;;
-  esac
-  return 1
-}
-
-# A managed path immediately following a redirect operator is a write, full
-# stop, regardless of which command leads the segment.
+# 1. A managed path as the target of an output redirect. `<` is a read and is
+#    deliberately not matched.
 for m in "${mentioned[@]}"; do
-  if [[ "$cmd_code" =~ (\>\>?|\<\>)[[:space:]]*\"?\'?[^[:space:]\"\']*"$m" ]]; then
+  if [[ "$cmd_code" =~ \>\>?[[:space:]]*\"?\'?[^[:space:]\"\']*"$m" ]]; then
     deny "$(reason_for "$m")"
   fi
 done
 
-# Split into segments. Command substitutions become segments of their own —
-# `echo $(rm <managed>)` leads with a read-only `echo`, but the body is the
-# part that matters.
+# 2. A managed path in the same segment as a command that writes files.
+#    Everything not on this list is allowed — the list is meant to cover what
+#    an agent reaches for while tidying up or bulk-editing, not to be
+#    exhaustive over everything a shell can do.
+writes_files() {
+  case "${1##*/}" in
+    rm | mv | cp | tee | truncate | ln | install | dd | shred | chmod | chown) return 0 ;;
+  esac
+  return 1
+}
+
+# In-place editing, in every spelling: -i, -i.bak, --in-place, --in-place=…,
+# and clustered short forms such as -pi.
+edits_in_place() {
+  local lead="${1##*/}"
+  shift
+  case "$lead" in
+    sed | gsed | perl | ruby) ;;
+    *) return 1 ;;
+  esac
+  local w
+  for w in "$@"; do
+    case "$w" in
+      --in-place | --in-place=*) return 0 ;;
+      -i | -i.* | -i=*) return 0 ;;
+      --*) continue ;;
+      -*i | -*i.*) return 0 ;;
+    esac
+  done
+  return 1
+}
+
 normalized=${cmd_code//&&/$'\n'}
 normalized=${normalized//||/$'\n'}
 normalized=${normalized//;/$'\n'}
 normalized=${normalized//|/$'\n'}
-# A lone `&` backgrounds a job and starts the next command, so it separates
-# just as `;` does. Missing it let `echo hi & rm <managed>` launder the path
-# past the whole-command rule — and the first thing an agent would delete
-# that way is this script.
 normalized=${normalized//&/$'\n'}
-normalized=${normalized//\$\(/$'\n'}
-normalized=${normalized//\`/$'\n'}
-normalized=${normalized//)/$'\n'}
 
-# Every command in the whole line must be read-only. Which segment holds the
-# managed path is irrelevant — that is exactly how a pipe launders it.
 while IFS= read -r segment; do
+  hit=""
+  for m in "${mentioned[@]}"; do
+    [[ "$segment" == *"$m"* ]] && { hit="$m"; break; }
+  done
+  [[ -z "$hit" ]] && continue
+
   read -r -a words <<<"$segment"
   (( ${#words[@]} == 0 )) && continue
-  lead=""
-  lead_idx=0
-  for w in "${words[@]}"; do
-    lead_idx=$((lead_idx + 1))
-    case "$w" in
-      *=*) continue ;;
-      sudo | command | time | nohup | env | exec | builtin) continue ;;
-      *) lead="${w##*/}"; break ;;
-    esac
-  done
-  [[ -z "$lead" ]] && continue
 
-  is_read_only_cmd "$lead"
-  case $? in
-    0) continue ;;
-    3)
-      sub=""
-      for w in "${words[@]:$lead_idx}"; do
-        [[ "$w" == -* || "$w" == *=* ]] && continue
-        sub="$w"; break
-      done
-      is_read_only_git "$sub" && continue
-      deny "$(reason_for "${mentioned[0]}")"
-      ;;
-    *) deny "$(reason_for "${mentioned[0]}")" ;;
-  esac
+  for w in "${words[@]}"; do
+    writes_files "$w" && deny "$(reason_for "$hit")"
+    # `git checkout`/`git restore` overwrite a working-tree file.
+    if [[ "${w##*/}" == "checkout" || "${w##*/}" == "restore" ]] &&
+       [[ "$segment" == *git* ]]; then
+      deny "$(reason_for "$hit")"
+    fi
+  done
+  edits_in_place "${words[@]}" && deny "$(reason_for "$hit")"
 done <<<"$normalized"
 
 allow
