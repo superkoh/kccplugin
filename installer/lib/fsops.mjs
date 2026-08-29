@@ -17,11 +17,24 @@ import {
   rename,
   rm,
   rmdir,
+  stat,
   symlink,
   writeFile,
 } from "node:fs/promises";
 import path from "node:path";
-import { KCC_DIR, projectHooks, projectPath } from "./projection.mjs";
+import { KCC_DIR, isSafeTargetPath, projectHooks, projectPath } from "./projection.mjs";
+
+/**
+ * Every path that reaches the filesystem passes through here. The lockfile is
+ * validated when it is read, but this is the layer that actually deletes
+ * things, so it refuses on its own rather than trusting its caller.
+ */
+function safeJoin(targetRoot, rel) {
+  if (!isSafeTargetPath(rel)) {
+    throw new Error(`refusing to touch a path outside the project's .claude/: ${rel}`);
+  }
+  return path.join(targetRoot, rel);
+}
 
 /**
  * Content hash used for drift detection.
@@ -30,13 +43,38 @@ import { KCC_DIR, projectHooks, projectPath } from "./projection.mjs";
  * `core.autocrlf=true` would otherwise show every managed file as locally
  * modified, and the installer would "restore" files on every run.
  */
-export function hashContent(buf) {
-  const normalized = Buffer.from(buf).toString("binary").replace(/\r\n/g, "\n");
-  return createHash("sha256").update(Buffer.from(normalized, "binary")).digest("hex");
+/** Extensions whose bytes git may rewrite on checkout. */
+const TEXT_EXT = new Set([
+  ".md", ".txt", ".json", ".yaml", ".yml", ".sh", ".bash", ".mjs", ".cjs",
+  ".js", ".ts", ".py", ".rb", ".toml", ".ini", ".cfg", ".bats", ".xml",
+  ".html", ".css", ".sql", ".env", ".gitignore", ".gitattributes",
+]);
+
+export function isTextPath(p) {
+  const base = p.split("/").pop() ?? "";
+  const dot = base.lastIndexOf(".");
+  return dot > 0 && TEXT_EXT.has(base.slice(dot).toLowerCase());
+}
+
+/**
+ * Content hash used for drift detection.
+ *
+ * CRLF is normalized away for text, because a teammate on a checkout with
+ * `core.autocrlf=true` would otherwise show every managed file as locally
+ * modified. It is NOT normalized for anything else: collapsing 0x0D 0x0A
+ * inside an image or font makes two different payloads hash the same, so
+ * real drift would pass `--check` and never be restored.
+ */
+export function hashContent(buf, { text = true } = {}) {
+  const bytes = Buffer.from(buf);
+  const input = text
+    ? Buffer.from(bytes.toString("binary").replace(/\r\n/g, "\n"), "binary")
+    : bytes;
+  return createHash("sha256").update(input).digest("hex");
 }
 
 export async function hashFile(abs) {
-  return hashContent(await readFile(abs));
+  return hashContent(await readFile(abs), { text: isTextPath(abs) });
 }
 
 /** Recursively list files under `dir`, as POSIX-relative paths. */
@@ -50,8 +88,27 @@ export async function walkFiles(dir, base = dir) {
   }
   for (const e of entries) {
     const abs = path.join(dir, e.name);
-    if (e.isDirectory()) out.push(...(await walkFiles(abs, base)));
-    else if (e.isFile()) out.push(path.relative(base, abs).split(path.sep).join("/"));
+    if (e.isDirectory()) {
+      out.push(...(await walkFiles(abs, base)));
+      continue;
+    }
+    // A symlink is neither isFile() nor isDirectory() here, and skipping it
+    // silently means a module ships without a file it thinks it ships —
+    // installed "successfully", then failing at runtime. Follow it.
+    let isFile = e.isFile();
+    if (!isFile && e.isSymbolicLink()) {
+      try {
+        const st = await stat(abs);
+        if (st.isDirectory()) {
+          out.push(...(await walkFiles(abs, base)));
+          continue;
+        }
+        isFile = st.isFile();
+      } catch {
+        isFile = false; // a broken link ships nothing, same as before
+      }
+    }
+    if (isFile) out.push(path.relative(base, abs).split(path.sep).join("/"));
   }
   return out.sort();
 }
@@ -170,6 +227,7 @@ export async function readDiskModes(targetRoot, paths) {
 export async function readDiskHashes(targetRoot, paths) {
   const out = new Map();
   for (const rel of paths) {
+    if (!isSafeTargetPath(rel)) continue;
     const abs = path.join(targetRoot, rel);
     let st;
     try {
@@ -273,7 +331,7 @@ export async function applyPlan({ plan, targetRoot, backupStamp }) {
   // symlink (following it would silently duplicate its target instead of
   // preserving the thing being replaced), a directory recursively.
   const backup = async (rel) => {
-    const from = path.join(targetRoot, rel);
+    const from = safeJoin(targetRoot, rel);
     let st;
     try {
       st = await lstat(from);
@@ -282,10 +340,20 @@ export async function applyPlan({ plan, targetRoot, backupStamp }) {
     }
     const to = path.join(backupRoot, rel);
     await mkdir(path.dirname(to), { recursive: true });
-    if (st.isSymbolicLink()) await symlink(await readlink(from), to);
-    else if (st.isDirectory()) await cp(from, to, { recursive: true });
-    else await copyFile(from, to);
-    backupUsed = true;
+    try {
+      if (st.isSymbolicLink()) await symlink(await readlink(from), to);
+      else if (st.isDirectory()) await cp(from, to, { recursive: true });
+      else await copyFile(from, to);
+      backupUsed = true;
+    } catch (err) {
+      // An unreadable file (the IRREGULAR.unreadable case) cannot be copied.
+      // Dying here would abort the run after other files were already
+      // written; refusing this one path is the recoverable answer.
+      throw new Error(
+        `cannot back up ${rel} before overwriting it (${err.code || err.message}). ` +
+          `Fix its permissions, or remove it, and re-run.`
+      );
+    }
   };
 
   let written = 0;
@@ -295,7 +363,7 @@ export async function applyPlan({ plan, targetRoot, backupStamp }) {
       // exactly the drift `--check` used to be blind to, so repair it here
       // rather than leaving the tree subtly different from the source.
       if (f.mode !== undefined) {
-        const abs = path.join(targetRoot, f.path);
+        const abs = safeJoin(targetRoot, f.path);
         try {
           // Only the executable bit is normative — the rest of the mode comes
           // from the checkout's umask and is not portable.
@@ -311,7 +379,7 @@ export async function applyPlan({ plan, targetRoot, backupStamp }) {
       }
       continue;
     }
-    const abs = path.join(targetRoot, f.path);
+    const abs = safeJoin(targetRoot, f.path);
     if (f.status === "clobbered") await backup(f.path);
     // A directory or symlink cannot be renamed over; it has already been
     // backed up above, so clear it before writing the real file.
@@ -324,7 +392,7 @@ export async function applyPlan({ plan, targetRoot, backupStamp }) {
   const claudeRoot = path.join(targetRoot, ".claude");
   for (const r of plan.removals) {
     if (r.locallyModified) await backup(r.path);
-    const abs = path.join(targetRoot, r.path);
+    const abs = safeJoin(targetRoot, r.path);
     // `recursive` matters: a directory standing at a managed path would
     // otherwise throw ERR_FS_EISDIR here and abort the run mid-apply, after
     // files were written and before the lockfile was rewritten.

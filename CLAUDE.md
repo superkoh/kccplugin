@@ -233,6 +233,22 @@ disappears silently.
   IFS *whitespace*, so `read` collapses runs of it: with a tab separator an
   empty `file_path` shifted the command out of its variable and disabled Bash
   guarding entirely, while every Write test stayed green.
+- **The guard judges the WHOLE Bash command, not the segment holding the
+  path.** `echo <managed> | xargs rm` launders it otherwise. And no command
+  that takes a program (`sed`, `perl`, `ruby`, `python`, `node`, `xargs`) is
+  read-only, whatever its flags — `sed -n 'w <path>'` and `perl -e open(...)`
+  write with no flag at all. Five rounds of review each found another way to
+  write that a per-command heuristic had missed; enumerate the safe forms,
+  never the dangerous ones.
+- **The lockfile is untrusted input.** It is committed to the target repo and
+  read on every run, so its paths and module names are validated
+  (`isSafeTargetPath`) before anything reaches the filesystem — a crafted
+  `../victim.txt` entry otherwise made the removal loop delete files outside
+  the project on every teammate's machine. `applyPlan` re-checks at the
+  boundary rather than trusting its caller.
+- **Only text is CRLF-normalized before hashing.** Collapsing `0x0D 0x0A`
+  inside a binary payload makes two different files hash the same, so real
+  drift would pass `--check` and never be restored.
 
 ## Pointers to existing workflow skills
 

@@ -45,7 +45,13 @@ import {
   sameManagedHooks,
   stripManagedHooks,
 } from "./lib/settings.mjs";
-import { KCC_DIR, LOCK_PATH, LOCK_VERSION, SETTINGS_PATH } from "./lib/projection.mjs";
+import {
+  KCC_DIR,
+  LOCK_PATH,
+  LOCK_VERSION,
+  SETTINGS_PATH,
+  isSafeTargetPath,
+} from "./lib/projection.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -323,6 +329,25 @@ async function main() {
   const settingsAbs = path.join(opts.target, SETTINGS_PATH);
   const lock = await readJson(lockAbs);
 
+  // The lockfile is committed to the target repo, so treat it as untrusted
+  // input before any of its paths reach the filesystem.
+  if (lock) {
+    const escaping = [];
+    for (const [name, entry] of Object.entries(lock.modules ?? {})) {
+      for (const p of Object.keys(entry?.files ?? {})) {
+        if (!isSafeTargetPath(p)) escaping.push(`${name}: ${p}`);
+      }
+    }
+    if (escaping.length > 0) {
+      fail(
+        `${LOCK_PATH} contains ${escaping.length} path(s) outside the project's ` +
+          `.claude/ directory, which kcc could not have installed:\n    ` +
+          escaping.slice(0, 10).join("\n    ") +
+          `\n  Refusing to act on it. Delete the lockfile and reinstall.`
+      );
+    }
+  }
+
   if (lock && lock.lockVersion > LOCK_VERSION) {
     fail(
       `${LOCK_PATH} was written by a newer installer (lockVersion ${lock.lockVersion} > ` +
@@ -389,9 +414,8 @@ async function main() {
     selection,
     lock,
     diskHashes,
-    opts: { adopt: opts.adopt },
+    opts: { adopt: opts.adopt, pulledIn },
   });
-  plan.modules.pulledIn = pulledIn;
 
   // Preflight runs before the conflict gate so a user who is about to be
   // stopped still learns about a .gitignore that would have made the whole
@@ -487,9 +511,18 @@ async function main() {
     Object.keys(nextSettings).length === 0 &&
     Object.keys(extractManagedHooks(settings ?? {})).length > 0 &&
     lock?.createdSettings === true;
+  const settingsUnchanged = sameManagedHooks(
+    extractManagedHooks(settings ?? {}),
+    plan.managedHooks
+  );
   if (weOwnedTheWholeFile) {
     await rm(settingsAbs, { force: true });
-  } else if (Object.keys(nextSettings).length > 0 || existsSync(settingsAbs)) {
+  } else if (settingsUnchanged && settingsExisted) {
+    // Nothing of ours to add or remove. Rewriting would reflow the whole
+    // file — 2-space indent, arrays exploded — and put an unrelated diff in
+    // the team's repo, which is exactly what "we own only our entries" rules
+    // out.
+  } else if (Object.keys(nextSettings).length > 0) {
     await writeAtomic(settingsAbs, JSON.stringify(nextSettings, null, 2) + "\n");
   }
 
@@ -504,6 +537,10 @@ async function main() {
     await rm(lockAbs, { force: true });
     const kccAbs = path.join(opts.target, KCC_DIR);
     for (const name of Object.keys(lock?.modules ?? {})) {
+      // Module names come from the lockfile too, so they get the same
+      // treatment as its paths: a key of "../../precious" must not become an
+      // `rm -rf` outside the project.
+      if (!isSafeTargetPath(`${KCC_DIR}/${name}`)) continue;
       await rm(path.join(kccAbs, name), { recursive: true, force: true });
     }
     const left = await safeReadDir(kccAbs);
@@ -525,9 +562,9 @@ async function main() {
             // file. Inferring it from "no settings.json existed at install
             // time" marks it true for a hookless module that never wrote one,
             // and uninstall then deletes a settings.json the project authored.
-      createdSettings: lock
-        ? lock.createdSettings === true
-        : !settingsExisted && Object.keys(plan.managedHooks).length > 0,
+      createdSettings:
+        lock?.createdSettings === true ||
+        (!settingsExisted && Object.keys(plan.managedHooks).length > 0),
     });
     await mkdir(path.dirname(lockAbs), { recursive: true });
     await writeAtomic(lockAbs, JSON.stringify(nextLock, null, 2) + "\n");

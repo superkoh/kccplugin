@@ -52,6 +52,25 @@ export const MANAGED_HOOK_MARKER = "/.claude/kcc/";
 /** Lockfile format version. A newer lock than the installer is refused. */
 export const LOCK_VERSION = 1;
 
+/**
+ * Is this a target-relative path the installer may touch?
+ *
+ * The lockfile is committed to the target repo and read back on every run, so
+ * its paths are untrusted input, not our own output: a corrupted or crafted
+ * lock with `"../victim.txt"` would otherwise make the removal loop `rm -rf`
+ * a file outside the project on every teammate's machine. `projectPath`
+ * enforces this for source paths; nothing did for lock-derived ones.
+ */
+export function isSafeTargetPath(rel) {
+  if (typeof rel !== "string" || rel === "") return false;
+  if (rel.startsWith("/") || /^[A-Za-z]:/.test(rel)) return false;
+  const segments = rel.split("/");
+  if (segments.includes("..")) return false;
+  // Everything we install lives under `.claude/`; anything else in a lock is
+  // not something this installer wrote.
+  return segments[0] === ".claude";
+}
+
 /** Source subdirectories that are authoring-only and never shipped. */
 const NOT_SHIPPED = [".claude-plugin/", "tests/", "evals/"];
 

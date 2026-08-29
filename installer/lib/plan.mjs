@@ -147,9 +147,15 @@ export function computePlan({ sourceModules, selection, lock, diskHashes, opts =
   const lockModules = lock?.modules ?? {};
 
   // A module that says it supplements another is useless without it, so a
-  // selection is closed over `requires` before anything else happens. What
-  // was pulled in is reported, never silent.
-  const { selected, pulledIn } = resolveSelection(sourceModules, selection);
+  // selection is closed over `requires` before anything else happens.
+  //
+  // `pulledIn` is only meaningful relative to what the *user* asked for, and
+  // the caller has to resolve the closure before this point anyway (to hash
+  // the dependency's paths). Passing it in — rather than recomputing here
+  // from an already-closed set, which always yields [] — is what keeps this
+  // plan's own report honest for every caller, not just install.mjs.
+  const { selected } = resolveSelection(sourceModules, selection);
+  const pulledIn = opts.pulledIn ?? [];
 
   const files = [];
   const conflicts = [];

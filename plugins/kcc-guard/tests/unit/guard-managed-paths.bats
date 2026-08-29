@@ -185,8 +185,38 @@ assert_allowed() {
   assert_allowed
 }
 
-@test "ALLOW: sed without -i on a managed file" {
+@test "DENY: sed at all — it writes with `w`, needing no flag" {
+  # Deliberately conservative. `sed -n 'w <path>'` truncates and overwrites
+  # with no in-place flag anywhere, so no flag inspection can make sed safe.
+  # The cost is that a read-only sed is refused; `Read` and `grep` cover it.
   run_guard "$(bash_cmd "sed -n 1,5p $MANAGED")"
+  assert_denied
+}
+
+@test "DENY: sed's w command writing to a managed path" {
+  run_guard "$(bash_cmd "sed -n 'w $MANAGED' /etc/hosts")"
+  assert_denied
+}
+
+@test "DENY: perl -e, which writes without any flag the guard could read" {
+  run_guard "$(bash_cmd "perl -e 'open(F,\">\",\"$MANAGED\")'")"
+  assert_denied
+}
+
+@test "DENY: ruby -e writing a managed path" {
+  run_guard "$(bash_cmd "ruby -e 'File.write(\"$MANAGED\",\"x\")'")"
+  assert_denied
+}
+
+@test "DENY: a path laundered through a pipe into xargs" {
+  # The segment naming the path is a harmless `echo`; the segment that
+  # deletes never mentions it. Judging per segment allowed this.
+  run_guard "$(bash_cmd "echo $MANAGED | xargs rm")"
+  assert_denied
+}
+
+@test "ALLOW: the shell test builtins, so an agent can check a file exists" {
+  run_guard "$(bash_cmd "[ -f $MANAGED ]")"
   assert_allowed
 }
 

@@ -116,11 +116,13 @@ in CI:
 **Refuse.** The `kcc-guard` module installs a `PreToolUse` hook that denies
 `Edit` / `Write` / `NotebookEdit` on any path the lockfile claims, plus the
 lockfile itself — a guard whose kill switch is unguarded is not a guard. For
-`Bash` it works the other way round: once a command names a managed path it is
-denied *unless* every part of it leads with a command that cannot write the
-file it is given (`cat`, `grep`, `git diff`, `git add`, …). Asking "does this
-look like a write?" is a losing game — enumerate the mutating forms and you
-will miss one — so unknown commands are refused. The agent is told why, and
+`Bash` it works the other way round: once a command names a managed path,
+**every** command on that line must be one that cannot write a file (`cat`,
+`grep`, `git diff`, `git add`, `[ -f … ]`, …). Judging only the part that
+names the path is not enough — `echo <managed> | xargs rm` launders it — and
+anything that takes a program (`sed`, `perl`, `python`, `xargs`) is refused
+outright, because no flag tells you what it will do. Unknown commands are
+refused. The agent is told why, and
 where to make the change instead. The deny holds even under
 `--permission-mode bypassPermissions`.
 

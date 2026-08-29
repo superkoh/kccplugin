@@ -28,17 +28,24 @@
 # whole file would permanently block the team from adding their own hooks,
 # permissions or env. Drift in our entries there is `--check`'s job.
 #
-# Bash policy: deny by default once a managed path is named.
+# Bash policy: deny by default once a managed path is named, and judge the
+# WHOLE command, not the segment the path happens to sit in.
 #
-# Asking "does this look like a write?" loses. Two earlier versions tried and
-# both shipped holes: `rm -rf <managed>` allowed because a pattern needed a
-# leading space; `find <managed> -delete` and `sort -o <managed>` allowed
-# because both commands were on a read-only list; `sed --in-place` and
-# `perl -pi` allowed because the probe matched the literal " -i".
+# Asking "does this look like a write?" lost repeatedly: `rm -rf <managed>`
+# passed because a pattern needed a leading space; `find <managed> -delete`
+# and `sort -o <managed>` passed because both were on a read-only list;
+# `sed --in-place` and `perl -pi` passed because the probe matched a literal
+# " -i"; `sed -n 'w <managed>'` and `perl -e 'open(...)'` write with no flag
+# at all. Reasoning about what each command *can* do is a losing game.
 #
-# So: a command naming a managed path is denied unless every segment naming
-# one leads with a command that has no way to write the file it is given.
-# Unknown commands deny.
+# Judging per segment lost too: `echo <managed> | xargs rm` launders the path
+# — the segment naming it is a harmless `echo`, and the segment that deletes
+# never mentions it.
+#
+# So the rule is: if a command names a managed path, EVERY command in it must
+# be one that cannot write a file — no exceptions for flags, no per-segment
+# reasoning. Unknown commands deny. `sed`, `perl`, `ruby`, `python`, `node`
+# and `xargs` are not on the list precisely because they take a program.
 #
 # Honest limits: a managed path built up at runtime (`p=.claude/...; rm $p`)
 # is invisible here, and nothing stops a human in an editor. This raises the
@@ -190,6 +197,13 @@ done <<<"$managed"
 # `find` and `sort` are deliberately NOT here: `find <path> -delete` and
 # `sort -o <path>` both write. Nor is anything that takes a script (`python`,
 # `node`, `xargs`) — the argument is not the whole story for those.
+# Commands that cannot write a file, whatever arguments they are given.
+#
+# `sed`, `perl`, `ruby`, `python`, `node` and `xargs` are deliberately absent:
+# each takes a program, so no flag inspection can decide what it will do.
+# `find` and `sort` are absent for the same reason in miniature (`-delete`,
+# `-o`). The shell test builtins are present because an agent checking whether
+# a managed file exists is doing exactly what this guard wants to allow.
 is_read_only_cmd() {
   case "$1" in
     cat | bat | head | tail | less | more | nl | od | xxd | strings | \
@@ -197,26 +211,9 @@ is_read_only_cmd() {
     wc | diff | cmp | stat | ls | file | realpath | dirname | basename | \
     cut | column | fold | \
     jq | yq | md5 | md5sum | shasum | sha1sum | sha256sum | cksum | \
-    echo | printf | test | true | false | pwd) return 0 ;;
-    # Editors-in-disguise: read-only only when not asked to edit in place.
-    sed | perl | ruby | gsed) return 2 ;;
+    echo | printf | test | true | false | pwd | "[" | "[[") return 0 ;;
     git) return 3 ;;
   esac
-  return 1
-}
-
-# Any in-place flag, in any of its spellings: -i, -i.bak, --in-place,
-# --in-place=.bak, and clustered short forms such as -pi / -npi.
-has_in_place_flag() {
-  local w
-  for w in "$@"; do
-    case "$w" in
-      --in-place | --in-place=*) return 0 ;;
-      -i | -i.* | -i=*) return 0 ;;
-      --*) continue ;;
-      -*i | -*i.*) return 0 ;;
-    esac
-  done
   return 1
 }
 
@@ -249,13 +246,9 @@ normalized=${normalized//\$\(/$'\n'}
 normalized=${normalized//\`/$'\n'}
 normalized=${normalized//)/$'\n'}
 
+# Every command in the whole line must be read-only. Which segment holds the
+# managed path is irrelevant — that is exactly how a pipe launders it.
 while IFS= read -r segment; do
-  seg_hits=()
-  for m in "${mentioned[@]}"; do
-    [[ "$segment" == *"$m"* ]] && seg_hits+=("$m")
-  done
-  (( ${#seg_hits[@]} == 0 )) && continue
-
   read -r -a words <<<"$segment"
   (( ${#words[@]} == 0 )) && continue
   lead=""
@@ -273,10 +266,6 @@ while IFS= read -r segment; do
   is_read_only_cmd "$lead"
   case $? in
     0) continue ;;
-    2)
-      has_in_place_flag "${words[@]:$lead_idx}" && deny "$(reason_for "${seg_hits[0]}")"
-      continue
-      ;;
     3)
       sub=""
       for w in "${words[@]:$lead_idx}"; do
@@ -284,9 +273,9 @@ while IFS= read -r segment; do
         sub="$w"; break
       done
       is_read_only_git "$sub" && continue
-      deny "$(reason_for "${seg_hits[0]}")"
+      deny "$(reason_for "${mentioned[0]}")"
       ;;
-    *) deny "$(reason_for "${seg_hits[0]}")" ;;
+    *) deny "$(reason_for "${mentioned[0]}")" ;;
   esac
 done <<<"$normalized"
 

@@ -15,6 +15,8 @@ import { chmod } from "node:fs/promises";
  * saw a directory or a symlink standing at a managed path.
  */
 
+const P = ".claude/kcc/m/scripts/run.sh";
+
 async function scratch() {
   return mkdtemp(path.join(tmpdir(), "kcc-irregular-"));
 }
@@ -22,10 +24,17 @@ async function scratch() {
 test("a directory at a managed path reads as irregular, not absent", async () => {
   const root = await scratch();
   try {
-    await mkdir(path.join(root, "a/b"), { recursive: true });
-    const hashes = await readDiskHashes(root, ["a/b", "a/missing"]);
-    assert.equal(hashes.get("a/b"), IRREGULAR.dir);
-    assert.equal(hashes.has("a/missing"), false, "genuinely absent stays absent");
+    await mkdir(path.join(root, ".claude/kcc/m/scripts/run.sh"), { recursive: true });
+    const hashes = await readDiskHashes(root, [
+      ".claude/kcc/m/scripts/run.sh",
+      ".claude/kcc/m/scripts/missing.sh",
+    ]);
+    assert.equal(hashes.get(".claude/kcc/m/scripts/run.sh"), IRREGULAR.dir);
+    assert.equal(
+      hashes.has(".claude/kcc/m/scripts/missing.sh"),
+      false,
+      "genuinely absent stays absent"
+    );
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -35,10 +44,12 @@ test("a symlink at a managed path reads as irregular, not as its target", async 
   const root = await scratch();
   try {
     await writeFile(path.join(root, "target.txt"), "payload\n");
-    await symlink(path.join(root, "target.txt"), path.join(root, "link"));
-    const hashes = await readDiskHashes(root, ["link"]);
-    assert.equal(hashes.get("link"), IRREGULAR.symlink);
-    assert.ok(isIrregular(hashes.get("link")));
+    await mkdir(path.join(root, ".claude/kcc/m"), { recursive: true });
+    const link = ".claude/kcc/m/link.md";
+    await symlink(path.join(root, "target.txt"), path.join(root, link));
+    const hashes = await readDiskHashes(root, [link]);
+    assert.equal(hashes.get(link), IRREGULAR.symlink);
+    assert.ok(isIrregular(hashes.get(link)));
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -54,20 +65,20 @@ test("an irregular entry is a conflict even when the lockfile claims the path", 
         description: "",
         requires: [],
         hooks: {},
-        files: new Map([["p", { sourceAbs: "/src/p", hash: "h1", mode: 0o644 }]]),
+        files: new Map([[P, { sourceAbs: "/src/p", hash: "h1", mode: 0o644 }]]),
       },
     ],
   ]);
   const plan = computePlan({
     sourceModules,
     selection: ["m"],
-    lock: { modules: { m: { version: "1.0.0", files: { p: "h1" } } } },
-    diskHashes: new Map([["p", IRREGULAR.dir]]),
+    lock: { modules: { m: { version: "1.0.0", files: { [P]: "h1" } } } },
+    diskHashes: new Map([[P, IRREGULAR.dir]]),
   });
   assert.equal(plan.files.length, 0, "must not be planned for a write");
   assert.deepEqual(
     plan.conflicts.map((c) => [c.path, c.kind]),
-    [["p", "directory"]]
+    [[P, "directory"]]
   );
 });
 
@@ -77,7 +88,7 @@ test("--adopt clears the irregular entry and writes the real file", async () => 
     const src = path.join(root, "source.sh");
     await writeFile(src, "#!/bin/sh\necho hi\n", { mode: 0o755 });
     const target = path.join(root, "project");
-    await mkdir(path.join(target, "p"), { recursive: true }); // a directory in the way
+    await mkdir(path.join(target, P), { recursive: true }); // a directory in the way
 
     const sourceModules = new Map([
       [
@@ -88,7 +99,7 @@ test("--adopt clears the irregular entry and writes the real file", async () => 
           description: "",
           requires: [],
           hooks: {},
-          files: new Map([["p", { sourceAbs: src, hash: "h1", mode: 0o755 }]]),
+          files: new Map([[P, { sourceAbs: src, hash: "h1", mode: 0o755 }]]),
         },
       ],
     ]);
@@ -96,7 +107,7 @@ test("--adopt clears the irregular entry and writes the real file", async () => 
       sourceModules,
       selection: ["m"],
       lock: null,
-      diskHashes: await readDiskHashes(target, ["p"]),
+      diskHashes: await readDiskHashes(target, [P]),
       opts: { adopt: true },
     });
     assert.equal(plan.conflicts.length, 0);
@@ -104,7 +115,7 @@ test("--adopt clears the irregular entry and writes the real file", async () => 
 
     const res = await applyPlan({ plan, targetRoot: target, backupStamp: "t" });
     assert.equal(res.written, 1);
-    assert.ok(statSync(path.join(target, "p")).isFile(), "the directory was replaced by the file");
+    assert.ok(statSync(path.join(target, P)).isFile(), "the directory was replaced by the file");
     assert.ok(res.backupDir, "the displaced directory was backed up");
   } finally {
     await rm(root, { recursive: true, force: true });
@@ -146,18 +157,20 @@ test("the executable bit survives installation", async () => {
   }
 });
 
-test("a file that exists but cannot be read is irregular, not absent", async () => {
+test("a file that exists but cannot be read is irregular, not absent", { skip: process.getuid?.() === 0 ? "root bypasses DAC permission checks" : false }, async () => {
   const root = await scratch();
   try {
-    const p = path.join(root, "secret.md");
+    await mkdir(path.join(root, ".claude/kcc/m"), { recursive: true });
+    const rel = ".claude/kcc/m/secret.md";
+    const p = path.join(root, rel);
     await writeFile(p, "payload\n");
     await chmod(p, 0o000);
-    const hashes = await readDiskHashes(root, ["secret.md"]);
+    const hashes = await readDiskHashes(root, [rel]);
     // Reporting it absent would classify it `new` and destroy it with no
     // conflict and no backup — the same class as the directory/symlink case.
-    assert.equal(hashes.get("secret.md"), IRREGULAR.unreadable);
+    assert.equal(hashes.get(rel), IRREGULAR.unreadable);
   } finally {
-    await chmod(path.join(root, "secret.md"), 0o644).catch(() => {});
+    await chmod(path.join(root, ".claude/kcc/m/secret.md"), 0o644).catch(() => {});
     await rm(root, { recursive: true, force: true });
   }
 });
@@ -166,16 +179,17 @@ test("removing a path occupied by a directory does not throw EISDIR", async () =
   const root = await scratch();
   try {
     const target = path.join(root, "project");
-    await mkdir(path.join(target, "gone/inner"), { recursive: true });
+    const gone = ".claude/kcc/m/gone";
+    await mkdir(path.join(target, gone, "inner"), { recursive: true });
     const plan = {
       files: [],
-      removals: [{ path: "gone", module: "m", reason: "orphan", locallyModified: false }],
+      removals: [{ path: gone, module: "m", reason: "orphan", locallyModified: false }],
     };
     // The write path learned this lesson first; the removal path had the same
     // defect, and it aborted the run after files had already been written.
     const res = await applyPlan({ plan, targetRoot: target, backupStamp: "t" });
     assert.equal(res.removed, 1);
-    assert.equal(existsSync(path.join(target, "gone")), false);
+    assert.equal(existsSync(path.join(target, gone)), false);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

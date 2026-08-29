@@ -199,15 +199,15 @@ EOF
   "${I[@]}" --target "$T" --all -y >/dev/null 2>&1
   # Forge a lock entry for a module that does not exist upstream.
   tmp=$(mktemp)
-  jq '.modules["kcc-gone"] = {version:"0.0.1", description:"", files:{"gone.md":"deadbeef"}}' \
+  jq '.modules["kcc-gone"] = {version:"0.0.1", description:"", files:{".claude/kcc/kcc-gone/x.md":"deadbeef"}}' \
     "$T/.claude/kcc/kcc.lock.json" >"$tmp" && mv "$tmp" "$T/.claude/kcc/kcc.lock.json"
-  echo x >"$T/gone.md"
+  mkdir -p "$T/.claude/kcc/kcc-gone"; echo x >"$T/.claude/kcc/kcc-gone/x.md"
   # Non-interactive re-run: the default selection comes from the lock, and a
   # stale entry there must not make the upgrade path unusable.
   run "${I[@]}" --target "$T" -y
   [ "$status" -eq 0 ]
   [[ "$output" == *"no longer offered"* ]]
-  [ ! -f "$T/gone.md" ]
+  [ ! -f "$T/.claude/kcc/kcc-gone/x.md" ]
 }
 
 @test "--check catches a gained executable bit too" {
@@ -280,4 +280,58 @@ EOF
   done
   run bash -c "ls '$T/.claude/kcc/.backup' | wc -l | tr -d ' '"
   [ "$output" = "5" ]
+}
+
+@test "a lockfile whose paths escape the project is refused, not obeyed" {
+  # The lockfile is committed to the target repo and read on every run, so it
+  # is untrusted input. A crafted `../victim.txt` entry used to reach the
+  # removal loop and delete a file outside the project on every machine.
+  local outer
+  outer=$(dirname "$T")
+  echo PRECIOUS >"$outer/victim.txt"
+  "${I[@]}" --target "$T" --modules kcc-core -y >/dev/null 2>&1
+  local tmp
+  tmp=$(mktemp)
+  jq '.modules["kcc-core"].files["../victim.txt"] = "deadbeef"' \
+    "$T/.claude/kcc/kcc.lock.json" >"$tmp" && mv "$tmp" "$T/.claude/kcc/kcc.lock.json"
+  run "${I[@]}" --target "$T" --modules kcc-core -y
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"outside the project"* ]]
+  [ -f "$outer/victim.txt" ]
+  rm -f "$outer/victim.txt"
+}
+
+@test "uninstall refuses a lock module name that escapes the project" {
+  local outer
+  outer=$(dirname "$T")
+  mkdir -p "$outer/precious"; echo x >"$outer/precious/keep.txt"
+  "${I[@]}" --target "$T" --modules kcc-core -y >/dev/null 2>&1
+  local tmp
+  tmp=$(mktemp)
+  jq '.modules["../../precious"] = {version:"0", description:"", files:{}}' \
+    "$T/.claude/kcc/kcc.lock.json" >"$tmp" && mv "$tmp" "$T/.claude/kcc/kcc.lock.json"
+  "${I[@]}" --target "$T" --uninstall -y >/dev/null 2>&1
+  [ -f "$outer/precious/keep.txt" ]
+  rm -rf "$outer/precious"
+}
+
+@test "a settings.json with nothing of ours is left byte-for-byte alone" {
+  mkdir -p "$T/.claude"
+  printf '{\n    "model": "opus",\n    "permissions": {"allow": ["Bash(npm test)"]}\n}\n' \
+    >"$T/.claude/settings.json"
+  local before
+  before=$(shasum "$T/.claude/settings.json" | cut -d" " -f1)
+  "${I[@]}" --target "$T" --modules kcc-pm -y >/dev/null 2>&1
+  local after
+  after=$(shasum "$T/.claude/settings.json" | cut -d" " -f1)
+  [ "$before" = "$after" ]
+}
+
+@test "uninstall removes a settings.json created by a later run, not just the first" {
+  "${I[@]}" --target "$T" --modules kcc-pm -y >/dev/null 2>&1
+  [ ! -f "$T/.claude/settings.json" ]
+  "${I[@]}" --target "$T" --modules kcc-core,kcc-pm -y >/dev/null 2>&1
+  [ -f "$T/.claude/settings.json" ]
+  "${I[@]}" --target "$T" --uninstall -y >/dev/null 2>&1
+  [ ! -f "$T/.claude/settings.json" ]
 }

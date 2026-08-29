@@ -338,15 +338,25 @@ test("a pre-existing file at a PULLED-IN module's path is still a conflict", () 
   assert.deepEqual(plan.conflicts.map((c) => c.path), ["core.md"]);
 });
 
-test("selecting a module pulls in what it requires, and says so", () => {
+test("selecting a module pulls in what it requires", () => {
+  const sourceModules = source(
+    mod("mod-core", { "core.md": "hc" }),
+    mod("mod-dev", { "dev.md": "hd" }, { requires: ["mod-core"] })
+  );
+  // The caller resolves the closure first (it has to, in order to hash the
+  // dependency's paths) and hands the answer in. `computePlan` deriving its
+  // own `pulledIn` from an already-closed set was always [] — a green test
+  // on a call shape install.mjs never makes. The end-to-end assertion now
+  // lives in installer-e2e.bats.
+  const { selected, pulledIn } = resolveSelection(sourceModules, ["mod-dev"]);
+  assert.deepEqual(pulledIn, ["mod-core"]);
+
   const plan = computePlan({
-    sourceModules: source(
-      mod("mod-core", { "core.md": "hc" }),
-      mod("mod-dev", { "dev.md": "hd" }, { requires: ["mod-core"] })
-    ),
-    selection: ["mod-dev"],
+    sourceModules,
+    selection: selected,
     lock: null,
     diskHashes: new Map(),
+    opts: { pulledIn },
   });
   assert.deepEqual(plan.selection, ["mod-core", "mod-dev"]);
   assert.deepEqual(plan.modules.pulledIn, ["mod-core"]);
@@ -354,16 +364,11 @@ test("selecting a module pulls in what it requires, and says so", () => {
 });
 
 test("a dependency the user asked for explicitly is not reported as pulled in", () => {
-  const plan = computePlan({
-    sourceModules: source(
-      mod("mod-core", { "core.md": "hc" }),
-      mod("mod-dev", { "dev.md": "hd" }, { requires: ["mod-core"] })
-    ),
-    selection: ["mod-dev", "mod-core"],
-    lock: null,
-    diskHashes: new Map(),
-  });
-  assert.deepEqual(plan.modules.pulledIn, []);
+  const sourceModules = source(
+    mod("mod-core", { "core.md": "hc" }),
+    mod("mod-dev", { "dev.md": "hd" }, { requires: ["mod-core"] })
+  );
+  assert.deepEqual(resolveSelection(sourceModules, ["mod-dev", "mod-core"]).pulledIn, []);
 });
 
 test("requires is resolved transitively", () => {

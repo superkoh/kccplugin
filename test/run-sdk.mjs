@@ -46,6 +46,8 @@ import {
 } from "./lib/discover.mjs";
 import { createInstalledProject } from "./lib/project-fixture.mjs";
 import { DEFAULT_MODEL, assertClaudeAvailable } from "./lib/claude-runner.mjs";
+import { walkFiles } from "../installer/lib/fsops.mjs";
+import path from "node:path";
 
 const TINY_PROMPT = "ping";
 const LOAD_BUDGET_USD = 0.02;
@@ -165,8 +167,15 @@ function assertList(label, actual, spec, failures) {
  */
 async function impliedRequirements(plugin) {
   const assets = await inventoryPluginAssets(plugin);
+  // `projectPath` ships `commands/**` recursively and a nested command
+  // registers as `/<module>:<dir>:<file>`, so a top-level-only scan would
+  // silently assert nothing about it — the exact blind spot this block
+  // exists to close.
+  const commandFiles = (await walkFiles(path.join(plugin.root, "commands")))
+    .filter((f) => f.endsWith(".md"))
+    .map((f) => f.replace(/\.md$/, "").split("/").join(":"));
   return {
-    slashCommands: assets.commands.map((c) => `${plugin.name}:${c.name}`),
+    slashCommands: commandFiles.map((c) => `${plugin.name}:${c}`),
     skills: assets.skills.map((s) => `${plugin.name}:${s.name}`),
     agents: assets.agents.map((a) => a.name),
   };
