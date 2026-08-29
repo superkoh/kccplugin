@@ -49,6 +49,13 @@ test("an event that becomes empty is dropped, and so is an empty hooks key", () 
   assert.ok(!("hooks" in out), "an empty hooks object must not be left behind");
 });
 
+test("an empty event array the project wrote is left alone", () => {
+  // Dropping it would put a change in their settings.json diff that kcc had
+  // no reason to make — the module header promises we own only our entries.
+  const out = stripManagedHooks({ hooks: { PostToolUse: [], SessionStart: [{ hooks: [ours()] }] } });
+  assert.deepEqual(out.hooks, { PostToolUse: [] });
+});
+
 test("stripping a settings file with no hooks at all is a no-op", () => {
   assert.deepEqual(stripManagedHooks({ model: "opus" }), { model: "opus" });
   assert.deepEqual(stripManagedHooks({}), {});

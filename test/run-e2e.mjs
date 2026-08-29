@@ -230,11 +230,17 @@ async function main() {
     process.exit(0);
   }
 
-  // One fixture per module, not one shared fixture. A shared one would inject
+  // One fixture per module, not one shared fixture: a shared one would inject
   // every module's SessionStart prompt into every case — kcc-core's 🎯 block
   // instruction, for instance, changes how the model answers a "quote this
   // sentinel" probe belonging to another module. Cross-module coexistence is
   // L4's job; L3 asks what a single module does.
+  //
+  // "One module" means one module *and its dependencies*: kcc-dev-core
+  // declares `requires: [kcc-core]`, so its cases legitimately run with
+  // kcc-core's prompt in context. That is the shipped configuration — nobody
+  // installs kcc-dev-core alone — but it is not isolation, so a kcc-dev-core
+  // case that depends on kcc-core's absence would be testing a fiction.
   const fixtures = new Map();
   const fixtureFor = async (name) => {
     if (!fixtures.has(name)) fixtures.set(name, await createInstalledProject([name]));

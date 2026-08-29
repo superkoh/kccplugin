@@ -219,11 +219,15 @@ async function main() {
   }
 
   const fixture = await createInstalledProject(plugins.map((p) => p.name));
+  let code;
   try {
-    await runAssertions(plugins, fixture);
+    code = await runAssertions(plugins, fixture);
   } finally {
+    // runAssertions must RETURN, never process.exit: an exit here would skip
+    // this cleanup, and the fixture may hold a copy of the user's credentials.
     await fixture.cleanup();
   }
+  process.exit(code);
 }
 
 async function runAssertions(plugins, fixture) {
@@ -238,10 +242,10 @@ async function runAssertions(plugins, fixture) {
       console.log("-".repeat(72));
       console.log(`  no usable auth: ${msg.split("\n")[0]}`);
       console.log("");
-      process.exit(0);
+      return 0;
     }
     console.error("L4: cannot run —", msg);
-    process.exit(2);
+    return 2;
   }
 
   const observed = {
@@ -300,7 +304,7 @@ async function runAssertions(plugins, fixture) {
   }
 
   const failed = printReport(results);
-  process.exit(failed > 0 ? 1 : 0);
+  return failed > 0 ? 1 : 0;
 }
 
 main().catch((err) => {

@@ -64,7 +64,9 @@ const NOT_SHIPPED = [".claude-plugin/", "tests/", "evals/"];
  *   when the file is not shipped (authoring-only, or handled out of band).
  */
 export function projectPath(moduleName, rel) {
-  if (rel.startsWith("/") || rel.includes("..")) {
+  // A `..` *segment* escapes the module; two dots inside a filename
+  // (`notes..md`) are perfectly legal and must not abort the whole install.
+  if (rel.startsWith("/") || rel.split("/").includes("..")) {
     throw new Error(`refusing to project a non-relative path: ${rel}`);
   }
   for (const prefix of NOT_SHIPPED) {
@@ -144,8 +146,19 @@ export function projectHooks(hooksJson, moduleName) {
   // growing without bound, permanently failing --check, and surviving
   // uninstall. Fail loudly at authoring time instead.
   for (const [event, entries] of Object.entries(projected)) {
-    for (const entry of entries ?? []) {
-      for (const hook of entry?.hooks ?? []) {
+    if (!Array.isArray(entries)) {
+      throw new Error(
+        `module "${moduleName}": hooks.${event} must be an array of entries, got ` +
+          `${entries === null ? "null" : typeof entries}`
+      );
+    }
+    for (const entry of entries) {
+      if (!entry || typeof entry !== "object" || !Array.isArray(entry.hooks)) {
+        throw new Error(
+          `module "${moduleName}": every hooks.${event} entry needs a "hooks" array`
+        );
+      }
+      for (const hook of entry.hooks) {
         if (typeof hook?.command === "string" && !hook.command.includes(MANAGED_HOOK_MARKER)) {
           throw new Error(
             `module "${moduleName}": hooks.${event} command does not reference ` +

@@ -18,19 +18,27 @@
 # (verified), which is what makes it worth having at all.
 #
 # ---------------------------------------------------------------------------
+# What is protected
+#
+# Every path in the lockfile, PLUS the two files that arm this guard:
+# `.claude/kcc/kcc.lock.json` and `.claude/settings.json`. Neither appears in
+# `modules[].files`, and without them the guard is a no-op — deleting the lock
+# disarms it in one command, and rewriting settings.json unregisters the hook.
+# A protection whose own kill switch is unprotected is not a protection.
+#
 # Bash policy: deny by default once a managed path is named.
 #
-# The first version of this guard asked "does the command look like it
-# writes?" and got the answer wrong in both directions — `rm -rf <managed>`
-# was allowed (the pattern required a leading space) while `cat <managed> |
-# grep x > /tmp/o` was denied (any `>` counted as a write). Enumerating the
-# ways a shell can mutate a file is a losing game.
+# Asking "does this command look like a write?" loses: the first version
+# allowed `rm -rf <managed>` (its pattern needed a leading space) while
+# denying `cat <managed> | grep x > /tmp/o` (any `>` counted). The second
+# version inverted that but still shipped `find` and `sort` on the read-only
+# list — `find <managed> -delete` and `sort -o <managed>` both destroy a file
+# — and its in-place probe only matched the literal " -i", so
+# `sed --in-place` and `perl -pi` walked through.
 #
-# So the rule is inverted: if a command names a managed path, it is denied
-# unless every segment that names one *leads with a known read-only command*
-# and no managed path is the target of a redirect. Unknown commands deny.
-# The failure mode is a rejected read, which the agent can rephrase; the
-# alternative failure mode was a destroyed file.
+# So: a command naming a managed path is denied unless every segment naming
+# one leads with a command that has no way to write the file it is given.
+# Unknown commands deny.
 #
 # Honest limits: a managed path built up at runtime (`p=.claude/...; rm $p`)
 # is invisible here, and nothing stops a human in an editor. This raises the
@@ -60,6 +68,8 @@ lock="$project_root/.claude/kcc/kcc.lock.json"
 
 managed=$(jq -r '[.modules[]?.files // {} | keys[]] | .[]' "$lock" 2>/dev/null || true)
 [[ -z "$managed" ]] && allow
+# The guard's own arming files, which the lockfile never lists.
+managed=$(printf '%s\n.claude/kcc/kcc.lock.json\n.claude/settings.json\n' "$managed")
 
 deny() {
   jq -n --arg r "$1" '{
@@ -74,11 +84,27 @@ deny() {
 
 reason_for() {
   printf '%s' "\
-$1 is installed and managed by kcc, and is listed in .claude/kcc/kcc.lock.json. \
+$1 is installed and managed by kcc, and is covered by .claude/kcc/kcc.lock.json. \
 Editing it here does not stick: the next installer run overwrites it, and CI's \
 \`--check\` fails until it matches again. Change it in the kcc source repository \
 and re-run the installer. If you genuinely need a project-local variant, that is \
 a decision for the human to make, not an edit to make silently."
+}
+
+# Collapse `./`, `//` and `x/../` so that a non-canonical spelling of a
+# managed path cannot walk past an exact string comparison. Pure string work:
+# the target of a Write need not exist yet, so realpath is not an option.
+normalize_rel() {
+  local p="$1" out=() seg
+  local IFS=/
+  for seg in $p; do
+    case "$seg" in
+      "" | ".") continue ;;
+      "..") [[ ${#out[@]} -gt 0 ]] && unset 'out[${#out[@]}-1]' ;;
+      *) out+=("$seg") ;;
+    esac
+  done
+  printf '%s' "${out[*]}"
 }
 
 # --- exact match: the tools an agent uses to edit a file -----------------
@@ -87,12 +113,30 @@ case "$tool" in
     target=$(printf '%s' "$stdin_raw" \
       | jq -r '.tool_input.file_path // .tool_input.notebook_path // empty' 2>/dev/null || true)
     [[ -z "$target" ]] && allow
-    # Normalize to a project-relative path without requiring the file to exist.
-    rel="${target#"$project_root"/}"
-    [[ "$rel" == "$target" && "$target" == /* ]] && allow # outside the project
+    # Compare canonical project-relative forms. Both the project root and the
+    # target are normalized, so `/var` vs `/private/var` on macOS and a
+    # trailing slash cannot slip a path through.
+    # The root may be reachable under more than one spelling (on macOS a
+    # temp dir is both /var/... and /private/var/...), and the target need
+    # not exist yet, so try every prefix rather than resolving the target.
+    root_real=$(cd "$project_root" 2>/dev/null && pwd -P) || root_real="$project_root"
+    if [[ "$target" == /* ]]; then
+      rel=""
+      for root in "$root_real" "$project_root"; do
+        if [[ "$target" == "$root"/* ]]; then
+          rel="${target#"$root"/}"
+          break
+        fi
+      done
+      [[ -z "$rel" ]] && allow # outside the project
+    else
+      rel="$target"
+    fi
+    rel=$(normalize_rel "$rel")
+    [[ -z "$rel" ]] && allow
     while IFS= read -r m; do
       [[ -z "$m" ]] && continue
-      [[ "$rel" == "$m" ]] && deny "$(reason_for "$m")"
+      [[ "$rel" == "$(normalize_rel "$m")" ]] && deny "$(reason_for "$m")"
     done <<<"$managed"
     allow
     ;;
@@ -104,7 +148,6 @@ esac
 cmd=$(printf '%s' "$stdin_raw" | jq -r '.tool_input.command // empty' 2>/dev/null || true)
 [[ -z "$cmd" ]] && allow
 
-# Which managed paths does this command mention at all?
 mentioned=()
 while IFS= read -r m; do
   [[ -z "$m" ]] && continue
@@ -112,28 +155,45 @@ while IFS= read -r m; do
 done <<<"$managed"
 (( ${#mentioned[@]} == 0 )) && allow
 
-# Commands that cannot modify a file they are given. Anything not on this
-# list is treated as capable of writing.
+# Commands with no way to modify a file they are given as an argument.
+#
+# `find` and `sort` are deliberately NOT here: `find <path> -delete` and
+# `sort -o <path>` both write. Nor is anything that takes a script (`python`,
+# `node`, `xargs`) — the argument is not the whole story for those.
 is_read_only_cmd() {
   case "$1" in
     cat | bat | head | tail | less | more | nl | od | xxd | strings | \
     grep | egrep | fgrep | rg | ag | ack | \
-    wc | diff | cmp | stat | ls | file | find | realpath | dirname | basename | \
-    cut | sort | uniq | tr | column | fold | \
+    wc | diff | cmp | stat | ls | file | realpath | dirname | basename | \
+    cut | column | fold | \
     jq | yq | md5 | md5sum | shasum | sha1sum | sha256sum | cksum | \
     echo | printf | test | true | false | pwd) return 0 ;;
-    # `sed`/`awk`/`perl` only when they are not editing in place.
-    sed | awk | gawk | perl) return 2 ;;
+    # Editors-in-disguise: read-only only when not asked to edit in place.
+    sed | perl | ruby | gsed) return 2 ;;
     git) return 3 ;;
   esac
   return 1
 }
 
-# git subcommands that only read.
+# Any in-place flag, in any of its spellings: -i, -i.bak, --in-place,
+# --in-place=.bak, and clustered short forms such as -pi / -npi.
+has_in_place_flag() {
+  local w
+  for w in "$@"; do
+    case "$w" in
+      --in-place | --in-place=*) return 0 ;;
+      -i | -i.* | -i=*) return 0 ;;
+      --*) continue ;;
+      -*i | -*i.*) return 0 ;; # clustered short flags, e.g. -pi, -npi.bak
+    esac
+  done
+  return 1
+}
+
 is_read_only_git() {
   case "$1" in
     diff | log | show | status | blame | ls-files | cat-file | rev-parse | \
-    describe | grep | shortlog | check-ignore | config) return 0 ;;
+    describe | grep | shortlog | check-ignore) return 0 ;;
   esac
   return 1
 }
@@ -146,8 +206,6 @@ for m in "${mentioned[@]}"; do
   fi
 done
 
-# Split into segments on ; && || | and newlines, then judge each segment that
-# names a managed path by its leading word.
 normalized=${cmd//&&/$'\n'}
 normalized=${normalized//||/$'\n'}
 normalized=${normalized//;/$'\n'}
@@ -160,10 +218,11 @@ while IFS= read -r segment; do
   done
   (( ${#seg_hits[@]} == 0 )) && continue
 
-  # Leading word, skipping env assignments and `sudo`/`command`/`time`.
   read -r -a words <<<"$segment"
   lead=""
+  lead_idx=0
   for w in "${words[@]}"; do
+    lead_idx=$((lead_idx + 1))
     case "$w" in
       *=*) continue ;;
       sudo | command | time | nohup | env | exec | builtin) continue ;;
@@ -174,18 +233,21 @@ while IFS= read -r segment; do
 
   is_read_only_cmd "$lead"
   case $? in
-    0) continue ;;                                   # definitely read-only
-    2) [[ "$segment" == *" -i"* ]] && deny "$(reason_for "${seg_hits[0]}")"; continue ;;
+    0) continue ;;
+    2)
+      has_in_place_flag "${words[@]:$lead_idx}" && deny "$(reason_for "${seg_hits[0]}")"
+      continue
+      ;;
     3)
       sub=""
-      for w in "${words[@]}"; do
-        [[ "$w" == git || "$w" == */git || "$w" == -* || "$w" == *=* ]] && continue
+      for w in "${words[@]:$lead_idx}"; do
+        [[ "$w" == -* || "$w" == *=* ]] && continue
         sub="$w"; break
       done
       is_read_only_git "$sub" && continue
       deny "$(reason_for "${seg_hits[0]}")"
       ;;
-    *) deny "$(reason_for "${seg_hits[0]}")" ;;      # unknown ⇒ assume it writes
+    *) deny "$(reason_for "${seg_hits[0]}")" ;;
   esac
 done <<<"$normalized"
 

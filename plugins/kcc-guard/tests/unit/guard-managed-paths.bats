@@ -39,7 +39,11 @@ EOF
 }
 
 teardown() {
-  [[ -n "${TMPROOT:-}" && -d "$TMPROOT" ]] && rm -rf "$TMPROOT"
+  # `if`, not `[[ … ]] && rm`: the && form returns 1 when the condition is
+  # false, which turns a legitimate `skip` in setup into a teardown failure.
+  if [[ -n "${TMPROOT:-}" && -d "$TMPROOT" ]]; then
+    rm -rf "$TMPROOT"
+  fi
 }
 
 run_guard() {
@@ -215,4 +219,64 @@ assert_allowed() {
     '{tool_name:"Write", cwd:$c, tool_input:{file_path:$p}}')"
   echo "$output" | jq -e '.hookSpecificOutput.permissionDecisionReason | contains("kcc-dev-core:spec")'
   echo "$output" | jq -e '.hookSpecificOutput.permissionDecisionReason | contains("kcc source repository")'
+}
+
+# --- forms a "does this look like a write?" heuristic misses -------------
+
+@test "DENY: find -delete on a managed path" {
+  run_guard "$(bash_cmd "find $MANAGED -delete")"
+  assert_denied
+}
+
+@test "DENY: sort -o writing back over a managed path" {
+  run_guard "$(bash_cmd "sort -o $MANAGED /etc/hosts")"
+  assert_denied
+}
+
+@test "DENY: sed --in-place (long form) on a managed path" {
+  run_guard "$(bash_cmd "sed --in-place s/a/b/ $MANAGED")"
+  assert_denied
+}
+
+@test "DENY: perl -pi with clustered short flags" {
+  run_guard "$(bash_cmd "perl -pi -e s/a/b/ $MANAGED")"
+  assert_denied
+}
+
+@test "DENY: sed -i.bak on a managed path" {
+  run_guard "$(bash_cmd "sed -i.bak s/a/b/ $MANAGED")"
+  assert_denied
+}
+
+# --- non-canonical spellings of the same path ---------------------------
+
+@test "DENY: Write to a managed path spelled with a leading ./" {
+  run_guard "$(jq -nc --arg p "./$MANAGED" --arg c "$TMPROOT" \
+    '{tool_name:"Write", cwd:$c, tool_input:{file_path:$p}}')"
+  assert_denied
+}
+
+@test "DENY: Write to a managed path with an interior /./" {
+  run_guard "$(jq -nc --arg p ".claude/./skills/kcc-dev-core:spec/SKILL.md" --arg c "$TMPROOT" \
+    '{tool_name:"Write", cwd:$c, tool_input:{file_path:$p}}')"
+  assert_denied
+}
+
+@test "DENY: Write to a managed path reached through .." {
+  run_guard "$(jq -nc --arg p ".claude/kcc/../skills/kcc-dev-core:spec/SKILL.md" --arg c "$TMPROOT" \
+    '{tool_name:"Write", cwd:$c, tool_input:{file_path:$p}}')"
+  assert_denied
+}
+
+# --- the guard's own arming files ---------------------------------------
+
+@test "DENY: deleting the lockfile, which would disarm the guard entirely" {
+  run_guard "$(bash_cmd "rm .claude/kcc/kcc.lock.json")"
+  assert_denied
+}
+
+@test "DENY: rewriting settings.json, which would unregister the hook" {
+  run_guard "$(jq -nc --arg c "$TMPROOT" \
+    '{tool_name:"Write", cwd:$c, tool_input:{file_path:".claude/settings.json"}}')"
+  assert_denied
 }

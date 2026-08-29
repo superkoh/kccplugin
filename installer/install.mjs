@@ -34,7 +34,9 @@ import {
 import {
   applyPlan,
   inventorySource,
+  pruneBackups,
   readDiskHashes,
+  readDiskModes,
   writeAtomic,
 } from "./lib/fsops.mjs";
 import {
@@ -184,9 +186,13 @@ function preflight(targetRoot) {
 
   // The same capabilities installed both as a user-level plugin and into the
   // project means every SessionStart prompt is injected twice.
-  const configDir = process.env.CLAUDE_CONFIG_DIR || path.join(homeDir(), ".claude");
-  const userSettings = path.join(configDir, "settings.json");
-  if (existsSync(userSettings)) {
+  // With no HOME, `path.join("", ".claude")` is the *relative* ".claude",
+  // which resolves against cwd — i.e. the project being installed into. The
+  // warning would then be computed from the project's own settings.
+  const home = homeDir();
+  const configDir = process.env.CLAUDE_CONFIG_DIR || (home ? path.join(home, ".claude") : "");
+  const userSettings = configDir ? path.join(configDir, "settings.json") : "";
+  if (userSettings && path.isAbsolute(userSettings) && existsSync(userSettings)) {
     try {
       const parsed = JSON.parse(readFileSync(userSettings, "utf-8"));
       const enabled = Object.entries(parsed.enabledPlugins ?? {})
@@ -231,7 +237,18 @@ async function selectModules({ sourceModules, lock, opts }) {
   if (opts.all) return [...sourceModules.keys()];
   if (opts.modules) return opts.modules;
 
-  const installed = Object.keys(lock?.modules ?? {});
+  // Modules the source no longer offers are dropped from the default, not
+  // passed through: `resolveSelection` would reject them as unknown and the
+  // non-interactive upgrade path would hard-fail with nothing the user could
+  // do but retype the whole list.
+  const allInstalled = Object.keys(lock?.modules ?? {});
+  const installed = allInstalled.filter((n) => sourceModules.has(n));
+  const dropped = allInstalled.filter((n) => !sourceModules.has(n));
+  if (dropped.length > 0) {
+    console.log(
+      `${C.y("!")} no longer offered by the source, will be uninstalled: ${dropped.join(", ")}`
+    );
+  }
   if (!canPrompt()) {
     if (installed.length > 0) return installed; // non-interactive upgrade in place
     fail(
@@ -312,15 +329,18 @@ async function main() {
   }
 
   const settings = await readJson(settingsAbs);
+  const settingsExisted = existsSync(settingsAbs);
 
   // ---------------------------------------------------------------- check
   if (opts.check) {
     if (!lock) fail(`no ${LOCK_PATH} — nothing is installed here.`);
     const allPaths = Object.values(lock.modules ?? {}).flatMap((m) => Object.keys(m.files ?? {}));
     const diskHashes = await readDiskHashes(opts.target, allPaths);
+    const diskModes = await readDiskModes(opts.target, allPaths);
     const result = verifyAgainstLock({
       lock,
       diskHashes,
+      diskModes,
       actualManagedHooks: extractManagedHooks(settings ?? {}),
       sameHooks: sameManagedHooks,
     });
@@ -331,6 +351,7 @@ async function main() {
     console.error(`${C.r("✗")} kcc install has drifted from the lockfile.`);
     for (const p of result.modified) console.error(`    modified: ${p}`);
     for (const p of result.missing) console.error(`    missing:  ${p}`);
+    for (const p of result.modeDrift) console.error(`    mode:     ${p}`);
     if (result.hookDrift) console.error(`    modified: ${SETTINGS_PATH} (kcc hook entries)`);
     console.error(
       `\n  These files are managed by kcc and must not be edited in the project.\n` +
@@ -346,7 +367,11 @@ async function main() {
   // the requested modules would make a pulled-in dependency's paths look
   // absent, so a pre-existing file there would be classified `new` and
   // overwritten with no conflict and no backup.
-  const { selected: selection } = resolveSelection(sourceModules, requested);
+  //
+  // `pulledIn` has to be computed from the *requested* set here too: passing
+  // the already-closed set into computePlan makes its own pulledIn always
+  // empty, which silently deleted the "+ required by your selection" report.
+  const { selected: selection, pulledIn } = resolveSelection(sourceModules, requested);
   const candidatePaths = new Set();
   for (const name of selection) {
     for (const p of sourceModules.get(name).files.keys()) candidatePaths.add(p);
@@ -355,6 +380,7 @@ async function main() {
     for (const p of Object.keys(m.files ?? {})) candidatePaths.add(p);
   }
   const diskHashes = await readDiskHashes(opts.target, [...candidatePaths]);
+  const diskModes = await readDiskModes(opts.target, [...candidatePaths]);
 
   const plan = computePlan({
     sourceModules,
@@ -363,6 +389,7 @@ async function main() {
     diskHashes,
     opts: { adopt: opts.adopt },
   });
+  plan.modules.pulledIn = pulledIn;
 
   // Preflight runs before the conflict gate so a user who is about to be
   // stopped still learns about a .gitignore that would have made the whole
@@ -400,9 +427,20 @@ async function main() {
     plan.modules.added.length === 0 &&
     plan.modules.removed.length === 0 &&
     (!opts.ref || lock.source?.ref === opts.ref);
+  // A file whose content matches but whose permission bits do not is still
+  // work to do: `--check` reports it, so the installer has to be able to
+  // repair it rather than answering "already up to date".
+  const modeDrift = plan.files.some(
+    (f) =>
+      f.status === "unchanged" &&
+      f.mode !== undefined &&
+      diskModes.has(f.path) &&
+      diskModes.get(f.path) !== f.mode
+  );
   const nothingToDo =
     plan.writes.length === 0 &&
     plan.removals.length === 0 &&
+    !modeDrift &&
     sameManagedHooks(extractManagedHooks(settings ?? {}), plan.managedHooks) &&
     lockIsCurrent;
   if (nothingToDo) {
@@ -440,9 +478,13 @@ async function main() {
   // i.e. we are the reason it exists. A project that already had an empty (or
   // hook-less) settings.json keeps it: kcc must never delete a file it did
   // not create.
+  // "We created this file" cannot be inferred from its current contents —
+  // an empty settings.json the project committed looks identical after our
+  // hooks are stripped. The lockfile is the only thing that remembers.
   const weOwnedTheWholeFile =
     Object.keys(nextSettings).length === 0 &&
-    Object.keys(extractManagedHooks(settings ?? {})).length > 0;
+    Object.keys(extractManagedHooks(settings ?? {})).length > 0 &&
+    lock?.createdSettings === true;
   if (weOwnedTheWholeFile) {
     await rm(settingsAbs, { force: true });
   } else if (Object.keys(nextSettings).length > 0 || existsSync(settingsAbs)) {
@@ -472,8 +514,12 @@ async function main() {
         repo: "https://github.com/superkoh/kccplugin",
         ref: opts.ref ?? sourceRef(opts.source),
       },
+
       lockVersion: LOCK_VERSION,
       now: new Date().toISOString(),
+      // Remembered so uninstall knows whether removing settings.json would
+      // be deleting a file kcc created or one the project already had.
+      createdSettings: lock ? lock.createdSettings === true : !settingsExisted,
     });
     await mkdir(path.dirname(lockAbs), { recursive: true });
     await writeAtomic(lockAbs, JSON.stringify(nextLock, null, 2) + "\n");
@@ -483,11 +529,17 @@ async function main() {
     `\n${C.g("✓")} ${written} file(s) written, ${removed} removed, ` +
       `${plan.selection.length} module(s) active.`
   );
+  const pruned = await pruneBackups(opts.target);
   if (backupDir) {
     console.log(
       `${C.y("!")} locally modified files were overwritten. Previous contents: ` +
         `${C.dim(path.relative(opts.target, backupDir))}`
     );
+    if (pruned.length > 0) {
+      console.log(
+        `${C.dim(`  (pruned ${pruned.length} older backup generation(s) — this directory is committed)`)}`
+      );
+    }
   }
   if (plan.selection.length > 0) {
     console.log(

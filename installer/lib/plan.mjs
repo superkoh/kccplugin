@@ -250,7 +250,7 @@ export function computePlan({ sourceModules, selection, lock, diskHashes, opts =
  * Only files the plan actually claims are recorded, and hashes are the
  * *source* hashes — after a successful apply that is exactly what is on disk.
  */
-export function lockFromPlan({ plan, sourceModules, source, lockVersion, now }) {
+export function lockFromPlan({ plan, sourceModules, source, lockVersion, now, createdSettings }) {
   const modules = {};
   for (const name of plan.selection) {
     const mod = sourceModules.get(name);
@@ -258,16 +258,33 @@ export function lockFromPlan({ plan, sourceModules, source, lockVersion, now }) 
     for (const f of plan.files) {
       if (f.module === name) files[f.path] = f.hash;
     }
+    // Modes are recorded only where they differ from a plain 0644, so the
+            // lock stays readable and the common case adds nothing. Without
+            // them `--check` hashes content only, and a script that lost its
+            // executable bit stays green forever.
+    const modes = {};
+    for (const f of plan.files) {
+      if (f.module === name && f.mode !== undefined && f.mode !== 0o644) {
+        modes[f.path] = f.mode;
+      }
+    }
     modules[name] = {
       version: mod.version,
       description: mod.description,
       files: Object.fromEntries(Object.entries(files).sort(([a], [b]) => (a < b ? -1 : 1))),
+      ...(Object.keys(modes).length > 0
+        ? { modes: Object.fromEntries(Object.entries(modes).sort(([a], [b]) => (a < b ? -1 : 1))) }
+        : {}),
     };
   }
   return {
     lockVersion,
     source,
     installedAt: now,
+    // Whether kcc created .claude/settings.json. Uninstall cannot infer this
+    // from the file's contents — a project-committed `{}` looks identical to
+    // one of ours after the hooks are stripped — so it has to be remembered.
+    createdSettings: !!createdSettings,
     modules: Object.fromEntries(Object.entries(modules).sort(([a], [b]) => (a < b ? -1 : 1))),
     managedHooks: plan.managedHooks,
   };
@@ -279,20 +296,36 @@ export function lockFromPlan({ plan, sourceModules, source, lockVersion, now }) 
  *
  * @returns {{ok: boolean, modified: string[], missing: string[], hookDrift: boolean}}
  */
-export function verifyAgainstLock({ lock, diskHashes, actualManagedHooks, sameHooks }) {
+export function verifyAgainstLock({
+  lock,
+  diskHashes,
+  diskModes,
+  actualManagedHooks,
+  sameHooks,
+}) {
   const modified = [];
   const missing = [];
+  const modeDrift = [];
   for (const entry of Object.values(lock?.modules ?? {})) {
     for (const [path, hash] of Object.entries(entry.files ?? {})) {
       if (!diskHashes.has(path)) missing.push(path);
       else if (diskHashes.get(path) !== hash) modified.push(path);
     }
+    for (const [path, mode] of Object.entries(entry.modes ?? {})) {
+      if (!diskModes || !diskModes.has(path)) continue; // absence is `missing`
+      if (diskModes.get(path) !== mode) modeDrift.push(path);
+    }
   }
   const hookDrift = !sameHooks(lock?.managedHooks ?? {}, actualManagedHooks ?? {});
   return {
-    ok: modified.length === 0 && missing.length === 0 && !hookDrift,
+    ok:
+      modified.length === 0 &&
+      missing.length === 0 &&
+      modeDrift.length === 0 &&
+      !hookDrift,
     modified: modified.sort(),
     missing: missing.sort(),
+    modeDrift: modeDrift.sort(),
     hookDrift,
   };
 }

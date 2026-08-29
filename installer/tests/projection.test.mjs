@@ -56,6 +56,20 @@ test("authoring-only paths are not shipped", () => {
 test("path traversal is refused", () => {
   assert.throws(() => projectPath("kcc-core", "../../etc/passwd"), /non-relative/);
   assert.throws(() => projectPath("kcc-core", "/etc/passwd"), /non-relative/);
+  assert.throws(() => projectPath("kcc-core", "skills/s/../../x"), /non-relative/);
+});
+
+test("two dots inside a filename are legal, not traversal", () => {
+  // The guard used to test `rel.includes("..")`, so a file named `notes..md`
+  // anywhere in any module aborted the entire install and crashed L1.
+  assert.equal(
+    projectPath("kcc-core", "commands/a..b.md"),
+    ".claude/commands/kcc-core/a..b.md"
+  );
+  assert.equal(
+    projectPath("kcc-pm", "skills/s/notes..md"),
+    ".claude/skills/kcc-pm:s/notes..md"
+  );
 });
 
 test("hook commands are remapped from plugin root to project root", () => {
@@ -110,6 +124,19 @@ test("a hook command without the ownership marker is refused at authoring time",
         "kcc-core"
       ),
     /could never recognize or remove it/
+  );
+});
+
+test("a malformed hooks.json fails with the module name, not a TypeError", () => {
+  // The 12-line comment above this validation argues for a loud, specific
+  // failure; an un-type-checked for…of produced "entries is not iterable".
+  assert.throws(
+    () => projectHooks({ hooks: { SessionStart: { hooks: [] } } }, "kcc-core"),
+    /module "kcc-core": hooks.SessionStart must be an array/
+  );
+  assert.throws(
+    () => projectHooks({ hooks: { Stop: [{ command: "x" }] } }, "kcc-core"),
+    /module "kcc-core": every hooks.Stop entry needs a "hooks" array/
   );
 });
 

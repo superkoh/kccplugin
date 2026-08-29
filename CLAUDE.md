@@ -212,10 +212,20 @@ disappears silently.
   the safe ones instead.
 - **`--check` compares hooks structurally, key order and all.** A team that
   runs prettier over `settings.json` must not get a permanently red CI gate.
-- **Test fixtures drive `installer/install.mjs`, never its libraries.** A
-  fixture that re-implemented the apply sequence skipped the lockfile, which
-  silently disabled kcc-guard inside the fixture — so L4 "covered" a module
-  that could not do anything.
+- **Test the product's entry point, not its libraries.** This has now bitten
+  three times: a fixture that re-implemented the apply sequence skipped the
+  lockfile and silently disabled kcc-guard inside it; and `plan.test.mjs`
+  asserted `pulledIn` by calling `computePlan` with an *unresolved* selection
+  — a shape `install.mjs` never produces — so the "+ required by your
+  selection" report was dead at runtime while its unit test stayed green. A
+  green unit test on a call shape the product does not make is worse than no
+  test.
+- **The guard protects its own arming files.** `.claude/kcc/kcc.lock.json`
+  and `.claude/settings.json` are not in `modules[].files`, and without them
+  the guard is a no-op — `rm` the lock and everything is writable again.
+- **`--check` covers permission bits, not just content.** Modes that differ
+  from 0644 are recorded per module in the lock, and an install repairs a
+  drifted bit even when the content is unchanged.
 
 ## Pointers to existing workflow skills
 

@@ -59,7 +59,9 @@ export function stripManagedHooks(settings) {
       if (keptHooks.length === entry.hooks.length) keptEntries.push(entry);
       else keptEntries.push({ ...entry, hooks: keptHooks });
     }
-    if (keptEntries.length > 0) cleanedEvents[event] = keptEntries;
+    // An event that had entries and lost them all was ours; one that was
+    // already empty belongs to the project and is left exactly as found.
+    if (keptEntries.length > 0 || entries.length === 0) cleanedEvents[event] = keptEntries;
   }
 
   if (Object.keys(cleanedEvents).length === 0) delete next.hooks;

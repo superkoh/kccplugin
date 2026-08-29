@@ -18,7 +18,11 @@ setup() {
 }
 
 teardown() {
-  [[ -n "${T:-}" && -d "$T" ]] && rm -rf "$T"
+  # `if`, not `[[ … ]] && rm`: the && form returns 1 when the condition is
+  # false, which turns a legitimate `skip` in setup into a teardown failure.
+  if [[ -n "${T:-}" && -d "$T" ]]; then
+    rm -rf "$T"
+  fi
 }
 
 @test "an empty --modules list is refused, not treated as uninstall" {
@@ -149,4 +153,85 @@ EOF
   "${I[@]}" --target "$T" --all --ref v-second -y >/dev/null 2>&1
   run jq -r '.source.ref' "$T/.claude/kcc/kcc.lock.json"
   [ "$output" = "v-second" ]
+}
+
+@test "the CLI actually reports a pulled-in dependency" {
+  # Asserted here, through the real entry point, and not in plan.test.mjs:
+  # the unit test passed while this was broken for every real invocation,
+  # because it called computePlan with an unresolved selection — a shape
+  # install.mjs never produces.
+  run "${I[@]}" --target "$T" --modules kcc-dev-core -y
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"required by your selection"* ]]
+  [[ "$output" == *"kcc-core"* ]]
+}
+
+@test "no dependency line when the user asked for the dependency too" {
+  run "${I[@]}" --target "$T" --modules kcc-core,kcc-dev-core -y
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"required by your selection"* ]]
+}
+
+@test "uninstall keeps a settings.json the project created" {
+  mkdir -p "$T/.claude"
+  echo '{}' >"$T/.claude/settings.json"
+  "${I[@]}" --target "$T" --modules kcc-core -y >/dev/null 2>&1
+  "${I[@]}" --target "$T" --uninstall -y >/dev/null 2>&1
+  [ -f "$T/.claude/settings.json" ]
+}
+
+@test "uninstall removes a settings.json that only ever held our hooks" {
+  "${I[@]}" --target "$T" --modules kcc-core -y >/dev/null 2>&1
+  [ -f "$T/.claude/settings.json" ]
+  "${I[@]}" --target "$T" --uninstall -y >/dev/null 2>&1
+  [ ! -f "$T/.claude/settings.json" ]
+}
+
+@test "an empty hook event the project wrote is preserved" {
+  mkdir -p "$T/.claude"
+  printf '{"hooks":{"PostToolUse":[]}}\n' >"$T/.claude/settings.json"
+  "${I[@]}" --target "$T" --modules kcc-core -y >/dev/null 2>&1
+  run jq -e '.hooks.PostToolUse | type == "array"' "$T/.claude/settings.json"
+  [ "$status" -eq 0 ]
+}
+
+@test "a module the source no longer offers is dropped, not a hard failure" {
+  "${I[@]}" --target "$T" --all -y >/dev/null 2>&1
+  # Forge a lock entry for a module that does not exist upstream.
+  tmp=$(mktemp)
+  jq '.modules["kcc-gone"] = {version:"0.0.1", description:"", files:{"gone.md":"deadbeef"}}' \
+    "$T/.claude/kcc/kcc.lock.json" >"$tmp" && mv "$tmp" "$T/.claude/kcc/kcc.lock.json"
+  echo x >"$T/gone.md"
+  # Non-interactive re-run: the default selection comes from the lock, and a
+  # stale entry there must not make the upgrade path unusable.
+  run "${I[@]}" --target "$T" -y
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"no longer offered"* ]]
+  [ ! -f "$T/gone.md" ]
+}
+
+@test "--check catches a lost executable bit, and the installer repairs it" {
+  "${I[@]}" --target "$T" --all -y >/dev/null 2>&1
+  local script="$T/.claude/kcc/kcc-core/scripts/session-start-principles.sh"
+  chmod 644 "$script"
+  run "${I[@]}" --target "$T" --check
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"mode:"* ]]
+  "${I[@]}" --target "$T" --all -y >/dev/null 2>&1
+  [ -x "$script" ]
+  run "${I[@]}" --target "$T" --check
+  [ "$status" -eq 0 ]
+}
+
+@test "backup generations are pruned so a committed directory cannot grow forever" {
+  "${I[@]}" --target "$T" --all -y >/dev/null 2>&1
+  local skill="$T/.claude/skills/kcc-dev-core:spec/SKILL.md"
+  # Seven overwrite cycles; only the most recent five generations survive.
+  for i in 1 2 3 4 5 6 7; do
+    echo "edit $i" >>"$skill"
+    "${I[@]}" --target "$T" --all -y >/dev/null 2>&1
+    sleep 0.01
+  done
+  run bash -c "ls '$T/.claude/kcc/.backup' | wc -l | tr -d ' '"
+  [ "$output" = "5" ]
 }

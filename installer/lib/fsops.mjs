@@ -153,6 +153,20 @@ export function isIrregular(hash) {
  * paths occupied by something that is not a regular file get an IRREGULAR
  * marker so the planner can refuse them.
  */
+/** Permission bits of each path that exists as a regular file. */
+export async function readDiskModes(targetRoot, paths) {
+  const out = new Map();
+  for (const rel of paths) {
+    try {
+      const st = await lstat(path.join(targetRoot, rel));
+      if (st.isFile()) out.set(rel, st.mode & 0o777);
+    } catch {
+      /* absent */
+    }
+  }
+  return out;
+}
+
 export async function readDiskHashes(targetRoot, paths) {
   const out = new Map();
   for (const rel of paths) {
@@ -232,6 +246,25 @@ async function pruneEmptyDirs(dir, stopAt) {
  *
  * @returns {Promise<{backupDir: string|null, written: number, removed: number}>}
  */
+/** Keep only the most recent `keep` backup generations. */
+export async function pruneBackups(targetRoot, keep = 5) {
+  const root = path.join(targetRoot, KCC_DIR, ".backup");
+  let entries;
+  try {
+    entries = (await readdir(root, { withFileTypes: true }))
+      .filter((e) => e.isDirectory())
+      .map((e) => e.name)
+      .sort(); // ISO timestamps sort chronologically
+  } catch {
+    return [];
+  }
+  const doomed = entries.slice(0, Math.max(0, entries.length - keep));
+  for (const name of doomed) {
+    await rm(path.join(root, name), { recursive: true, force: true });
+  }
+  return doomed;
+}
+
 export async function applyPlan({ plan, targetRoot, backupStamp }) {
   const backupRoot = path.join(targetRoot, KCC_DIR, ".backup", backupStamp);
   let backupUsed = false;
@@ -257,7 +290,20 @@ export async function applyPlan({ plan, targetRoot, backupStamp }) {
 
   let written = 0;
   for (const f of plan.files) {
-    if (f.status === "unchanged") continue;
+    if (f.status === "unchanged") {
+      // Content matches but the bits may not: a lost executable bit is
+      // exactly the drift `--check` used to be blind to, so repair it here
+      // rather than leaving the tree subtly different from the source.
+      if (f.mode !== undefined) {
+        const abs = path.join(targetRoot, f.path);
+        try {
+          if (((await lstat(abs)).mode & 0o777) !== f.mode) await chmod(abs, f.mode);
+        } catch {
+          /* the verify path reports a missing file */
+        }
+      }
+      continue;
+    }
     const abs = path.join(targetRoot, f.path);
     if (f.status === "clobbered") await backup(f.path);
     // A directory or symlink cannot be renamed over; it has already been
