@@ -18,10 +18,9 @@
  * committed to a team repo — the lockfile should describe an intent, not an
  * accumulation of past runs.
  */
-import { createReadStream, existsSync, readFileSync } from "node:fs";
+import { closeSync, existsSync, openSync, readFileSync, readSync } from "node:fs";
 import { mkdir, readFile, readdir, rm } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
-import { createInterface } from "node:readline";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -142,15 +141,75 @@ function fail(msg) {
   process.exit(2);
 }
 
-/** Ask a question on the controlling terminal, not stdin. */
-async function ask(question) {
-  const input = existsSync("/dev/tty") ? createReadStream("/dev/tty") : process.stdin;
-  const rl = createInterface({ input, output: process.stdout });
+/**
+ * Ask a question on the controlling terminal, not stdin.
+ *
+ * stdin is not usable here: piped into `bash`, it is the installer script
+ * itself. So we read `/dev/tty` directly — but with a blocking `readSync`
+ * loop rather than `fs.createReadStream` + `readline`.
+ *
+ * An fs read stream over a terminal character device is the fragile way to
+ * do this: it can surface EAGAIN and other errno conditions as stream
+ * `error` events, and a stream whose `error` nobody handles takes the whole
+ * process down with an unhandled exception — which is what a user piping
+ * this into bash saw. A synchronous read on a blocking fd has none of that
+ * machinery, and a prompt is exactly the place where blocking is correct.
+ *
+ * @returns {string|null} the line typed, or null when there is no terminal
+ */
+function ask(question) {
+  process.stdout.write(question);
+  let fd;
   try {
-    return await new Promise((resolve) => rl.question(question, resolve));
+    fd = openSync("/dev/tty", "r");
+  } catch {
+    return null;
+  }
+  const pause = (ms) => {
+    try {
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+    } catch {
+      /* best effort */
+    }
+  };
+  try {
+    const buf = Buffer.alloc(1024);
+    let line = "";
+    let sawInput = false;
+    for (;;) {
+      let n;
+      try {
+        n = readSync(fd, buf, 0, buf.length, null);
+      } catch (err) {
+        // A terminal opened non-blocking by whatever spawned us: wait rather
+        // than spin, and never let the errno escape as a crash.
+        if (err.code === "EAGAIN") {
+          pause(20);
+          continue;
+        }
+        if (err.code === "EOF") break;
+        return null;
+      }
+      if (n === 0) break; // EOF: the terminal went away
+      sawInput = true;
+      const chunk = buf.toString("utf8", 0, n);
+      const nl = chunk.indexOf("\n");
+      if (nl >= 0) {
+        line += chunk.slice(0, nl);
+        break;
+      }
+      line += chunk;
+    }
+    // EOF with nothing read at all is "there is no interactive input", which
+    // must not be confused with the user pressing Enter to take the default.
+    if (!sawInput) return null;
+    return line.replace(/\r$/, "");
   } finally {
-    rl.close();
-    if (input !== process.stdin) input.destroy();
+    try {
+      closeSync(fd);
+    } catch {
+      /* already gone */
+    }
   }
 }
 
@@ -274,9 +333,10 @@ async function selectModules({ sourceModules, lock, opts }) {
   });
 
   const dflt = installed.length > 0 ? installed.join(",") : "all";
-  const answer = await ask(
-    `\nSelect (numbers/names, comma-separated, "all", "none") [${dflt}]: `
-  );
+  const answer = ask(`\nSelect (numbers/names, comma-separated, "all", "none") [${dflt}]: `);
+  if (answer === null) {
+    fail("could not read from the terminal — pass --all or --modules a,b instead");
+  }
   try {
     return parseSelectionAnswer(answer, names, dflt);
   } catch (err) {
@@ -479,7 +539,9 @@ async function main() {
   }
 
   if (!opts.yes && canPrompt()) {
-    const answer = (await ask(`\nApply? [Y/n] `)).trim().toLowerCase();
+    const raw = ask(`\nApply? [Y/n] `);
+    if (raw === null) fail("could not read from the terminal — re-run with -y to skip this prompt");
+    const answer = raw.trim().toLowerCase();
     if (answer && !["y", "yes"].includes(answer)) {
       console.log("aborted.");
       process.exit(1);

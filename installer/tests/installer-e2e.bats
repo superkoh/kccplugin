@@ -354,3 +354,38 @@ EOF
   [ "$status" -ne 0 ]
   [ -f "$T/.claude/agents/kcc-pm.md/my-notes/x.txt" ]
 }
+
+# --- the interactive prompt, driven on a real pty -----------------------
+#
+# This path went unexercised for the whole of this PR's development, and the
+# first person to run it hit unhandled JavaScript errors: the prompt used an
+# fs read stream over /dev/tty, whose `error` event nobody handled. A pty is
+# the only way to reach it, so these allocate one.
+
+@test "the interactive prompt selects a module and applies" {
+  command -v script >/dev/null 2>&1 || skip "script(1) not available for a pty"
+  # BSD (macOS) and util-linux take different argument shapes.
+  local out
+  if script -q /dev/null true >/dev/null 2>&1; then
+    out=$(( sleep 2; printf '4\ny\n'; sleep 2 ) \
+      | script -q /dev/null node "$REPO/installer/install.mjs" --target "$T" 2>&1)
+  elif script -qec true /dev/null >/dev/null 2>&1; then
+    out=$(( sleep 2; printf '4\ny\n'; sleep 2 ) \
+      | script -qec "node '$REPO/installer/install.mjs' --target '$T'" /dev/null 2>&1)
+  else
+    skip "no usable script(1) syntax on this platform"
+  fi
+  [[ "$out" == *"Modules"* ]]
+  [[ "$out" == *"module(s) active"* ]]
+  [ -f "$T/.claude/kcc/kcc.lock.json" ]
+}
+
+@test "no readable terminal is a clear message, not a crash or a silent default" {
+  # Neither stdin nor stdout is a tty: the installer must refuse rather than
+  # quietly take the "all" default or die with a stack trace.
+  run bash -c "node '$REPO/installer/install.mjs' --target '$T' </dev/null"
+  [ "$status" -ne 0 ]
+  [[ "$output" != *"at Object"* ]]
+  [[ "$output" == *"--all or --modules"* ]]
+  [ ! -f "$T/.claude/kcc/kcc.lock.json" ]
+}
