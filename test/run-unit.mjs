@@ -154,8 +154,10 @@ function printReport() {
  * `PLUGIN=installer` scopes to it; any other PLUGIN filter skips it.
  */
 async function runInstallerTests() {
-  // Runs unfiltered, or when the filter names the installer itself.
-  if (process.env.PLUGIN && !isNonPluginFilter()) return;
+  // Runs unfiltered, or when the filter names the installer itself. The
+  // check is against the literal name, not isNonPluginFilter(): another
+  // pseudo-suite's filter (PLUGIN=probes) must not drag this one along.
+  if (process.env.PLUGIN && process.env.PLUGIN !== "installer") return;
   const dir = path.join(REPO_ROOT, "installer", "tests");
   if (!existsSync(dir)) return;
   const entries = (await readdir(dir)).sort();
@@ -173,6 +175,25 @@ async function runInstallerTests() {
   );
 }
 
+/**
+ * The ablation harness under test/probes/ is framework tooling, not a
+ * plugin, but its own tests guard the seal/scoring machinery that every
+ * campaign's numbers rest on. They once lived outside every npm script,
+ * and a real bug (a dynamically built skill name that a source rename
+ * missed) sat green in CI because of it — so they run here, under the
+ * pseudo-plugin name "probes". `PLUGIN=probes` scopes to them.
+ */
+async function runProbesTests() {
+  if (process.env.PLUGIN && process.env.PLUGIN !== "probes") return;
+  const dir = path.join(REPO_ROOT, "test", "probes", "lib");
+  if (!existsSync(dir)) return;
+  const entries = (await readdir(dir)).sort();
+  await runNodeTest(
+    { name: "probes" },
+    entries.filter((f) => f.endsWith(".test.mjs")).map((f) => path.join(dir, f))
+  );
+}
+
 async function main() {
   if (!isNonPluginFilter()) {
     const plugins = await discoverPlugins();
@@ -184,6 +205,7 @@ async function main() {
     }
   }
   await runInstallerTests();
+  await runProbesTests();
   const failed = printReport();
   process.exit(failed > 0 ? 1 : 0);
 }

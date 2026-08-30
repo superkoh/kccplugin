@@ -14,9 +14,10 @@ Modules are authored in Claude Code **plugin shape** under `plugins/<name>/`
 and are auto-discovered — nothing hardcodes a module name. The plugin shape
 is kept because it is exactly what the installer needs and because it keeps
 `claude plugin validate` as a free L1 correctness oracle; it is *not* a
-statement that these ship as plugins. `.claude-plugin/marketplace.json` is
-retained only as a deprecation window for people still on the old
-marketplace install, and is not the supported distribution path.
+statement that these ship as plugins. There is no marketplace manifest any
+more — the old `.claude-plugin/marketplace.json` distribution path was
+removed outright; README's migration section tells old marketplace users
+how to switch.
 
 Read `README.md` for the user-facing install story.
 
@@ -44,7 +45,8 @@ PLUGIN=hello-world npm run test:l1
 ```
 
 `PLUGIN=installer` scopes L2 to the installer's own unit tests, which live
-at `installer/tests/` rather than under a plugin.
+at `installer/tests/` rather than under a plugin. `PLUGIN=probes` likewise
+scopes L2 to the ablation harness's tests at `test/probes/lib/`.
 
 The installer itself:
 

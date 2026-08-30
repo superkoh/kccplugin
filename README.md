@@ -167,9 +167,10 @@ Two kinds of names changed, both forced by platform rules:
 - Skills use a dot where the plugin form used a colon:
   `kcc-dev-core.unit-tests`, not `kcc-dev-core:unit-tests` — NTFS forbids
   colons in file names, and a project skill's name is its directory name.
-  (This is also why the deprecated marketplace form is no longer
-  equivalent: its prompts now reference dot-form skill names that the
-  plugin registration doesn't provide.)
+  (This is one of the reasons the marketplace path was removed outright
+  rather than kept as a fallback: in plugin form the prompts would
+  reference dot-form skill names that the plugin registration doesn't
+  provide.)
 
 Commands keep the names you already type (`/kcc-pm:onboard`) — their
 colon is generated at registration time and never touches the filesystem.

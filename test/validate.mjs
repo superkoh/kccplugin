@@ -9,14 +9,12 @@
  *
  *   1) Our own strict JSON Schemas (test/schemas/*.json) via ajv.
  *      These are deliberately stricter than Claude Code's own validator so
- *      we catch typos and field drift early, before a plugin ships to a
- *      marketplace.
+ *      we catch typos and field drift early, before a module ships.
  *
  *   2) The official `claude plugin validate <path>` subcommand, invoked
- *      once for the marketplace and once for each plugin root. Its exit
- *      code and stderr are captured and treated as authoritative: if the
- *      official validator rejects something our schemas accept, we still
- *      fail.
+ *      once for each plugin root. Its exit code and stderr are captured
+ *      and treated as authoritative: if the official validator rejects
+ *      something our schemas accept, we still fail.
  *
  * Exit code: 0 when everything passes, 1 otherwise. Output is a terse
  * per-artifact table plus a list of failures.
@@ -30,12 +28,10 @@ import addFormats from "ajv-formats";
 
 import {
   REPO_ROOT,
-  MARKETPLACE_PATH,
   PluginFilterError,
   discoverPlugins,
   inventoryPluginAssets,
   isNonPluginFilter,
-  loadMarketplace,
 } from "./lib/discover.mjs";
 import { parseFrontmatterFile } from "./lib/frontmatter.mjs";
 import { projectPath } from "../installer/lib/projection.mjs";
@@ -127,23 +123,7 @@ function skip(label, reason) {
   checks.push({ label, status: "skip", detail: reason });
 }
 
-async function validateMarketplace(ajv) {
-  const marketplace = await loadMarketplace();
-  if (!marketplace) {
-    record("marketplace.json present", false, "file not found at .claude-plugin/marketplace.json");
-    return null;
-  }
-  const validate = await getValidator(ajv, "marketplace.schema.json");
-  const ok = validate(marketplace.json);
-  record(
-    "marketplace.json (schema)",
-    ok,
-    ok ? undefined : formatAjvErrors(validate.errors)
-  );
-  return marketplace;
-}
-
-async function validatePluginManifest(ajv, plugin, marketplace) {
+async function validatePluginManifest(ajv, plugin) {
   if (!existsSync(plugin.manifestPath)) {
     record(
       `plugins/${plugin.name}/.claude-plugin/plugin.json`,
@@ -180,18 +160,6 @@ async function validatePluginManifest(ajv, plugin, marketplace) {
       `manifest.name "${manifest.name}" does not match directory name "${plugin.name}"`
     );
   }
-  // Soft check: when both the marketplace entry and the manifest declare a
-  // version they must agree, or the marketplace advertises a version the
-  // plugin doesn't ship. Both files pass their own schemas either way, so
-  // this cross-file drift is otherwise invisible to L1.
-  const entry = marketplace?.json?.plugins?.find((p) => p.name === plugin.name);
-  if (ok && entry?.version && manifest.version && entry.version !== manifest.version) {
-    record(
-      `plugins/${plugin.name}: version sync`,
-      false,
-      `marketplace.json version "${entry.version}" does not match plugin.json version "${manifest.version}"`
-    );
-  }
   return manifest;
 }
 
@@ -226,8 +194,8 @@ async function validateHooksJson(ajv, hooksPath, label) {
   record(label, ok, ok ? undefined : formatAjvErrors(validate.errors));
 }
 
-async function validatePlugin(ajv, plugin, marketplace) {
-  await validatePluginManifest(ajv, plugin, marketplace);
+async function validatePlugin(ajv, plugin) {
+  await validatePluginManifest(ajv, plugin);
 
   const assets = await inventoryPluginAssets(plugin);
 
@@ -368,9 +336,8 @@ async function validateProjection(plugins, filtered) {
   }
 }
 
-async function runOfficialValidators(marketplace, plugins) {
+async function runOfficialValidators(plugins) {
   const targets = [];
-  if (marketplace) targets.push({ label: "marketplace", path: REPO_ROOT });
   for (const p of plugins) {
     targets.push({ label: `plugins/${p.name}`, path: p.root });
   }
@@ -430,7 +397,6 @@ async function main() {
   }
   const ajv = makeAjv();
 
-  const marketplace = await validateMarketplace(ajv);
   const plugins = await discoverPlugins();
 
   if (plugins.length === 0) {
@@ -438,12 +404,12 @@ async function main() {
   }
 
   for (const p of plugins) {
-    await validatePlugin(ajv, p, marketplace);
+    await validatePlugin(ajv, p);
   }
 
   await validateProjection(plugins, !!process.env.PLUGIN);
 
-  await runOfficialValidators(marketplace, plugins);
+  await runOfficialValidators(plugins);
 
   printReport();
   process.exit(failures.length > 0 ? 1 : 0);

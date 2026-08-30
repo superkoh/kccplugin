@@ -13,7 +13,7 @@ throwaway project's `.claude/`, exactly as `install.sh` would. See
 | Layer | Runner | What it proves | Cost | API key? |
 |------:|--------|----------------|------|:--:|
 | **L1** | `test/validate.mjs`  | plugin.json / kcc.module.json / all frontmatter / hooks.json are structurally valid against strict schemas; the projection invariants hold (flat agent names, no target-path collisions); plus the official `claude plugin validate` | none | no |
-| **L2** | `test/run-unit.mjs`  | Module-owned unit tests (bats, `node --test`, pytest) plus the installer's own suite at `installer/tests/` | none | no |
+| **L2** | `test/run-unit.mjs`  | Module-owned unit tests (bats, `node --test`, pytest) plus two pseudo-plugin suites: the installer's at `installer/tests/` and the ablation harness's at `test/probes/lib/` | none | no |
 | **L3** | `test/run-e2e.mjs`   | Declarative YAML cases driving `claude -p` inside a project that has the module installed, with loose matchers on the output | API tokens | yes |
 | **L4** | `test/run-sdk.mjs`   | Every module's commands, skills and agents register under their projected names after a real install, with no user-level leakage | tiny API spend | yes |
 
