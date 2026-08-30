@@ -84,7 +84,7 @@ test("a skill rule delivers the skill body through the file the SessionStart hoo
   );
   assert.equal(v.removedLines, 0, "arm A removes nothing");
   assert.ok(
-    injected.includes("kcc-dev-core:unit-tests"),
+    injected.includes("kcc-dev-core.unit-tests"),
     "the delivered text must tell the model which skill is in effect"
   );
   assert.ok(injected.includes(UT_LEAD), "arm A carries the principle");

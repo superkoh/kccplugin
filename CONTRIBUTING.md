@@ -1,9 +1,18 @@
 # Contributing to kccplugin
 
-Thanks for your interest in contributing! `kccplugin` is a Claude Code plugin
-marketplace with a four-layer automated test framework. Plugins live under
-`plugins/<name>/` and are auto-discovered — the framework hardcodes no
-plugin names.
+Thanks for your interest in contributing! `kccplugin` ships Claude Code
+capabilities that an installer projects into a project's `.claude/`, with a
+four-layer automated test framework. Modules are authored in Claude Code
+plugin shape under `plugins/<name>/` and are auto-discovered — the framework
+hardcodes no module names.
+
+Two rules specific to this repo's shape:
+
+- **Change names at the source, never in the installer.** The projection is
+  a pure byte copy; that is what keeps drift hashes exact and shipped
+  prompts identical to the ones ablation measured.
+- **Agent names are flat and must start with the module name** (an agent
+  name containing a colon silently fails to register). L1 enforces it.
 
 ## Ground rules
 

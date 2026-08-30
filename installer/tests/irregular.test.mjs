@@ -1,0 +1,196 @@
+import assert from "node:assert/strict";
+import { mkdtemp, mkdir, rm, symlink, writeFile } from "node:fs/promises";
+import { existsSync, statSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { test } from "node:test";
+import { computePlan } from "../lib/plan.mjs";
+import { IRREGULAR, applyPlan, isIrregular, readDiskHashes } from "../lib/fsops.mjs";
+import { chmod } from "node:fs/promises";
+
+/**
+ * These cover the seam where the planner meets the filesystem. A pure-function
+ * test cannot reach it: the bug they pin down was that `readDiskHashes` reported
+ * "absent" for anything that was not a regular file, so the conflict gate never
+ * saw a directory or a symlink standing at a managed path.
+ */
+
+const P = ".claude/kcc/m/scripts/run.sh";
+
+async function scratch() {
+  return mkdtemp(path.join(tmpdir(), "kcc-irregular-"));
+}
+
+test("a directory at a managed path reads as irregular, not absent", async () => {
+  const root = await scratch();
+  try {
+    await mkdir(path.join(root, ".claude/kcc/m/scripts/run.sh"), { recursive: true });
+    const hashes = await readDiskHashes(root, [
+      ".claude/kcc/m/scripts/run.sh",
+      ".claude/kcc/m/scripts/missing.sh",
+    ]);
+    assert.equal(hashes.get(".claude/kcc/m/scripts/run.sh"), IRREGULAR.dir);
+    assert.equal(
+      hashes.has(".claude/kcc/m/scripts/missing.sh"),
+      false,
+      "genuinely absent stays absent"
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("a symlink at a managed path reads as irregular, not as its target", async () => {
+  const root = await scratch();
+  try {
+    await writeFile(path.join(root, "target.txt"), "payload\n");
+    await mkdir(path.join(root, ".claude/kcc/m"), { recursive: true });
+    const link = ".claude/kcc/m/link.md";
+    await symlink(path.join(root, "target.txt"), path.join(root, link));
+    const hashes = await readDiskHashes(root, [link]);
+    assert.equal(hashes.get(link), IRREGULAR.symlink);
+    assert.ok(isIrregular(hashes.get(link)));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("an irregular entry is a conflict even when the lockfile claims the path", async () => {
+  const sourceModules = new Map([
+    [
+      "m",
+      {
+        name: "m",
+        version: "1.0.0",
+        description: "",
+        requires: [],
+        hooks: {},
+        files: new Map([[P, { sourceAbs: "/src/p", hash: "h1", mode: 0o644 }]]),
+      },
+    ],
+  ]);
+  const plan = computePlan({
+    sourceModules,
+    selection: ["m"],
+    lock: { modules: { m: { version: "1.0.0", files: { [P]: "h1" } } } },
+    diskHashes: new Map([[P, IRREGULAR.dir]]),
+  });
+  assert.equal(plan.files.length, 0, "must not be planned for a write");
+  assert.deepEqual(
+    plan.conflicts.map((c) => [c.path, c.kind]),
+    [[P, "directory"]]
+  );
+});
+
+test("--adopt clears the irregular entry and writes the real file", async () => {
+  const root = await scratch();
+  try {
+    const src = path.join(root, "source.sh");
+    await writeFile(src, "#!/bin/sh\necho hi\n", { mode: 0o755 });
+    const target = path.join(root, "project");
+    await mkdir(path.join(target, P), { recursive: true }); // a directory in the way
+
+    const sourceModules = new Map([
+      [
+        "m",
+        {
+          name: "m",
+          version: "1.0.0",
+          description: "",
+          requires: [],
+          hooks: {},
+          files: new Map([[P, { sourceAbs: src, hash: "h1", mode: 0o755 }]]),
+        },
+      ],
+    ]);
+    const plan = computePlan({
+      sourceModules,
+      selection: ["m"],
+      lock: null,
+      diskHashes: await readDiskHashes(target, [P]),
+      opts: { adopt: true },
+    });
+    assert.equal(plan.conflicts.length, 0);
+    assert.equal(plan.files[0].status, "clobbered");
+
+    const res = await applyPlan({ plan, targetRoot: target, backupStamp: "t" });
+    assert.equal(res.written, 1);
+    assert.ok(statSync(path.join(target, P)).isFile(), "the directory was replaced by the file");
+    assert.ok(res.backupDir, "the displaced directory was backed up");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("the executable bit survives installation", async () => {
+  const root = await scratch();
+  try {
+    const src = path.join(root, "hook.sh");
+    await writeFile(src, "#!/usr/bin/env bash\n", { mode: 0o755 });
+    const target = path.join(root, "project");
+    const sourceModules = new Map([
+      [
+        "m",
+        {
+          name: "m",
+          version: "1.0.0",
+          description: "",
+          requires: [],
+          hooks: {},
+          files: new Map([
+            [".claude/kcc/m/scripts/hook.sh", { sourceAbs: src, hash: "h1", mode: 0o755 }],
+          ]),
+        },
+      ],
+    ]);
+    const plan = computePlan({
+      sourceModules,
+      selection: ["m"],
+      lock: null,
+      diskHashes: new Map(),
+    });
+    await applyPlan({ plan, targetRoot: target, backupStamp: "t" });
+    const mode = statSync(path.join(target, ".claude/kcc/m/scripts/hook.sh")).mode & 0o777;
+    assert.equal(mode, 0o755, "a 0644 install silently breaks any directly-executed script");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("a file that exists but cannot be read is irregular, not absent", { skip: process.getuid?.() === 0 ? "root bypasses DAC permission checks" : false }, async () => {
+  const root = await scratch();
+  try {
+    await mkdir(path.join(root, ".claude/kcc/m"), { recursive: true });
+    const rel = ".claude/kcc/m/secret.md";
+    const p = path.join(root, rel);
+    await writeFile(p, "payload\n");
+    await chmod(p, 0o000);
+    const hashes = await readDiskHashes(root, [rel]);
+    // Reporting it absent would classify it `new` and destroy it with no
+    // conflict and no backup — the same class as the directory/symlink case.
+    assert.equal(hashes.get(rel), IRREGULAR.unreadable);
+  } finally {
+    await chmod(path.join(root, ".claude/kcc/m/secret.md"), 0o644).catch(() => {});
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("removing a path occupied by a directory does not throw EISDIR", async () => {
+  const root = await scratch();
+  try {
+    const target = path.join(root, "project");
+    const gone = ".claude/kcc/m/gone";
+    await mkdir(path.join(target, gone, "inner"), { recursive: true });
+    const plan = {
+      files: [],
+      removals: [{ path: gone, module: "m", reason: "orphan", locallyModified: false }],
+    };
+    // The write path learned this lesson first; the removal path had the same
+    // defect, and it aborted the run after files had already been written.
+    const res = await applyPlan({ plan, targetRoot: target, backupStamp: "t" });
+    assert.equal(res.removed, 1);
+    assert.equal(existsSync(path.join(target, gone)), false);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});

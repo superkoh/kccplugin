@@ -4,10 +4,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this repo is
 
-`kccplugin` is a **Claude Code plugin marketplace** with a convention-driven,
-four-layer automated test framework. Plugins live under `plugins/<name>/` and
-are auto-discovered — the framework hardcodes no plugin names. The marketplace
-manifest is `.claude-plugin/marketplace.json`.
+`kccplugin` ships Claude Code capabilities that are **installed into a
+project's `.claude/`**, not into a user's `~/.claude`. `install.sh` (curl
+one-liner) → `installer/install.mjs` does install, upgrade, verify and
+uninstall as one reconciling operation. A convention-driven, four-layer
+test framework covers it.
+
+Modules are authored in Claude Code **plugin shape** under `plugins/<name>/`
+and are auto-discovered — nothing hardcodes a module name. The plugin shape
+is kept because it is exactly what the installer needs and because it keeps
+`claude plugin validate` as a free L1 correctness oracle; it is *not* a
+statement that these ship as plugins. There is no marketplace manifest any
+more — the old `.claude-plugin/marketplace.json` distribution path was
+removed outright; README's migration section tells old marketplace users
+how to switch.
+
+Read `README.md` for the user-facing install story.
 
 ## Common commands
 
@@ -32,12 +44,24 @@ PLUGIN=hello-world npm test
 PLUGIN=hello-world npm run test:l1
 ```
 
+`PLUGIN=installer` scopes L2 to the installer's own unit tests, which live
+at `installer/tests/` rather than under a plugin. `PLUGIN=probes` likewise
+scopes L2 to the ablation harness's tests at `test/probes/lib/`.
+
+The installer itself:
+
+```bash
+node installer/install.mjs --help
+node installer/install.mjs --target /path/to/project --all --dry-run
+node installer/install.mjs --target /path/to/project --check
+```
+
 L3 and L4 only skip when **no auth is available at all**. "Auth" means
 any of `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN`,
 `CLAUDE_CODE_OAUTH_TOKEN`, or an existing `claude auth` keychain login.
 Don't infer a skip from a missing env var — run the layer and read its
-output. A banner saying `fallback (user keychain / OAuth; --bare
-dropped)` is a normal successful run, not a skip.
+output. A banner saying `auth: user keychain / OAuth` is a normal
+successful run, not a skip.
 
 CI runs `test:offline` on every push/PR; the full L3+L4 suite runs
 nightly and on manual dispatch — see `.github/workflows/test.yml`.
@@ -48,8 +72,14 @@ Layer semantics are in the npm-script comments above; runners live in
 `test/`. Full layer reference: `test/README.md`.
 
 Shared helpers live in `test/lib/`. `test/lib/discover.mjs` is the **single
-source of truth** for directory conventions — to move or rename a convention,
-edit that file and nothing else needs to change.
+source of truth** for source-side directory conventions;
+`installer/lib/projection.mjs` is the single source of truth for how those
+map onto an installed project.
+
+L3 and L4 run against a **real project install**, not `--plugin-dir`:
+`test/lib/project-fixture.mjs` installs modules into a throwaway git repo
+and runs the CLI there. Hermeticity comes from `CLAUDE_CONFIG_DIR`, never
+`--bare` — see the gotchas below.
 
 Strict schemas in `test/schemas/*.json` use `additionalProperties: false` by
 design, so typos in manifests fail loudly at L1 rather than silently
@@ -66,6 +96,10 @@ field and becomes the slash-command namespace. Names must be kebab-case
 ```
 plugins/<name>/
 ├── .claude-plugin/plugin.json           # manifest (L1)
+├── kcc.module.json                      # optional; installer-only metadata
+│                                        #   ({"requires": [...]}) — kept out of
+│                                        #   plugin.json, whose official
+│                                        #   validator rejects unknown keys
 ├── commands/*.md                        # slash commands (YAML frontmatter, L1)
 ├── agents/*.md                          # sub-agents (YAML frontmatter, L1)
 ├── skills/<skill>/SKILL.md              # skills (YAML frontmatter, L1)
@@ -103,13 +137,137 @@ for free.
   model the prompt actually serves (Opus-class), never a cheaper one.
 - **Triage offline first.** Run L1+L2+L4 before L3. If any are red, fix
   them first — don't burn L3 money on a known-broken plugin.
-- **Hermetic vs. fallback auth.** L3 uses `claude --bare` when
-  `ANTHROPIC_API_KEY` is set (ignores user `.claude/` and `~/.claude`).
-  Without the env var it drops `--bare` and falls back to the user's
-  keychain OAuth. Both are valid; CI should set the secret.
+- **`--bare` is useless for testing an install.** Verified against a live
+  CLI: `--bare` drops the *project's* `.claude/` as well as the user's, so
+  every project-installed command, skill and agent vanishes. L3/L4 isolate
+  with `CLAUDE_CONFIG_DIR=<empty dir>` instead, which gives `plugins: []`
+  and none of the developer's own skills while leaving the project tree
+  intact.
 - **Frontmatter `description` is required** on commands, skills, and
   agents — missing it both fails L1 frontmatter schemas and prevents the
   plugin from registering at L4.
+
+### Project-level registration rules (all verified against a live CLI)
+
+These are what `installer/lib/projection.mjs` encodes. They are not in the
+plugin docs and they are not symmetric — get one wrong and a capability
+disappears silently.
+
+- **Commands namespace by subdirectory.** `.claude/commands/<ns>/<f>.md`
+  registers as `/<ns>:<f>`.
+- **Skills do NOT namespace by subdirectory.** A nested
+  `.claude/skills/<a>/<b>/SKILL.md` registers as *nothing at all*. A skill's
+  name is its directory name **verbatim** — frontmatter `name:` is ignored —
+  and a separator in that directory name survives (verified live: `.` `_`
+  `@` `~` `+` and `:` all register). So `.claude/skills/kcc-dev-core.spec/`
+  is what preserves the namespace. The separator is a dot, NOT the
+  plugin-style colon: NTFS forbids `:` in file names, so a colon here makes
+  the target repo impossible to even check out on native Windows.
+- **Agent names come from frontmatter and may not contain a colon.** An
+  agent named `kcc-pm:pm` silently fails to register. Agents are therefore
+  flat, and L1 requires an agent's name to equal its filename and to start
+  with its module name — otherwise two modules would overwrite each other.
+- **`extraKnownMarketplaces` is ignored in project settings**, while
+  `enabledPlugins` is honored. So an in-repo marketplace still needs a
+  per-machine `claude plugin marketplace add`, which is why the installer
+  projects files instead.
+- **`$CLAUDE_PROJECT_DIR` expands in hook commands** in project
+  `settings.json`, but **not** in a marketplace `path`.
+- Hook scripts self-locate via `$0` and read `../context/*.md`, so keeping
+  `scripts/` and `context/` adjacent under `.claude/kcc/<module>/` means
+  they run unmodified. Only `${CLAUDE_PLUGIN_ROOT}` in `hooks.json` is
+  rewritten.
+
+### Installer invariants
+
+- **The projection is a pure byte copy.** No installed file's content is
+  ever rewritten, which is what keeps drift hashes exact and keeps shipped
+  prompts byte-identical to the ones the ablation campaigns measured. If a
+  name has to change, change it *at the source*.
+- **`--modules` is declarative**, not additive: an installed module that is
+  not listed gets uninstalled.
+- **The lockfile is written last**, so a run that dies partway leaves the
+  lock describing the old state and the next run reconciles.
+- **A hook entry is kcc-owned iff its command contains `/.claude/kcc/`.**
+  That predicate is the entire settings.json merge strategy: strip ours,
+  append the current truth, never touch the project's own entries.
+- **`.claude/` is config, not source.** `stop-test-audit.sh` excludes it —
+  without that, the first turn after an install blocks on kcc's own
+  freshly-untracked payload.
+- **Anything that is not a regular file at a managed path is a conflict**, and
+  never "absent". Treating a directory or symlink as absent classifies it as
+  a new file, which skips the conflict gate and then destroys the symlink or
+  dies mid-`rename` with EISDIR. `readDiskHashes` returns an `IRREGULAR`
+  marker for these.
+- **An empty `--modules` list is an error**, not an uninstall. `--modules
+  "$UNSET"` in CI would otherwise wipe a repo's whole `.claude/`.
+- **Every projected hook command must contain the ownership marker.**
+  `projectHooks` throws otherwise: an unrecognizable entry is appended on
+  every install, grows settings.json without bound, and survives uninstall.
+- **kcc never deletes a file it did not create.** `settings.json` is removed
+  only when it held nothing but our hooks.
+- **Enforcement is three layers, not one**: recover (byte copy + hashes),
+  detect (`--check` in CI), refuse (`kcc-guard`'s PreToolUse deny, which
+  holds even under `bypassPermissions`).
+- **The guard is a guardrail, not a boundary — and the error costs are
+  asymmetric the other way.** Its job is the agent that edits a managed file
+  *without knowing it is managed*. Because `--check` plus overwrite-on-upgrade
+  already recover from a miss, a false denial (blocking `git add <managed>`,
+  `[ -f <managed> ]`, `npm test`) costs more than a miss does. So the Bash
+  deny list is short and explicit and everything else is allowed, unknown
+  commands included. Five rewrites went the other way — "unknown therefore
+  dangerous" — chasing `perl -e`, `xargs` laundering and `../` escapes that
+  nobody reaches by accident, while making daily use worse. Before hardening
+  this further, check the finding is in scope.
+- **`--check` compares hooks structurally, key order and all.** A team that
+  runs prettier over `settings.json` must not get a permanently red CI gate.
+- **Test the product's entry point, not its libraries.** This has now bitten
+  three times: a fixture that re-implemented the apply sequence skipped the
+  lockfile and silently disabled kcc-guard inside it; and `plan.test.mjs`
+  asserted `pulledIn` by calling `computePlan` with an *unresolved* selection
+  — a shape `install.mjs` never produces — so the "+ required by your
+  selection" report was dead at runtime while its unit test stayed green. A
+  green unit test on a call shape the product does not make is worse than no
+  test.
+- **The guard protects the lockfile, and nothing else it does not own.**
+  The lock is not in `modules[].files` yet arms the guard — `rm` it and
+  everything is writable again. `.claude/settings.json` is the opposite case:
+  it is the *project's* file, so guarding it wholesale would block the team
+  from ever adding their own hooks or permissions. That one is `--check`'s.
+- **The lock records an exec flag, never absolute mode bits.** Raw modes come
+  from the source checkout's umask and git does not carry them, so recording
+  them turns `--check` red on every teammate's machine. Only the executable
+  bit is portable — and it is checked in both directions.
+- **The guard reads its input in one `jq` call, separated by `\x1f`.** Tab is
+  IFS *whitespace*, so `read` collapses runs of it: with a tab separator an
+  empty `file_path` shifted the command out of its variable and disabled Bash
+  guarding entirely, while every Write test stayed green.
+- **The guard judges the WHOLE Bash command, not the segment holding the
+  path.** `echo <managed> | xargs rm` launders it otherwise. And no command
+  that takes a program (`sed`, `perl`, `ruby`, `python`, `node`, `xargs`) is
+  read-only, whatever its flags — `sed -n 'w <path>'` and `perl -e open(...)`
+  write with no flag at all. Five rounds of review each found another way to
+  write that a per-command heuristic had missed; enumerate the safe forms,
+  never the dangerous ones.
+- **The lockfile is untrusted input.** It is committed to the target repo and
+  read on every run, so its paths and module names are validated
+  (`isSafeTargetPath`) before anything reaches the filesystem — a crafted
+  `../victim.txt` entry otherwise made the removal loop delete files outside
+  the project on every teammate's machine. `applyPlan` re-checks at the
+  boundary rather than trusting its caller.
+- **Decisions with more than two branches are pure functions, not inline
+  ladders.** `decideSettingsWrite` exists because three independent
+  predicates in `main()` had no proof of exhaustiveness — and were not:
+  "nothing of ours is left but the project owns the file" fell through all
+  three, so uninstall left dead hook commands behind. In `main()` the only
+  way to test that is to script a scenario nobody thought of; as a total
+  function it is one unit test.
+- **Assert the effect, not the artifact.** The bats case that should have
+  caught it checked only that settings.json still existed, never that our
+  hooks were gone — green against the bug.
+- **Only text is CRLF-normalized before hashing.** Collapsing `0x0D 0x0A`
+  inside a binary payload makes two different files hash the same, so real
+  drift would pass `--check` and never be restored.
 
 ## Pointers to existing workflow skills
 

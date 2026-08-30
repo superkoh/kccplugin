@@ -27,10 +27,15 @@
  *   are opt-in.
  */
 import { spawn } from "node:child_process";
+import { existsSync } from "node:fs";
+import { readdir } from "node:fs/promises";
+import path from "node:path";
 import {
   PluginFilterError,
+  REPO_ROOT,
   discoverPlugins,
   discoverTestArtifacts,
+  isNonPluginFilter,
 } from "./lib/discover.mjs";
 
 const results = []; // [{ plugin, runner, ok, output, skipped, reason }]
@@ -142,14 +147,65 @@ function printReport() {
   return failed;
 }
 
+/**
+ * The installer is not a plugin, but it is the load-bearing code of this
+ * repo — everything a project ends up with passes through it — so its unit
+ * tests run in the same layer, under the pseudo-plugin name "installer".
+ * `PLUGIN=installer` scopes to it; any other PLUGIN filter skips it.
+ */
+async function runInstallerTests() {
+  // Runs unfiltered, or when the filter names the installer itself. The
+  // check is against the literal name, not isNonPluginFilter(): another
+  // pseudo-suite's filter (PLUGIN=probes) must not drag this one along.
+  if (process.env.PLUGIN && process.env.PLUGIN !== "installer") return;
+  const dir = path.join(REPO_ROOT, "installer", "tests");
+  if (!existsSync(dir)) return;
+  const entries = (await readdir(dir)).sort();
+  const plugin = { name: "installer" };
+  await runNodeTest(
+    plugin,
+    entries.filter((f) => f.endsWith(".test.mjs")).map((f) => path.join(dir, f))
+  );
+  // The installer's end-to-end behaviour (argument parsing, the planner/
+  // filesystem seam, the shell wrapper) is shell-shaped, so it lives in bats
+  // alongside the pure-function suites.
+  await runBats(
+    plugin,
+    entries.filter((f) => f.endsWith(".bats")).map((f) => path.join(dir, f))
+  );
+}
+
+/**
+ * The ablation harness under test/probes/ is framework tooling, not a
+ * plugin, but its own tests guard the seal/scoring machinery that every
+ * campaign's numbers rest on. They once lived outside every npm script,
+ * and a real bug (a dynamically built skill name that a source rename
+ * missed) sat green in CI because of it — so they run here, under the
+ * pseudo-plugin name "probes". `PLUGIN=probes` scopes to them.
+ */
+async function runProbesTests() {
+  if (process.env.PLUGIN && process.env.PLUGIN !== "probes") return;
+  const dir = path.join(REPO_ROOT, "test", "probes", "lib");
+  if (!existsSync(dir)) return;
+  const entries = (await readdir(dir)).sort();
+  await runNodeTest(
+    { name: "probes" },
+    entries.filter((f) => f.endsWith(".test.mjs")).map((f) => path.join(dir, f))
+  );
+}
+
 async function main() {
-  const plugins = await discoverPlugins();
-  for (const plugin of plugins) {
-    const art = await discoverTestArtifacts(plugin);
-    await runNodeTest(plugin, art.unit.nodeTest);
-    await runBats(plugin, art.unit.bats);
-    await runPytest(plugin, art.unit.pytest);
+  if (!isNonPluginFilter()) {
+    const plugins = await discoverPlugins();
+    for (const plugin of plugins) {
+      const art = await discoverTestArtifacts(plugin);
+      await runNodeTest(plugin, art.unit.nodeTest);
+      await runBats(plugin, art.unit.bats);
+      await runPytest(plugin, art.unit.pytest);
+    }
   }
+  await runInstallerTests();
+  await runProbesTests();
   const failed = printReport();
   process.exit(failed > 0 ? 1 : 0);
 }

@@ -2,44 +2,37 @@
 /**
  * L4 — Load-time / registration assertions.
  *
- * What L1 cannot prove: that the Claude Code runtime actually loads a
- * plugin, that its slash commands are registered with the right names,
- * that its MCP servers spawn, etc. L4 answers those questions by
- * actually asking the CLI to load the plugin and emit its init message.
+ * What L1 cannot prove: that the Claude Code runtime actually loads what the
+ * installer put in a project, and registers it under the names people type.
+ * L4 answers that by installing the modules into a throwaway project and
+ * asking the CLI what it sees.
  *
- * How it works:
+ *   1. install the selected modules into a temp project by running
+ *      `installer/install.mjs` — the same code path `install.sh` runs. The
+ *      fixture deliberately shells out rather than calling the libraries;
+ *      see project-fixture.mjs for why (a library-level install skipped the
+ *      lockfile and silently disarmed kcc-guard inside the fixture)
+ *   2. spawn `claude -p ping` with cwd = that project and CLAUDE_CONFIG_DIR
+ *      pointed at an empty directory, so nothing of the developer's own
+ *      setup leaks in
+ *   3. read the `system/init` record and assert against each module's
+ *      `tests/sdk/expected.json`
  *
- *   claude -p "<tiny prompt>" \
- *     --bare \
- *     --plugin-dir <plugin-root> \
- *     --output-format stream-json \
- *     --disallowedTools "<everything>" \
- *     --max-budget-usd 0.02 \
- *     --include-partial-messages=false
+ * One spawn covers every module, which also proves the modules coexist —
+ * two modules projecting onto the same path would show up here as a missing
+ * registration rather than as a silent overwrite in someone's repo.
  *
- * The first line of stream-json is always a `{"type":"system",
- * "subtype":"init", ...}` record listing slash_commands, mcp_servers,
- * and tools. We consume it and kill the child — we don't need the
- * model's reply.
- *
- * Assertions come from:
- *
- *   plugins/<name>/tests/sdk/expected.json
- *
- * Minimal shape:
+ * `expected.json` shape (every section optional):
  *
  *   {
- *     "slashCommands": {
- *       "requires": ["/hello-world:hello"],
- *       "forbids":  []
- *     },
- *     "mcpServers": {
- *       "requires": []
- *     }
+ *     "slashCommands": { "requires": ["kcc-pm:onboard"], "forbids": [] },
+ *     "skills":        { "requires": ["kcc-pm.pm-playbook"] },
+ *     "agents":        { "requires": ["kcc-pm"] },
+ *     "mcpServers":    { "requires": [] }
  *   }
  *
- * Plugins without an expected.json get a load-only smoke check: we just
- * verify the CLI starts and emits an init message without error.
+ * A module without an expected.json gets a smoke check: the CLI started and
+ * emitted an init record.
  */
 import { spawn } from "node:child_process";
 import { readFile } from "node:fs/promises";
@@ -48,44 +41,40 @@ import {
   PluginFilterError,
   discoverPlugins,
   discoverTestArtifacts,
+  inventoryPluginAssets,
+  isNonPluginFilter,
 } from "./lib/discover.mjs";
+import { createInstalledProject } from "./lib/project-fixture.mjs";
 import { DEFAULT_MODEL, assertClaudeAvailable } from "./lib/claude-runner.mjs";
+import { walkFiles } from "../installer/lib/fsops.mjs";
+import { installedSkillName } from "../installer/lib/projection.mjs";
+import path from "node:path";
 
 const TINY_PROMPT = "ping";
 const LOAD_BUDGET_USD = 0.02;
-const LOAD_TIMEOUT_MS = 60_000;
-
-function hasApiKey() {
-  return !!(
-    process.env.ANTHROPIC_API_KEY ||
-    process.env.CLAUDE_CODE_OAUTH_TOKEN ||
-    process.env.ANTHROPIC_AUTH_TOKEN
-  );
-}
+const LOAD_TIMEOUT_MS = 90_000;
 
 /**
- * Spawn claude and return the first `system/init` record from its
- * stream-json output. Kills the child as soon as we have it.
+ * Spawn claude inside the installed project and return the first
+ * `system/init` record. Kills the child as soon as we have it.
  */
-function captureInit(pluginRoot) {
+function captureInit({ projectDir, env }) {
   return new Promise((resolve, reject) => {
     const argv = [
       "-p", TINY_PROMPT,
-      "--bare",
       "--permission-mode", "bypassPermissions",
       "--no-session-persistence",
-      // stream-json + --print requires --verbose per the CLI.
       "--verbose",
       "--output-format", "stream-json",
       "--max-budget-usd", String(LOAD_BUDGET_USD),
-      "--plugin-dir", pluginRoot,
-      // Lock the model out of doing anything expensive while we wait for init.
       "--disallowedTools",
       "Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch,Task,Agent",
       "--model", DEFAULT_MODEL,
     ];
 
     const child = spawn("claude", argv, {
+      cwd: projectDir,
+      env,
       stdio: ["ignore", "pipe", "pipe"],
     });
 
@@ -115,7 +104,7 @@ function captureInit(pluginRoot) {
         try {
           record = JSON.parse(line);
         } catch {
-          continue; // ignore non-JSON noise
+          continue;
         }
         if (record?.type === "system" && record?.subtype === "init") {
           settled = true;
@@ -150,153 +139,185 @@ function captureInit(pluginRoot) {
 
 async function loadExpectations(expectedPath) {
   if (!expectedPath || !existsSync(expectedPath)) return null;
-  const raw = await readFile(expectedPath, "utf-8");
-  return JSON.parse(raw);
+  return JSON.parse(await readFile(expectedPath, "utf-8"));
+}
+
+function names(raw) {
+  if (!Array.isArray(raw)) return [];
+  return raw.map((e) => (typeof e === "string" ? e : e?.name)).filter(Boolean);
+}
+
+function assertList(label, actual, spec, failures) {
+  if (!spec) return;
+  for (const must of spec.requires ?? []) {
+    if (!actual.includes(must)) {
+      failures.push(`${label}: required "${must}" not registered`);
+    }
+  }
+  for (const bad of spec.forbids ?? []) {
+    if (actual.includes(bad)) failures.push(`${label}: forbidden "${bad}" is registered`);
+  }
 }
 
 /**
- * Pull slash command names out of the init record. We accept two shapes
- * because the CLI's stream-json schema has evolved: an array of strings,
- * or an array of objects with a `name` field.
+ * Registration the installer promises even without an expected.json: every
+ * command, skill and agent a module ships must appear under its projected
+ * name. This is what catches a projection rule that quietly stops working
+ * after a CLI upgrade — for instance if dots in skill directory names
+ * were ever rejected.
  */
-function extractSlashCommands(init) {
-  const raw = init.slash_commands ?? init.slashCommands ?? init.commands ?? [];
-  if (!Array.isArray(raw)) return [];
-  return raw
-    .map((entry) => (typeof entry === "string" ? entry : entry?.name))
-    .filter(Boolean);
-}
-
-function extractMcpServers(init) {
-  const raw = init.mcp_servers ?? init.mcpServers ?? [];
-  if (!Array.isArray(raw)) return [];
-  return raw
-    .map((entry) => (typeof entry === "string" ? entry : entry?.name))
-    .filter(Boolean);
-}
-
-function assertList(name, actual, spec, failures) {
-  if (!spec) return;
-  if (Array.isArray(spec.requires)) {
-    for (const must of spec.requires) {
-      if (!actual.includes(must)) {
-        failures.push(
-          `${name}: required "${must}" not registered (saw: ${JSON.stringify(actual)})`
-        );
-      }
-    }
-  }
-  if (Array.isArray(spec.forbids)) {
-    for (const bad of spec.forbids) {
-      if (actual.includes(bad)) {
-        failures.push(`${name}: forbidden "${bad}" is registered`);
-      }
-    }
-  }
-}
-
-async function runForPlugin(plugin) {
-  const artifacts = await discoverTestArtifacts(plugin);
-  const expected = await loadExpectations(artifacts.sdkExpected);
-
-  let init;
-  try {
-    const out = await captureInit(plugin.root);
-    init = out.init;
-  } catch (err) {
-    return { plugin: plugin.name, ok: false, failures: [err.message] };
-  }
-
-  const failures = [];
-  const slashCommands = extractSlashCommands(init);
-  const mcpServers = extractMcpServers(init);
-
-  if (expected) {
-    assertList("slashCommands", slashCommands, expected.slashCommands, failures);
-    assertList("mcpServers", mcpServers, expected.mcpServers, failures);
-  }
-  // If the plugin's manifest claims commands/agents/skills but *none* of
-  // them ended up in the init message, the plugin almost certainly failed
-  // to load silently. Worth flagging even without explicit expectations.
-  // (We only warn if the plugin has no sdk expectations at all.)
-
+async function impliedRequirements(plugin) {
+  const assets = await inventoryPluginAssets(plugin);
+  // `projectPath` ships `commands/**` recursively and a nested command
+  // registers as `/<module>:<dir>:<file>`, so a top-level-only scan would
+  // silently assert nothing about it — the exact blind spot this block
+  // exists to close.
+  const commandFiles = (await walkFiles(path.join(plugin.root, "commands")))
+    .filter((f) => f.endsWith(".md"))
+    .map((f) => f.replace(/\.md$/, "").split("/").join(":"));
   return {
-    plugin: plugin.name,
-    ok: failures.length === 0,
-    failures,
-    slashCommands,
-    mcpServers,
-    hadExpectations: !!expected,
+    slashCommands: commandFiles.map((c) => `${plugin.name}:${c}`),
+    skills: assets.skills.map((s) => installedSkillName(plugin.name, s.name)),
+    agents: assets.agents.map((a) => a.name),
   };
 }
 
 function printReport(results) {
   console.log("");
-  console.log("L4  Load-time / registration");
+  console.log("L4  Load-time / registration (project install)");
   console.log("-".repeat(72));
   let failed = 0;
   for (const r of results) {
     const icon = r.ok ? "✓" : "✗";
-    const mode = r.hadExpectations ? "asserted" : "smoke";
-    console.log(`  ${icon} ${r.plugin}  (${mode})`);
+    console.log(`  ${icon} ${r.plugin}  (${r.mode})`);
     if (r.ok) {
-      // Filter noise: only list commands in this plugin's namespace.
-      // The rest belong to the user's global skill set and aren't the
-      // responsibility of this plugin.
-      const ns = r.plugin + ":";
-      const own = r.slashCommands.filter(
-        (c) => c.startsWith(ns) || c.startsWith("/" + ns)
-      );
-      console.log(`      slash_commands: ${JSON.stringify(own)}`);
-      if (r.mcpServers.length) {
-        console.log(`      mcp_servers:    ${JSON.stringify(r.mcpServers)}`);
-      }
+      if (r.registered.length) console.log(`      registered: ${JSON.stringify(r.registered)}`);
     } else {
       failed++;
       for (const f of r.failures) console.log(`      ${f}`);
-      // When asserting fails, dump the full list so the author can see
-      // exactly what the CLI actually registered.
-      console.log(
-        `      (observed slash_commands: ${JSON.stringify(r.slashCommands)})`
-      );
+      console.log(`      (observed skills:   ${JSON.stringify(r.observed.skills)})`);
+      console.log(`      (observed commands: ${JSON.stringify(r.observed.slashCommands)})`);
+      console.log(`      (observed agents:   ${JSON.stringify(r.observed.agents)})`);
     }
   }
   console.log("-".repeat(72));
-  console.log(`  ${results.length - failed} of ${results.length} plugin(s) load cleanly.`);
+  console.log(`  ${results.length - failed} of ${results.length} module(s) register cleanly.`);
   console.log("");
   return failed;
 }
 
 async function main() {
-  if (!hasApiKey()) {
-    console.log("");
-    console.log("L4  Load-time / registration (skipped)");
+  if (isNonPluginFilter()) {
+    console.log(`\nL4  Load-time / registration`);
     console.log("-".repeat(72));
-    console.log("  no ANTHROPIC_API_KEY / CLAUDE_CODE_OAUTH_TOKEN in env.");
-    console.log("  run with `ANTHROPIC_API_KEY=... npm run test:l4` to enable.");
+    console.log(`  - skipped: "${process.env.PLUGIN}" is not a plugin (nothing to register)`);
     console.log("");
     process.exit(0);
   }
 
+  // Distinguish "the CLI is missing/broken" from "there is no auth" BEFORE
+  // guessing at stderr wording: an ENOENT must not be reported as a skip, and
+  // a CLI error-message reword must not turn a no-auth machine into a failure.
   try {
     await assertClaudeAvailable();
   } catch (err) {
-    console.error("L4: cannot run", err.message);
+    console.error("L4: cannot run —", err.message);
     process.exit(2);
   }
 
   const plugins = await discoverPlugins();
   if (plugins.length === 0) {
-    console.log("L4: no plugins found under plugins/");
+    console.log("L4: no modules found under plugins/");
     process.exit(0);
   }
 
-  const results = [];
-  for (const plugin of plugins) {
-    results.push(await runForPlugin(plugin));
+  const fixture = await createInstalledProject(plugins.map((p) => p.name));
+  let code;
+  try {
+    code = await runAssertions(plugins, fixture);
+  } finally {
+    // runAssertions must RETURN, never process.exit: an exit here would skip
+    // this cleanup, and the fixture may hold a copy of the user's credentials.
+    await fixture.cleanup();
   }
+  process.exit(code);
+}
+
+async function runAssertions(plugins, fixture) {
+  let init;
+  try {
+    ({ init } = await captureInit(fixture));
+  } catch (err) {
+    const msg = String(err.message);
+    if (/credit balance|authentication|log ?in|API key/i.test(msg)) {
+      console.log("");
+      console.log("L4  Load-time / registration (skipped)");
+      console.log("-".repeat(72));
+      console.log(`  no usable auth: ${msg.split("\n")[0]}`);
+      console.log("");
+      return 0;
+    }
+    console.error("L4: cannot run —", msg);
+    return 2;
+  }
+
+  const observed = {
+    slashCommands: names(init.slash_commands ?? init.slashCommands ?? init.commands),
+    skills: names(init.skills),
+    agents: names(init.agents),
+    mcpServers: names(init.mcp_servers ?? init.mcpServers),
+  };
+
+  // Nothing user-level should have leaked into a hermetic fixture.
+  const leaked = names(init.plugins);
+  const results = [];
+
+  for (const plugin of plugins) {
+    const artifacts = await discoverTestArtifacts(plugin);
+    const expected = await loadExpectations(artifacts.sdkExpected);
+    const implied = await impliedRequirements(plugin);
+    const failures = [];
+
+    assertList("slashCommands", observed.slashCommands, { requires: implied.slashCommands }, failures);
+    assertList("skills", observed.skills, { requires: implied.skills }, failures);
+    assertList("agents", observed.agents, { requires: implied.agents }, failures);
+
+    if (expected) {
+      assertList("slashCommands", observed.slashCommands, expected.slashCommands, failures);
+      assertList("skills", observed.skills, expected.skills, failures);
+      assertList("agents", observed.agents, expected.agents, failures);
+      assertList("mcpServers", observed.mcpServers, expected.mcpServers, failures);
+    }
+
+    const registered = [
+      ...implied.skills.filter((n) => observed.skills.includes(n)),
+      ...implied.slashCommands.filter((n) => observed.slashCommands.includes(n)),
+      ...implied.agents.filter((n) => observed.agents.includes(n)),
+    ];
+
+    results.push({
+      plugin: plugin.name,
+      ok: failures.length === 0,
+      mode: expected ? "asserted" : registered.length > 0 ? "implied" : "smoke",
+      failures,
+      registered,
+      observed,
+    });
+  }
+
+  if (leaked.length > 0) {
+    results.push({
+      plugin: "(fixture hermeticity)",
+      ok: false,
+      mode: "asserted",
+      failures: [`user-level plugins leaked into the fixture: ${JSON.stringify(leaked)}`],
+      registered: [],
+      observed,
+    });
+  }
+
   const failed = printReport(results);
-  process.exit(failed > 0 ? 1 : 0);
+  return failed > 0 ? 1 : 0;
 }
 
 main().catch((err) => {

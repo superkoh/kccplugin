@@ -43,8 +43,13 @@ jobs:
       - name: Run L1 (schema + official validate)
         run: npm run test:l1
 
-      - name: Run L2 (unit)
+      # L2 also runs the installer's own suites: the pure planner/settings
+      # tests and installer-e2e.bats, which drives a real install against a
+      # real directory (empty --modules, a directory or symlink squatting a
+      # managed path, the guard hook, idempotence, --check, uninstall).
+      - name: Run L2 (unit + installer)
         run: npm run test:l2
+
 
   online:
     name: L3 + L4 (API-gated)

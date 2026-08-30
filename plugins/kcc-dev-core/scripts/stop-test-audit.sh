@@ -3,7 +3,7 @@
 #
 # When the turn ends with uncommitted source-code changes but zero
 # touched test files, block the stop ONCE and hand the model a reason
-# pointing at kcc-dev-core:unit-tests (backfill mode). The model
+# pointing at kcc-dev-core.unit-tests (backfill mode). The model
 # either backfills tests or states why unit tests don't apply, then
 # stops again — `stop_hook_active` guarantees the second stop passes,
 # so no infinite loop is possible.
@@ -71,6 +71,18 @@ if [[ -z "$changed" ]]; then
   exit 0
 fi
 
+# Claude Code configuration is not product source. Everything under
+# `.claude/` is prompts, hooks and installed capability files — including
+# every script kcc itself installs. Without this exclusion, the first turn
+# after installing kcc into a project blocks on its own payload: dozens of
+# freshly untracked .sh/.mjs files and no test in sight.
+is_config_file() {
+  case "/$1" in
+    */.claude/*) return 0 ;;
+  esac
+  return 1
+}
+
 is_test_file() {
   local p="$1" base="${1##*/}"
   case "/$p/" in
@@ -96,7 +108,9 @@ sources=()
 tests=0
 while IFS= read -r f; do
   [[ -z "$f" ]] && continue
-  if is_test_file "$f"; then
+  if is_config_file "$f"; then
+    continue
+  elif is_test_file "$f"; then
     tests=$((tests + 1))
   elif is_source_file "$f"; then
     sources+=("$f")
@@ -150,7 +164,7 @@ done
 sample="${sample%, }"
 (( ${#fresh[@]} > 5 )) && sample+=", …"
 
-reason="kcc-dev-core stop audit: this turn ends with uncommitted source changes (${sample}) and no test file touched. If any of that code branches, enter kcc-dev-core:unit-tests (backfill mode) — that skill decides per unit which ones earn a test, and selecting none is a valid one-line finish, so don't rule it out from the outside. Only a docs-only change or tests the user explicitly deferred skip it outright. This audit will not re-block this stop."
+reason="kcc-dev-core stop audit: this turn ends with uncommitted source changes (${sample}) and no test file touched. If any of that code branches, enter kcc-dev-core.unit-tests (backfill mode) — that skill decides per unit which ones earn a test, and selecting none is a valid one-line finish, so don't rule it out from the outside. Only a docs-only change or tests the user explicitly deferred skip it outright. This audit will not re-block this stop."
 
 if command -v jq >/dev/null 2>&1; then
   jq -n --arg r "$reason" '{decision: "block", reason: $r}'

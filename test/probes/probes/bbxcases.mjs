@@ -1,5 +1,5 @@
 /**
- * Stage 5 — BLOCK ablations of kcc-dev-core:blackbox-tests, authoring half.
+ * Stage 5 — BLOCK ablations of kcc-dev-core.blackbox-tests, authoring half.
  *
  * Not one rule per arm: one thematic BLOCK per arm. 92 principles, only 3
  * of them resting on A/B evidence, is ~250 probes at one-rule-per-arm; a

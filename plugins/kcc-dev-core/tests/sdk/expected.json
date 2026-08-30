@@ -1,11 +1,23 @@
 {
   "slashCommands": {
     "requires": [
-      "kcc-dev-core:spec",
-      "kcc-dev-core:blackbox-tests",
-      "kcc-dev-core:unit-tests"
+      "kcc-dev-core.spec",
+      "kcc-dev-core.blackbox-tests",
+      "kcc-dev-core.unit-tests"
     ],
     "forbids": []
+  },
+  "skills": {
+    "requires": [
+      "kcc-dev-core.spec",
+      "kcc-dev-core.blackbox-tests",
+      "kcc-dev-core.unit-tests"
+    ],
+    "forbids": [
+      "spec",
+      "blackbox-tests",
+      "unit-tests"
+    ]
   },
   "mcpServers": {
     "requires": []

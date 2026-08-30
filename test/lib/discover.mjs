@@ -14,8 +14,6 @@
  *     tests/e2e/*.yaml                                  -- L3 e2e cases
  *     tests/sdk/expected.json                           -- L4 SDK expectations
  *
- *   <repo>/.claude-plugin/marketplace.json              -- marketplace manifest
- *
  * New plugins "just work" by dropping into plugins/<name>/. Nothing in the
  * framework needs to change.
  */
@@ -27,11 +25,6 @@ import { fileURLToPath } from "node:url";
 const __filename = fileURLToPath(import.meta.url);
 export const REPO_ROOT = path.resolve(path.dirname(__filename), "..", "..");
 export const PLUGINS_DIR = path.join(REPO_ROOT, "plugins");
-export const MARKETPLACE_PATH = path.join(
-  REPO_ROOT,
-  ".claude-plugin",
-  "marketplace.json"
-);
 
 /** @returns {Promise<boolean>} */
 async function isDir(p) {
@@ -41,6 +34,18 @@ async function isDir(p) {
   } catch {
     return false;
   }
+}
+
+/**
+ * Filters that name something real but not a plugin directory. The installer
+ * has unit tests but no plugin surface, so `PLUGIN=installer` must scope L2 to
+ * it and make L1/L3/L4 say "nothing to do" rather than hard-error — otherwise
+ * the documented `PLUGIN=<name> npm test` idiom cannot be used for it.
+ */
+export const NON_PLUGIN_FILTERS = new Set(["installer", "probes"]);
+
+export function isNonPluginFilter(name = process.env.PLUGIN) {
+  return !!name && NON_PLUGIN_FILTERS.has(name);
 }
 
 /**
@@ -228,9 +233,3 @@ export async function discoverTestArtifacts(plugin) {
   return out;
 }
 
-/** Convenience: load+parse marketplace.json; returns null if missing. */
-export async function loadMarketplace() {
-  if (!existsSync(MARKETPLACE_PATH)) return null;
-  const raw = await readFile(MARKETPLACE_PATH, "utf-8");
-  return { path: MARKETPLACE_PATH, json: JSON.parse(raw), raw };
-}

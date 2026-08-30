@@ -1,5 +1,5 @@
 /**
- * Stage 4 — the eight UNCERTAIN principles of `kcc-dev-core:spec`.
+ * Stage 4 — the eight UNCERTAIN principles of `kcc-dev-core.spec`.
  *
  * Design order, per test/probes/README.md: the TASK SHAPE is the unit of
  * design, the ablated rule is only the arm. Six prompts over three

@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "kccplugin/kcc-module.schema.json",
+  "title": "kcc module metadata",
+  "description": "Strict schema for the optional <module>/kcc.module.json. Holds what the official plugin manifest cannot: installer-only metadata such as inter-module dependencies. Kept out of plugin.json because `claude plugin validate` rejects unknown keys there.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "requires": {
+      "type": "array",
+      "description": "Module names that must be installed alongside this one. The installer closes the selection over this list and reports what it pulled in.",
+      "items": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+      "uniqueItems": true
+    }
+  }
+}

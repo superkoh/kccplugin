@@ -33,9 +33,11 @@
  *
  * Design notes:
  *
- * - We call `claude` via --bare so the user's ~/.claude and project
- *   .claude/ state is ignored; only --plugin-dir <plugin-root> is loaded.
- *   This keeps tests hermetic.
+ * - Cases run against a throwaway project with the modules actually
+ *   installed into its `.claude/` — the shipped form. Hermeticity comes
+ *   from CLAUDE_CONFIG_DIR, not `--bare`: verified against a live CLI,
+ *   `--bare` also drops the *project's* `.claude/`, which would make every
+ *   installed capability invisible to the case.
  *
  * - Default model is haiku. Plugin authors can override per-case when a
  *   test genuinely needs a bigger brain, but L3 should almost never reach
@@ -52,12 +54,14 @@ import {
   PluginFilterError,
   discoverPlugins,
   discoverTestArtifacts,
+  isNonPluginFilter,
 } from "./lib/discover.mjs";
 import {
   DEFAULT_MODEL,
   runClaude,
   assertClaudeAvailable,
 } from "./lib/claude-runner.mjs";
+import { createInstalledProject } from "./lib/project-fixture.mjs";
 import { evaluate } from "./lib/matchers.mjs";
 
 const DEFAULT_BUDGET = 0.25;
@@ -86,15 +90,29 @@ async function loadCase(file) {
     throw new Error(`${file}: expected a YAML mapping at top level`);
   }
   if (!doc.prompt) throw new Error(`${file}: missing required field "prompt"`);
+  // `bare` was meaningful when cases ran through --plugin-dir. Now isolation
+  // comes from CLAUDE_CONFIG_DIR and `--bare` would hide the project install
+  // entirely, so silently ignoring the key would leave an author debugging a
+  // phantom leak.
+  if ("bare" in doc) {
+    throw new Error(
+      `${file}: "bare" is no longer supported — cases run against a project ` +
+        "install isolated by CLAUDE_CONFIG_DIR, and --bare would drop it"
+    );
+  }
   return doc;
 }
 
-async function runCase(plugin, file) {
+async function runCase(plugin, file, fixture) {
   const spec = await loadCase(file);
   const result = await runClaude({
     prompt: spec.prompt,
-    pluginDirs: [plugin.root],
-    cwd: spec.cwd ? path.resolve(plugin.root, spec.cwd) : undefined,
+    // The modules are installed in the fixture project, so nothing is loaded
+    // through --plugin-dir any more.
+    pluginDirs: [],
+    cwd: spec.cwd ? path.resolve(fixture.projectDir, spec.cwd) : fixture.projectDir,
+    env: { CLAUDE_CONFIG_DIR: fixture.configDir },
+    bare: false,
     model: spec.model || DEFAULT_MODEL,
     allowedTools: spec.allowedTools,
     disallowedTools: spec.disallowedTools,
@@ -105,7 +123,6 @@ async function runCase(plugin, file) {
         : JSON.stringify(spec.jsonSchema)
       : undefined,
     timeoutMs: spec.timeoutMs ?? DEFAULT_TIMEOUT_MS,
-    bare: spec.bare ?? "auto",
     outputFormat: "json",
   });
 
@@ -176,6 +193,13 @@ function printResult(plugin, out) {
 }
 
 async function main() {
+  if (isNonPluginFilter()) {
+    console.log(`\nL3  End-to-end`);
+    console.log("-".repeat(72));
+    console.log(`  - skipped: "${process.env.PLUGIN}" is not a plugin (it has no e2e cases)`);
+    console.log("");
+    process.exit(0);
+  }
   try {
     await assertClaudeAvailable();
   } catch (err) {
@@ -191,10 +215,13 @@ async function main() {
   }
 
   const authMode = hasEnvApiKey()
-    ? "hermetic (--bare + ANTHROPIC_API_KEY)"
-    : "fallback (user keychain / OAuth; --bare dropped)";
+    ? "ANTHROPIC_API_KEY"
+    : "user keychain / OAuth";
   console.log("");
-  console.log(`L3  End-to-end  (${toRun.length} case${toRun.length === 1 ? "" : "s"}, ${authMode})`);
+  console.log(
+    `L3  End-to-end  (${toRun.length} case${toRun.length === 1 ? "" : "s"}, ` +
+      `project install, isolated CLAUDE_CONFIG_DIR, auth: ${authMode})`
+  );
   console.log("-".repeat(72));
 
   if (toRun.length === 0) {
@@ -202,6 +229,23 @@ async function main() {
     console.log("");
     process.exit(0);
   }
+
+  // One fixture per module, not one shared fixture: a shared one would inject
+  // every module's SessionStart prompt into every case — kcc-core's 🎯 block
+  // instruction, for instance, changes how the model answers a "quote this
+  // sentinel" probe belonging to another module. Cross-module coexistence is
+  // L4's job; L3 asks what a single module does.
+  //
+  // "One module" means one module *and its dependencies*: kcc-dev-core
+  // declares `requires: [kcc-core]`, so its cases legitimately run with
+  // kcc-core's prompt in context. That is the shipped configuration — nobody
+  // installs kcc-dev-core alone — but it is not isolation, so a kcc-dev-core
+  // case that depends on kcc-core's absence would be testing a fiction.
+  const fixtures = new Map();
+  const fixtureFor = async (name) => {
+    if (!fixtures.has(name)) fixtures.set(name, await createInstalledProject([name]));
+    return fixtures.get(name);
+  };
 
   let failed = 0;
   const totals = {
@@ -214,7 +258,7 @@ async function main() {
   };
   for (const { plugin, file } of toRun) {
     try {
-      const out = await runCase(plugin, file);
+      const out = await runCase(plugin, file, await fixtureFor(plugin.name));
       printResult(plugin, out);
       const m = extractMetrics(out.result.parsed);
       totals.costUsd += m.costUsd;
@@ -230,6 +274,7 @@ async function main() {
       failed++;
     }
   }
+  for (const f of fixtures.values()) await f.cleanup();
   console.log("-".repeat(72));
   console.log(`  ${toRun.length - failed} of ${toRun.length} e2e cases passed.`);
   console.log(`  totals: ${formatMetricsLine(totals)}`);

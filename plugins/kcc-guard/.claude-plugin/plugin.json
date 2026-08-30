@@ -1,0 +1,10 @@
+{
+  "name": "kcc-guard",
+  "version": "0.1.0",
+  "description": "Enforcement for the kcc install: a PreToolUse hook that refuses edits to kcc-managed files, so the project's own agent cannot drift them. Detection (the lockfile and `--check`) says what changed after the fact; this says no at the moment of the edit — and it holds even under bypassPermissions.",
+  "author": { "name": "koh", "email": "koh.718@gmail.com" },
+  "homepage": "https://github.com/superkoh/kccplugin",
+  "repository": "https://github.com/superkoh/kccplugin.git",
+  "license": "MIT",
+  "keywords": ["guard", "hooks", "integrity", "managed-files"]
+}

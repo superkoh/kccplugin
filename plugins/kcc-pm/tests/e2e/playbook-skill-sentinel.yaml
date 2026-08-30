@@ -7,8 +7,8 @@
 # at the body's end can then be quoted back. Filesystem tools are
 # locked out so the only path to the sentinel is the loaded skill body.
 
-name: "kcc-pm:pm-playbook loads the charter body (sentinel quote-back)"
-prompt: "/kcc-pm:pm-playbook The document this skill just loaded ends with an HTML comment whose identifier starts with 'kcc-pm-playbook'. Quote that exact identifier string and nothing else. If no such document is in context, reply with the literal text NO_SKILL_SENTINEL_IN_CONTEXT."
+name: "kcc-pm.pm-playbook loads the charter body (sentinel quote-back)"
+prompt: "/kcc-pm.pm-playbook The document this skill just loaded ends with an HTML comment whose identifier starts with 'kcc-pm-playbook'. Quote that exact identifier string and nothing else. If no such document is in context, reply with the literal text NO_SKILL_SENTINEL_IN_CONTEXT."
 maxBudgetUsd: 0.10
 timeoutMs: 120000
 

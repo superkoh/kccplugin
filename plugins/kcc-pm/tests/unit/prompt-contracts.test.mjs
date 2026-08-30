@@ -63,8 +63,8 @@ test("plugin ships no hooks — no session-start injection channel exists", asyn
 });
 
 test("pm agent is a thin shell that defers to the single-source charter", async () => {
-  const text = await read("agents", "pm.md");
-  assert.match(text, /kcc-pm:pm-playbook/, "the agent must load the charter via the skill");
+  const text = await read("agents", "kcc-pm.md");
+  assert.match(text, /kcc-pm.pm-playbook/, "the agent must load the charter via the skill");
   assert.match(text, /\.kcc-pm\.json/, "the agent must locate the workspace context");
   assert.ok(
     text.length < 1500,

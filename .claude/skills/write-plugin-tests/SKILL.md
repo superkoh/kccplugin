@@ -1,9 +1,9 @@
 ---
 name: write-plugin-tests
-description: Author new test cases for a plugin under plugins/ in this kccplugin marketplace. Use when the user asks to add tests, write test cases, or wants test coverage (加测试 / 写测试 / 补测试 / 测试覆盖), and proactively after creating a plugin or adding a command / skill / agent / hook to one, before reporting the task complete. Writes files into plugins/<name>/tests/ across L2 (unit), L3 (e2e YAML), and L4 (registration), then hands off to run-plugin-tests to verify.
+description: Author new test cases for a module under plugins/ in this kccplugin repo. Use when the user asks to add tests, write test cases, or wants test coverage (加测试 / 写测试 / 补测试 / 测试覆盖), and proactively after creating a plugin or adding a command / skill / agent / hook to one, before reporting the task complete. Writes files into plugins/<name>/tests/ across L2 (unit), L3 (e2e YAML), and L4 (registration), then hands off to run-plugin-tests to verify.
 ---
 
-# Writing tests for plugins in this marketplace
+# Writing tests for modules in this repo
 
 This repo ships a four-layer test framework under `test/`. Test cases
 live inside each plugin:
@@ -188,11 +188,14 @@ File: `plugins/<name>/tests/sdk/expected.json`
 ```json
 {
   "slashCommands": {
-    "requires": [
-      "<plugin-name>:<command-1>",
-      "<plugin-name>:<skill-1>"
-    ],
-    "forbids": []
+    "requires": ["<module>:<command-1>", "<module>:<skill-1>"],
+    "forbids": ["<command-1>"]
+  },
+  "skills": {
+    "requires": ["<module>:<skill-1>"]
+  },
+  "agents": {
+    "requires": ["<module>"]
   },
   "mcpServers": {
     "requires": []
@@ -200,15 +203,19 @@ File: `plugins/<name>/tests/sdk/expected.json`
 }
 ```
 
-L4 starts the CLI with `--plugin-dir <plugin-root>`, reads the init
-system message, and asserts that every name in `slashCommands.requires`
-appears in the registered list. Adding this file upgrades the plugin
-from L4 *smoke* mode to *asserted* mode — strongly recommended for
-every new plugin.
+L4 installs every module into a throwaway project, starts the CLI there,
+reads the init system message, and asserts each section against what
+registered. Adding this file upgrades the module from L4 *implied* mode
+to *asserted* mode — recommended for every new module.
 
-Write one entry per user-facing command, skill, and agent exposed by
-the plugin. Leave `mcpServers.requires` empty unless the plugin ships
-an MCP server under `.mcp.json`.
+Write one entry per user-facing command, skill, and agent. Put the
+un-namespaced form in the `forbids` of the section it would actually
+appear in — a flat-registered skill lands in `skills`, never in
+`slashCommands`, so `slashCommands.forbids: ["spec"]` is a dead
+assertion that can never fire.
+Note agents are **flat**: the agent section takes the frontmatter name,
+which must start with the module name and must not contain a colon.
+Leave `mcpServers.requires` empty unless the module ships an MCP server.
 
 ## After writing — verify and hand off
 
