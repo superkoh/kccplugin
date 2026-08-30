@@ -2,13 +2,13 @@
   "slashCommands": {
     "requires": [
       "kcc-pm:onboard",
-      "kcc-pm:pm-playbook"
+      "kcc-pm.pm-playbook"
     ],
     "forbids": []
   },
   "skills": {
     "requires": [
-      "kcc-pm:pm-playbook"
+      "kcc-pm.pm-playbook"
     ],
     "forbids": [
       "pm-playbook"

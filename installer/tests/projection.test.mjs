@@ -10,16 +10,19 @@ test("commands land in a namespaced subdirectory", () => {
   );
 });
 
-test("skills keep their namespace via a colon in the directory name", () => {
+test("skills keep their namespace via a dot in the directory name", () => {
   // Verified live: a project skill's name IS its directory name, verbatim,
-  // and a colon survives — the only way to namespace a project skill.
+  // and any of . _ @ ~ + : survives — namespacing a project skill means
+  // encoding the separator into the directory name. The separator is `.`
+  // and not `:` because NTFS forbids a colon: with `:` the target repo
+  // cannot even be checked out by git on native Windows.
   assert.equal(
     projectPath("kcc-dev-core", "skills/spec/SKILL.md"),
-    ".claude/skills/kcc-dev-core:spec/SKILL.md"
+    ".claude/skills/kcc-dev-core.spec/SKILL.md"
   );
   assert.equal(
     projectPath("kcc-pm", "skills/pm-playbook/references/strategy.md"),
-    ".claude/skills/kcc-pm:pm-playbook/references/strategy.md"
+    ".claude/skills/kcc-pm.pm-playbook/references/strategy.md"
   );
 });
 
@@ -68,7 +71,7 @@ test("two dots inside a filename are legal, not traversal", () => {
   );
   assert.equal(
     projectPath("kcc-pm", "skills/s/notes..md"),
-    ".claude/skills/kcc-pm:s/notes..md"
+    ".claude/skills/kcc-pm.s/notes..md"
   );
 });
 

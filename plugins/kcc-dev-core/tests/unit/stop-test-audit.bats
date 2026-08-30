@@ -50,7 +50,7 @@ run_hook() {
   run_hook
   [ "$status" -eq 0 ]
   echo "$output" | jq -e '.decision == "block"'
-  echo "$output" | jq -e '.reason | contains("kcc-dev-core:unit-tests")'
+  echo "$output" | jq -e '.reason | contains("kcc-dev-core.unit-tests")'
   echo "$output" | jq -e '.reason | contains("src/logic.mjs")'
 }
 
@@ -75,9 +75,9 @@ run_hook() {
   # Installing kcc into a project drops dozens of untracked .sh/.mjs files
   # under .claude/. They are Claude Code configuration, not product code, and
   # blocking on them would fire on the very first turn after an install.
-  mkdir -p "$TMPROOT/.claude/kcc/kcc-core/scripts" "$TMPROOT/.claude/skills/kcc-ablation:ablate/scripts"
+  mkdir -p "$TMPROOT/.claude/kcc/kcc-core/scripts" "$TMPROOT/.claude/skills/kcc-ablation.ablate/scripts"
   echo '#!/usr/bin/env bash' >"$TMPROOT/.claude/kcc/kcc-core/scripts/session-start.sh"
-  echo 'export const x = 1;' >"$TMPROOT/.claude/skills/kcc-ablation:ablate/scripts/score.mjs"
+  echo 'export const x = 1;' >"$TMPROOT/.claude/skills/kcc-ablation.ablate/scripts/score.mjs"
   run_hook
   [ "$status" -eq 0 ]
   [ -z "$output" ]

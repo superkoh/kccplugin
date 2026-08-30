@@ -53,6 +53,9 @@ node installer/install.mjs --all
 
 Requires Node ≥ 20 and `jq` on PATH (the principle-injection hooks degrade
 to a silent no-op without `jq`; the installer warns when it is missing).
+Supported platforms are macOS, Linux and WSL — the installer and the hooks
+are shell scripts. A repo with kcc installed stays checkout-able on native
+Windows; the hooks and `--check` just aren't supported there.
 
 **Install and upgrade are the same command.** It reconciles what is in the
 project against what the source ships, using `.claude/kcc/kcc.lock.json` to
@@ -77,7 +80,7 @@ Selecting a module pulls in whatever it requires, and says so.
 ├── settings.json                          # only the kcc hook entries are touched
 ├── commands/kcc-pm/onboard.md             # → /kcc-pm:onboard
 ├── agents/kcc-pm.md                       # → the kcc-pm agent
-├── skills/kcc-dev-core:spec/SKILL.md      # → the kcc-dev-core:spec skill
+├── skills/kcc-dev-core.spec/SKILL.md      # → the kcc-dev-core.spec skill
 └── kcc/                                   # hook scripts, injected context, lockfile
     ├── kcc.lock.json
     └── kcc-core/{scripts,context}/
@@ -86,10 +89,13 @@ Selecting a module pulls in whatever it requires, and says so.
 Every managed path starts with `kcc`, so one glance tells you what is
 managed and one glob covers the whole set.
 
-Skills keep their `module:skill` namespace through a colon in the directory
+Skills keep their `module.skill` namespace through a dot in the directory
 name — that is the only way to namespace a project-level skill, since
 project skills take their name verbatim from their directory and do not
-namespace by subdirectory.
+namespace by subdirectory. The separator is a dot rather than the
+plugin-style colon because NTFS forbids `:` in file names: with a colon,
+a repo containing these paths could not even be checked out by git on
+native Windows.
 
 ## These files are managed — don't edit them
 
@@ -154,9 +160,19 @@ claude plugin disable kcc-pm
 claude plugin disable kcc-ablation
 ```
 
-One name changed: the PM agent is now `kcc-pm`, not `kcc-pm:pm` — an agent
-name cannot contain a colon. Every skill and command keeps the name you
-already type.
+Two kinds of names changed, both forced by platform rules:
+
+- The PM agent is now `kcc-pm`, not `kcc-pm:pm` — an agent name cannot
+  contain a colon.
+- Skills use a dot where the plugin form used a colon:
+  `kcc-dev-core.unit-tests`, not `kcc-dev-core:unit-tests` — NTFS forbids
+  colons in file names, and a project skill's name is its directory name.
+  (This is also why the deprecated marketplace form is no longer
+  equivalent: its prompts now reference dot-form skill names that the
+  plugin registration doesn't provide.)
+
+Commands keep the names you already type (`/kcc-pm:onboard`) — their
+colon is generated at registration time and never touches the filesystem.
 
 ## Developing
 

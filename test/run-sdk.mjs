@@ -26,7 +26,7 @@
  *
  *   {
  *     "slashCommands": { "requires": ["kcc-pm:onboard"], "forbids": [] },
- *     "skills":        { "requires": ["kcc-pm:pm-playbook"] },
+ *     "skills":        { "requires": ["kcc-pm.pm-playbook"] },
  *     "agents":        { "requires": ["kcc-pm"] },
  *     "mcpServers":    { "requires": [] }
  *   }
@@ -47,6 +47,7 @@ import {
 import { createInstalledProject } from "./lib/project-fixture.mjs";
 import { DEFAULT_MODEL, assertClaudeAvailable } from "./lib/claude-runner.mjs";
 import { walkFiles } from "../installer/lib/fsops.mjs";
+import { installedSkillName } from "../installer/lib/projection.mjs";
 import path from "node:path";
 
 const TINY_PROMPT = "ping";
@@ -162,7 +163,7 @@ function assertList(label, actual, spec, failures) {
  * Registration the installer promises even without an expected.json: every
  * command, skill and agent a module ships must appear under its projected
  * name. This is what catches a projection rule that quietly stops working
- * after a CLI upgrade — for instance if colons in skill directory names
+ * after a CLI upgrade — for instance if dots in skill directory names
  * were ever rejected.
  */
 async function impliedRequirements(plugin) {
@@ -176,7 +177,7 @@ async function impliedRequirements(plugin) {
     .map((f) => f.replace(/\.md$/, "").split("/").join(":"));
   return {
     slashCommands: commandFiles.map((c) => `${plugin.name}:${c}`),
-    skills: assets.skills.map((s) => `${plugin.name}:${s.name}`),
+    skills: assets.skills.map((s) => installedSkillName(plugin.name, s.name)),
     agents: assets.agents.map((a) => a.name),
   };
 }

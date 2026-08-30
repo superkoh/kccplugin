@@ -198,7 +198,7 @@ test("unit-tests SKILL.md is a flat list of one-sentence principles", async () =
 
 test("unit-tests SKILL.md hands black-box work to the sibling skill", async () => {
   const body = await readSkillProse();
-  assert.match(body, /kcc-dev-core:blackbox-tests/);
+  assert.match(body, /kcc-dev-core.blackbox-tests/);
 });
 
 test("the blackbox skill routes unit tests back to unit-tests", async () => {
@@ -208,8 +208,8 @@ test("the blackbox skill routes unit tests back to unit-tests", async () => {
   );
   assert.match(
     body,
-    /kcc-dev-core:unit-tests/,
-    "blackbox-tests must point unit tests at kcc-dev-core:unit-tests"
+    /kcc-dev-core.unit-tests/,
+    "blackbox-tests must point unit tests at kcc-dev-core.unit-tests"
   );
 });
 

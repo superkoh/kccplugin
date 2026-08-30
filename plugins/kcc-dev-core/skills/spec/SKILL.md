@@ -10,7 +10,7 @@ The failure this skill exists to prevent is the ungrounded spec — architecture
 - **One spec document** — Produce exactly one spec document, not a set of documents.
 - **Location by project convention** — Choose the spec's location and filename from the project's own conventions, and keep them stable so later stages can find the spec.
 - **Feature slug** — Name the feature's artifacts with one slug that is ASCII-only kebab-case at most 64 characters, transliterating or summarizing a CJK feature name rather than preserving it.
-- **Black-box cases are elsewhere** — A request for black-box test cases belongs to `kcc-dev-core:blackbox-tests`, not here.
+- **Black-box cases are elsewhere** — A request for black-box test cases belongs to `kcc-dev-core.blackbox-tests`, not here.
 - **Brainstorming stays in conversation** — Pure brainstorming with no committed artifact produces no file.
 - **Read the repo's PRDs too** — Source the spec from the session plus any PRD-like material in the repo (`docs/`, `specs/`, `product/`, `prds/`, …).
 - **Ask only if genuinely ambiguous** — Make the `AskUserQuestion` call only when the context leaves the feature scope or a decision that materially changes the spec genuinely open, and don't manufacture a question the context already answers.

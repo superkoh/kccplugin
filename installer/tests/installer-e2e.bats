@@ -96,7 +96,7 @@ EOF
   run "${I[@]}" --target "$T" --check
   [ "$status" -eq 0 ]
 
-  echo tampered >>"$T/.claude/skills/kcc-dev-core:spec/SKILL.md"
+  echo tampered >>"$T/.claude/skills/kcc-dev-core.spec/SKILL.md"
   run "${I[@]}" --target "$T" --check
   [ "$status" -eq 1 ]
 
@@ -107,7 +107,7 @@ EOF
 
 @test "uninstall removes everything but keeps the backups" {
   "${I[@]}" --target "$T" --all -y >/dev/null 2>&1
-  echo tampered >>"$T/.claude/skills/kcc-dev-core:spec/SKILL.md"
+  echo tampered >>"$T/.claude/skills/kcc-dev-core.spec/SKILL.md"
   "${I[@]}" --target "$T" --all -y >/dev/null 2>&1 # displaces the edit into a backup
   "${I[@]}" --target "$T" --uninstall -y >/dev/null 2>&1
   [ ! -e "$T/.claude/skills" ]
@@ -122,7 +122,7 @@ EOF
   [ -f "$guard" ]
   local payload
   payload=$(jq -nc --arg c "$T" \
-    '{tool_name:"Write", cwd:$c, tool_input:{file_path:".claude/skills/kcc-dev-core:spec/SKILL.md"}}')
+    '{tool_name:"Write", cwd:$c, tool_input:{file_path:".claude/skills/kcc-dev-core.spec/SKILL.md"}}')
   run bash -c "printf '%s' '$payload' | CLAUDE_PROJECT_DIR='$T' bash '$guard'"
   echo "$output" | jq -e '.hookSpecificOutput.permissionDecision == "deny"'
 }
@@ -219,7 +219,7 @@ EOF
   # Only the losing direction was covered; a plain file that gains +x has no
   # entry in the recorded set, so a one-directional check stays green.
   "${I[@]}" --target "$T" --all -y >/dev/null 2>&1
-  chmod 755 "$T/.claude/skills/kcc-dev-core:spec/SKILL.md"
+  chmod 755 "$T/.claude/skills/kcc-dev-core.spec/SKILL.md"
   run "${I[@]}" --target "$T" --check
   [ "$status" -eq 1 ]
   [[ "$output" == *"mode:"* ]]
@@ -278,7 +278,7 @@ EOF
 
 @test "backup generations are pruned so a committed directory cannot grow forever" {
   "${I[@]}" --target "$T" --all -y >/dev/null 2>&1
-  local skill="$T/.claude/skills/kcc-dev-core:spec/SKILL.md"
+  local skill="$T/.claude/skills/kcc-dev-core.spec/SKILL.md"
   # Seven overwrite cycles; only the most recent five generations survive.
   for i in 1 2 3 4 5 6 7; do
     echo "edit $i" >>"$skill"
@@ -388,4 +388,31 @@ EOF
   [[ "$output" != *"at Object"* ]]
   [[ "$output" == *"--all or --modules"* ]]
   [ ! -f "$T/.claude/kcc/kcc.lock.json" ]
+}
+
+# --- migration from the colon-era skill layout --------------------------
+#
+# Installs before the separator change named skill directories
+# `<module>:<skill>`. NTFS forbids the colon, so the separator became a
+# dot. An upgrade must treat the colon-era paths as "no longer shipped"
+# and remove them cleanly — otherwise every pre-rename project keeps
+# un-checkout-able paths forever.
+
+@test "upgrading a colon-era install replaces every colon directory with the dot form" {
+  "${I[@]}" --target "$T" --all -y >/dev/null 2>&1
+  # Rewind the install to the old layout: rename the skill directories and
+  # rewrite the lock the way the colon-era installer would have written it.
+  local d base
+  for d in "$T/.claude/skills/"*.*; do
+    base=$(basename "$d")
+    mv "$d" "$T/.claude/skills/${base/./:}"
+  done
+  perl -pi -e 's|(\.claude/skills/[a-z0-9-]+)\.|$1:|g' "$T/.claude/kcc/kcc.lock.json"
+  [ -n "$(find "$T/.claude/skills" -name '*:*' -print -quit)" ]
+
+  run "${I[@]}" --target "$T" --all -y
+  [ "$status" -eq 0 ]
+  [ -z "$(find "$T/.claude/skills" -name '*:*' -print -quit)" ]
+  [ -f "$T/.claude/skills/kcc-dev-core.spec/SKILL.md" ]
+  ! grep -q ':spec' "$T/.claude/kcc/kcc.lock.json"
 }

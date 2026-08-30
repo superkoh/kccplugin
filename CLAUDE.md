@@ -156,8 +156,11 @@ disappears silently.
 - **Skills do NOT namespace by subdirectory.** A nested
   `.claude/skills/<a>/<b>/SKILL.md` registers as *nothing at all*. A skill's
   name is its directory name **verbatim** — frontmatter `name:` is ignored —
-  and a colon in that directory name survives. So
-  `.claude/skills/kcc-dev-core:spec/` is what preserves the namespace.
+  and a separator in that directory name survives (verified live: `.` `_`
+  `@` `~` `+` and `:` all register). So `.claude/skills/kcc-dev-core.spec/`
+  is what preserves the namespace. The separator is a dot, NOT the
+  plugin-style colon: NTFS forbids `:` in file names, so a colon here makes
+  the target repo impossible to even check out on native Windows.
 - **Agent names come from frontmatter and may not contain a colon.** An
   agent named `kcc-pm:pm` silently fails to register. Agents are therefore
   flat, and L1 requires an agent's name to equal its filename and to start

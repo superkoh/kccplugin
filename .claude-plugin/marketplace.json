@@ -18,7 +18,7 @@
       "name": "kcc-dev-core",
       "source": "./plugins/kcc-dev-core",
       "description": "Development-focused plugin: conditionally injects code-discipline principles when the session is inside a software project (with a subagent variant injected into every spawned subagent), and hosts standalone dev skills (spec, blackbox-tests, unit-tests) and hooks.",
-      "version": "0.12.0"
+      "version": "0.13.0"
     },
     {
       "name": "kcc-ablation",
@@ -30,7 +30,7 @@
       "name": "kcc-pm",
       "source": "./plugins/kcc-pm",
       "description": "Business-agnostic senior PM \u00d7 product-ops capability with zero session-start footprint: a task-scoped playbook skill carrying the role charter (iron laws, evidence discipline, output spec \u2014 per-rule A/B ablated on Opus-class arms) and the workflow router, a dispatchable kcc-pm agent that keeps the persona out of the main session entirely, and an interview-driven onboarding command that builds per-project PM context files.",
-      "version": "0.4.0"
+      "version": "0.5.0"
     },
     {
       "name": "kcc-guard",

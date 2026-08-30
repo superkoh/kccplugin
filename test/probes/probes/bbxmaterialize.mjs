@@ -1,5 +1,5 @@
 /**
- * Stage 5 — BLOCK ablations of kcc-dev-core:blackbox-tests, materializing half.
+ * Stage 5 — BLOCK ablations of kcc-dev-core.blackbox-tests, materializing half.
  *
  * A block is a whole thematic area of the skill, ablated as a unit. The
  * question is not "is this one line load-bearing" but "is this entire area

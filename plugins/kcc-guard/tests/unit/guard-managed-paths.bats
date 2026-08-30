@@ -24,7 +24,7 @@
 PLUGIN_ROOT="$BATS_TEST_DIRNAME/../.."
 SCRIPT="$PLUGIN_ROOT/scripts/guard-managed-paths.sh"
 
-MANAGED=".claude/skills/kcc-dev-core:spec/SKILL.md"
+MANAGED=".claude/skills/kcc-dev-core.spec/SKILL.md"
 
 setup() {
   command -v jq >/dev/null 2>&1 || skip "jq not on PATH"
@@ -100,7 +100,7 @@ assert_allowed() {
 }
 
 @test "DENY: an edit issued from a subdirectory with a relative path" {
-  run_guard "$(write_to "SKILL.md" "$TMPROOT/.claude/skills/kcc-dev-core:spec")"
+  run_guard "$(write_to "SKILL.md" "$TMPROOT/.claude/skills/kcc-dev-core.spec")"
   assert_denied
 }
 
@@ -291,6 +291,6 @@ assert_allowed() {
 
 @test "the deny reason names the file and points at the source" {
   run_guard "$(write_to "$MANAGED")"
-  echo "$output" | jq -e '.hookSpecificOutput.permissionDecisionReason | contains("kcc-dev-core:spec")'
+  echo "$output" | jq -e '.hookSpecificOutput.permissionDecisionReason | contains("kcc-dev-core.spec")'
   echo "$output" | jq -e '.hookSpecificOutput.permissionDecisionReason | contains("kcc source repository")'
 }

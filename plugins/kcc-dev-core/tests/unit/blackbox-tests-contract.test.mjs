@@ -274,9 +274,9 @@ test("blackbox-tests SKILL.md keeps HTML comments out of the output template", a
   assert.match(body.replace(/\s+/g, " "), /write no HTML comments into it/);
 });
 
-test("blackbox-tests SKILL.md hands white-box tests to kcc-dev-core:unit-tests", async () => {
+test("blackbox-tests SKILL.md hands white-box tests to kcc-dev-core.unit-tests", async () => {
   const body = await readSkillProse();
-  assert.match(body, /kcc-dev-core:unit-tests/);
+  assert.match(body, /kcc-dev-core.unit-tests/);
   // Both halves live here now; a pointer at either pre-merge skill is a
   // dangling reference.
   assert.doesNotMatch(body, /materialize-blackbox-tests/);

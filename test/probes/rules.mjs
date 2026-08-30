@@ -32,7 +32,7 @@ const skillDoc = (name) => ({
   path: `skills/${name}/SKILL.md`,
   deliver: "skill",
   via: "context/dev-principles.md",
-  skill: `kcc-dev-core:${name}`,
+  skill: `kcc-dev-core.${name}`,
 });
 
 export const MAIN_DOC = contextDoc("kcc-core", "context/thinking-principles.md");
@@ -619,7 +619,7 @@ export const RULES = {
       {
         find:
           "- **White-box tests are elsewhere** — Unit tests and any other white-box " +
-          "tests are written during implementation by `kcc-dev-core:unit-tests`.\n",
+          "tests are written during implementation by `kcc-dev-core.unit-tests`.\n",
         with: "",
       },
     ],
@@ -1425,7 +1425,7 @@ export const RULES = {
     // round-1 prior: load-bearing — ml 2/3
     anchor: /^- \*\*Before implementation\*\*/,
     snippet: [
-      { find: "- **White-box tests are elsewhere** — Unit tests and any other white-box tests are written during implementation by `kcc-dev-core:unit-tests`.\n", with: "" },
+      { find: "- **White-box tests are elsewhere** — Unit tests and any other white-box tests are written during implementation by `kcc-dev-core.unit-tests`.\n", with: "" },
     ],
   },
 
@@ -1662,7 +1662,7 @@ export const RULES = {
           path: "skills/pm-playbook/SKILL.md",
           deliver: "skill",
           via: "context/pm-pointer.md",
-          skill: "kcc-pm:pm-playbook",
+          skill: "kcc-pm.pm-playbook",
         },
         label,
         snippet: { find, with: "" },
@@ -1674,7 +1674,7 @@ export const RULES = {
   // explicit override; a no-delta from a rerun could only be weaker
   // than the measurement it contradicts.
   "PM-O02": {
-    doc: { plugin: "kcc-pm", path: "skills/pm-playbook/SKILL.md", deliver: "skill", via: "context/pm-pointer.md", skill: "kcc-pm:pm-playbook" },
+    doc: { plugin: "kcc-pm", path: "skills/pm-playbook/SKILL.md", deliver: "skill", via: "context/pm-pointer.md", skill: "kcc-pm.pm-playbook" },
     label: "output spec no correct-but-useless advice + counter-metric",
     measuredContent: "pm-o02: A 5/5 vs B 0/5, Fisher p≈0.004 (2026-08-07)",
     snippet: {
@@ -1683,7 +1683,7 @@ export const RULES = {
     },
   },
   "PM-W02": {
-    doc: { plugin: "kcc-pm", path: "skills/pm-playbook/SKILL.md", deliver: "skill", via: "context/pm-pointer.md", skill: "kcc-pm:pm-playbook" },
+    doc: { plugin: "kcc-pm", path: "skills/pm-playbook/SKILL.md", deliver: "skill", via: "context/pm-pointer.md", skill: "kcc-pm.pm-playbook" },
     label: "workspace rules persist facts on the spot",
     measuredContent: "pm-w02: A 9/10 vs B 1/10 @N10, p<0.001 (2026-08-07)",
     snippet: {
@@ -1692,7 +1692,7 @@ export const RULES = {
     },
   },
   "PM-L11v2": {
-    doc: { plugin: "kcc-pm", path: "skills/pm-playbook/SKILL.md", deliver: "skill", via: "context/pm-pointer.md", skill: "kcc-pm:pm-playbook" },
+    doc: { plugin: "kcc-pm", path: "skills/pm-playbook/SKILL.md", deliver: "skill", via: "context/pm-pointer.md", skill: "kcc-pm.pm-playbook" },
     label: "iron law 9 a binary choice is a trap (L11 rewrite)",
     measuredContent: "pm3-l11: A 4/5 vs B 0/5, p≈0.048 (2026-08-07; v1 text was 0/5 vs 0/5)",
     snippet: {
@@ -1701,7 +1701,7 @@ export const RULES = {
     },
   },
   "PM-E02v2": {
-    doc: { plugin: "kcc-pm", path: "skills/pm-playbook/SKILL.md", deliver: "skill", via: "context/pm-pointer.md", skill: "kcc-pm:pm-playbook" },
+    doc: { plugin: "kcc-pm", path: "skills/pm-playbook/SKILL.md", deliver: "skill", via: "context/pm-pointer.md", skill: "kcc-pm.pm-playbook" },
     label: "evidence discipline every number states where it came from (E02 rewrite)",
     measuredContent: "pm3-e02: A 9/10 vs B 3/10 @N10, p≈0.01 (2026-08-07; v1 text was 2/5 vs 1/5)",
     snippet: {

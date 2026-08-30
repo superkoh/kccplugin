@@ -1,5 +1,5 @@
 /**
- * Stage 4 — the UNCERTAIN principles of kcc-dev-core:blackbox-tests.
+ * Stage 4 — the UNCERTAIN principles of kcc-dev-core.blackbox-tests.
  *
  * Seven task shapes, reused across sixteen rules. The shape is the
  * prompt+fixture; the arm is which rule got ablated, so one rich fixture

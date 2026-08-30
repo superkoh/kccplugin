@@ -1,5 +1,5 @@
 ---
-description: Use when the user asks to 写黑盒测试 / 写黑盒用例 / 把 spec 转成黑盒用例 / 写验收标准 / 出 AC / 落地黑盒测试 / 把黑盒用例落成代码 / 写黑盒测试代码 / 生成黑盒测试代码 / write black-box test cases / cover this spec with black-box tests / write acceptance criteria / materialize black-box tests / turn the black-box cases file into runnable test code / implement the black-box test suite. Before any implementation exists, turns the requirements in context into one cases file of implementation-independent cases — grouped Main Flow / Corner Cases / Non-functional, each traced to a requirement and tagged automated or llm-driven — then turns the automated ones into a runnable isolated test project, lints the black-box boundary, runs the suite red, and classifies every case as expected-red / broken-test / unexpected-green. Unit tests and any other white-box tests (写单测 / write unit tests) are kcc-dev-core:unit-tests. Standalone capability — no workflow, no orchestration, no team.
+description: Use when the user asks to 写黑盒测试 / 写黑盒用例 / 把 spec 转成黑盒用例 / 写验收标准 / 出 AC / 落地黑盒测试 / 把黑盒用例落成代码 / 写黑盒测试代码 / 生成黑盒测试代码 / write black-box test cases / cover this spec with black-box tests / write acceptance criteria / materialize black-box tests / turn the black-box cases file into runnable test code / implement the black-box test suite. Before any implementation exists, turns the requirements in context into one cases file of implementation-independent cases — grouped Main Flow / Corner Cases / Non-functional, each traced to a requirement and tagged automated or llm-driven — then turns the automated ones into a runnable isolated test project, lints the black-box boundary, runs the suite red, and classifies every case as expected-red / broken-test / unexpected-green. Unit tests and any other white-box tests (写单测 / write unit tests) are kcc-dev-core.unit-tests. Standalone capability — no workflow, no orchestration, no team.
 ---
 
 # Writing and materializing black-box tests
@@ -57,7 +57,7 @@ The failure this skill exists to prevent is the case that cannot go red — one 
 - **llm-driven stays in the file** — A `Mode: llm-driven` case is deliberately left unmaterialized and stays in the cases file for a human or an LLM agent to run.
 - **Before implementation** — Write the test code before any implementation of the feature exists.
 - **Pipeline order** — Follow the order read → confirm → scaffold → write → lint → review → red-run → report.
-- **White-box tests are elsewhere** — Unit tests and any other white-box tests are written during implementation by `kcc-dev-core:unit-tests`.
+- **White-box tests are elsewhere** — Unit tests and any other white-box tests are written during implementation by `kcc-dev-core.unit-tests`.
 - **Read it in full** — Read the cases file in full before materializing anything.
 - **Read the sibling spec** — Read the sibling spec for the surface contracts whenever it exists.
 - **Surface line is the fallback contract** — Without a spec, each case's `Surface:` text is the contract.

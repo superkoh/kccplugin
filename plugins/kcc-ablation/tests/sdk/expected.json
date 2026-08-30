@@ -1,13 +1,13 @@
 {
   "slashCommands": {
     "requires": [
-      "kcc-ablation:ablate"
+      "kcc-ablation.ablate"
     ],
     "forbids": []
   },
   "skills": {
     "requires": [
-      "kcc-ablation:ablate"
+      "kcc-ablation.ablate"
     ],
     "forbids": [
       "ablate"

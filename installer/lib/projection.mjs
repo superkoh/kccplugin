@@ -13,12 +13,18 @@
  *
  *   commands/<f>.md      → .claude/commands/<module>/<f>.md   ⇒ /<module>:<f>
  *                          (project commands DO namespace by subdirectory)
- *   skills/<s>/**        → .claude/skills/<module>:<s>/**     ⇒ <module>:<s>
+ *   skills/<s>/**        → .claude/skills/<module>.<s>/**     ⇒ <module>.<s>
  *                          (a skill's name is its directory name verbatim,
- *                           frontmatter `name:` is ignored, and a colon in
- *                           the directory name survives — which is the only
- *                           way to keep a namespace on a project skill,
- *                           since skills do NOT namespace by subdirectory)
+ *                           frontmatter `name:` is ignored, and a separator
+ *                           in the directory name survives — which is the
+ *                           only way to keep a namespace on a project skill,
+ *                           since skills do NOT namespace by subdirectory.
+ *                           The separator is `.` rather than `:` because
+ *                           NTFS forbids a colon in file names: a `:` here
+ *                           makes the target repo impossible to check out
+ *                           on native Windows. Verified live: `.` `_` `@`
+ *                           `~` `+` and `:` all register both the skill and
+ *                           its same-named slash command.)
  *   agents/<f>.md        → .claude/agents/<f>.md              ⇒ frontmatter name
  *                          (an agent's name comes from frontmatter and may
  *                           NOT contain a colon — such agents silently fail
@@ -43,6 +49,15 @@ export const LOCK_PATH = `${KCC_DIR}/kcc.lock.json`;
 export const BACKUP_DIR = `${KCC_DIR}/.backup`;
 /** The project settings file we merge hook entries into. */
 export const SETTINGS_PATH = ".claude/settings.json";
+
+/**
+ * The one place the installed name of a skill is spelled. L4 asserts
+ * registration against this same function, so a separator change cannot
+ * drift between the projection and the test that checks it.
+ */
+export function installedSkillName(moduleName, skill) {
+  return `${moduleName}.${skill}`;
+}
 /**
  * A hook entry belongs to us if and only if its command string contains this
  * marker. Every script we install lives under `.claude/kcc/`, so this is
@@ -129,7 +144,7 @@ export function projectPath(moduleName, rel) {
     if (slash === -1) return null; // a stray file directly under skills/
     const skill = rest.slice(0, slash);
     const inner = rest.slice(slash + 1);
-    return `.claude/skills/${moduleName}:${skill}/${inner}`;
+    return `.claude/skills/${installedSkillName(moduleName, skill)}/${inner}`;
   }
 
   if (rel.startsWith("scripts/") || rel.startsWith("context/")) {
